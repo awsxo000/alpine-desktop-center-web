@@ -2,9 +2,9 @@
 
 ## Browser-first installer flow
 
-- [ ] The primary experience is a browser application, not a Qt window.
-- [ ] The flow exposes clear steps for Welcome, Backend validation, System checks, Modules, Configuration, Execution and Summary.
-- [ ] The interface communicates the current step, progress, blockers and the next safe action.
+- [x] The primary experience is a browser application, not a Qt window.
+- [x] The flow exposes clear steps for Welcome, Backend validation, System checks, Modules, Configuration, Execution and Summary.
+- [x] The interface communicates the current step, progress, blockers and the next safe action.
 
 ## Safe local backend bridge
 
@@ -28,6 +28,6 @@
 
 ## Browser delivery
 
-- [ ] The web project has a healthy Preview listener and a synchronized route manifest.
-- [ ] The first vertical slice is typechecked, buildable and checkpointed in the managed project repository.
+- [x] The web project has a healthy Preview listener and a synchronized route manifest.
+- [x] The first vertical slice is typechecked, buildable and checkpointed in the managed project repository.
 - [ ] The local release launcher opens the browser application while preserving independent terminal execution of the backend.
