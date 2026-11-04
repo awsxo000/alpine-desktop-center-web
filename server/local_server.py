@@ -117,6 +117,16 @@ def diagnostic_command(module: str) -> list[str]:
     return ["python3", "scripts/diagnostico-modulo.py", module, "--json"]
 
 
+def english_output(text: str) -> str:
+    translations = {
+        "sobre PipeWire respondeu.": "responded through PipeWire.",
+        "desconhecido": "unknown",
+    }
+    for source, target in translations.items():
+        text = text.replace(source, target)
+    return text
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         modules = ("base", "audio", "rede", "energia")
@@ -129,20 +139,20 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
             raise ValueError("A valid module identifier is required for diagnose-module.")
         return ([diagnostic_command(module)], f"check module {module}")
     if operation == "check-stable-channel":
-        return (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel")
+        return ([['python3', 'scripts/canal-stable-nix.py', 'verificar']], "check official Stable Nix channel")
     if operation == "migrate-stable-channel":
-        return (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel")
+        return ([['python3', 'scripts/canal-stable-nix.py', 'migrar']], "migrate official Stable Nix channel")
     if operation == "refresh-nix-apps":
-        return (["make", "atualizar-aplicativos-nix"], "refresh Nix applications")
+        return ([['make', 'atualizar-aplicativos-nix']], "refresh Nix applications")
     if operation == "apply-full":
-        return (["make", "aplicar"], "apply full configuration")
+        return ([['make', 'aplicar']], "apply full configuration")
     if operation == "apply-diagnostics":
-        return (["make", "diagnostico"], "apply configuration with diagnostics")
+        return ([['make', 'diagnostico']], "apply configuration with diagnostics")
     if operation == "apply-module":
         module = backend_module(payload.get("module"))
         if module is None:
             raise ValueError("A valid module identifier is required for apply-module.")
-        return (["make", "aplicar-modulo", f"MODULO={module}"], f"apply module {module}")
+        return ([['make', 'aplicar-modulo', f'MODULO={module}']], f"apply module {module}")
     raise ValueError(f"Unsupported operation: {operation}")
 
 
@@ -204,7 +214,7 @@ def execute_operation(root: Path, operation: str, payload: dict[str, object]) ->
                 finally:
                     if hasattr(stdin, "close"):
                         stdin.close()
-                command_output = completed.stdout or ""
+                command_output = english_output(completed.stdout or "")
                 log.write(command_output)
                 log.flush()
                 output_parts.append(command_output.rstrip())

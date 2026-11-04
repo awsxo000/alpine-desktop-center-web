@@ -6,6 +6,8 @@ The local bridge now executes the real v1.43 backend targets through a closed al
 
 The workspace sections are intentionally independent again. Users can open any section at any time, check one module without changing it, or apply only the selected module, matching the legacy Qt behavior.
 
+Fixed a local bridge bug that split single commands into characters in the activity log. Stable channel checks now execute the correct argument vector, and the remaining PipeWire status message is normalized to English in the browser output.
+
 ## 0.1.0-alpha.3
 
 This revision replaces the previous improvised palette with the user's Rokko visual reference: light gray workspace surfaces, white content panels, deep institutional green navigation, vivid green selection states, dark readable typography and restrained borders. Agama/openSUSE remains a structural reference for clarity, not a color or branding reference.
