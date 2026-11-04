@@ -1,0 +1,18 @@
+/* Focused redesign overrides: linear installer flow and true light mode. */
+.step-item:disabled { opacity: .38; cursor: not-allowed; }
+.step-item:disabled:hover { color: var(--muted); background: transparent; }
+.flow-footer { position: sticky; bottom: 18px; z-index: 3; padding: 12px 0 0; background: linear-gradient(180deg, transparent, var(--bg) 22%); }
+.flow-footer .primary-button:disabled { cursor: not-allowed; opacity: .36; transform: none; box-shadow: none; }
+.light .hero-card { border-color: rgba(29, 114, 153, .2); background: linear-gradient(120deg, #e5f7fc 0%, #f6fbfe 63%, #dceff8 100%); }
+.light .hero-card p { color: #577188; }
+.light .hero-kicker { color: #147fa8; }
+.light .hero-card h3 em { color: #148db8; }
+.light .hero-orbit { border-color: rgba(22, 126, 165, .12); }
+.light .hero-visual::before { border-color: rgba(22, 126, 165, .16); box-shadow: 0 0 0 36px rgba(22,126,165,.025), 0 0 0 72px rgba(22,126,165,.02); }
+.light .mountain-back { background: linear-gradient(140deg, rgba(87, 173, 203, .2), rgba(198, 229, 239, .6)); }
+.light .mountain-front { background: linear-gradient(140deg, rgba(85, 183, 214, .35), rgba(177, 221, 235, .76)); }
+.light .visual-label { color: #315f76; }
+.light .hero-card .primary-button { color: #fff; background: linear-gradient(135deg, #238ab0, #146d98); }
+.light .terminal { border-color: #223955; }
+.light .panel-card, .light .health-card, .light .inspector-card, .light .audit-card, .light .help-card { box-shadow: 0 8px 30px rgba(46, 82, 118, .08); }
+.light .connection-pill { background: rgba(255,255,255,.7); }

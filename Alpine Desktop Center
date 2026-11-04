@@ -33,13 +33,32 @@ URL=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$LOG_FILE" | tail -n 1 || true)
 if [ -z "$URL" ]; then
   URL="http://127.0.0.1:${ALPINE_DESKTOP_CENTER_PORT:-43127}"
 fi
-if command -v xdg-open >/dev/null 2>&1; then
-  xdg-open "$URL" >/dev/null 2>&1 &
-elif command -v kioclient6 >/dev/null 2>&1; then
-  kioclient6 exec "$URL" >/dev/null 2>&1 &
-elif command -v kioclient >/dev/null 2>&1; then
-  kioclient exec "$URL" >/dev/null 2>&1 &
-else
-  printf '%s\n' "Open $URL in your browser."
-fi
+
+open_app_window() {
+  BROWSER_PROFILE="$STATE_DIR/browser-profile"
+  mkdir -p "$BROWSER_PROFILE"
+  if command -v chromium >/dev/null 2>&1; then
+    chromium --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
+      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    return 0
+  fi
+  if command -v chromium-browser >/dev/null 2>&1; then
+    chromium-browser --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
+      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    return 0
+  fi
+  if command -v google-chrome >/dev/null 2>&1; then
+    google-chrome --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
+      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    return 0
+  fi
+  if command -v firefox >/dev/null 2>&1; then
+    firefox --profile "$BROWSER_PROFILE/firefox" --new-instance --kiosk "$URL" >/dev/null 2>&1 &
+    return 0
+  fi
+  printf '%s\n' 'No supported app-window browser was found. Install Chromium or Firefox.' >&2
+  return 1
+}
+
+open_app_window
 printf '%s\n' "Alpine Desktop Center is running at $URL"

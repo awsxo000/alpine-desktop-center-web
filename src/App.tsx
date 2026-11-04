@@ -62,6 +62,8 @@ function App() {
 
   const selected = useMemo(() => modules.find((module) => module.id === selectedModule) ?? modules[0], [selectedModule])
   const currentIndex = stepIndex(activeStep)
+  const requiresCompletedOperation = activeStep === 'validate' || activeStep === 'checks' || activeStep === 'config'
+  const canAdvance = !requiresCompletedOperation || operation === 'success'
 
   useEffect(() => {
     fetch('/api/health')
@@ -105,7 +107,10 @@ function App() {
 
   const goNext = () => {
     const next = steps[Math.min(currentIndex + 1, steps.length - 1)]
-    if (next) setActiveStep(next.id)
+    if (next) {
+      setOperation('idle')
+      setActiveStep(next.id)
+    }
   }
 
   return (
@@ -119,7 +124,7 @@ function App() {
           </div>
         </div>
 
-        <div className="release-chip"><span className="pulse-dot" /> Browser control center <strong>alpha.1</strong></div>
+        <div className="release-chip"><span className="pulse-dot" /> Browser control center <strong>alpha.2</strong></div>
 
         <nav className="stepper" aria-label="Installer steps">
           <p className="nav-caption">INSTALLATION FLOW</p>
@@ -127,7 +132,7 @@ function App() {
             const isActive = step.id === activeStep
             const isPast = index < currentIndex
             return (
-              <button className={`step-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)}>
+              <button className={`step-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} disabled={index > currentIndex} aria-current={isActive ? 'step' : undefined}>
                 <span className="step-number">{isPast ? <Check size={14} strokeWidth={3} /> : step.number}</span>
                 <span className="step-copy"><strong>{step.label}</strong><small>{step.note}</small></span>
                 {isActive && <ChevronRight size={15} className="step-arrow" />}
@@ -185,7 +190,7 @@ function App() {
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
 
-            {activeStep !== 'welcome' && activeStep !== 'execute' && <div className="flow-footer"><button className="secondary-button" onClick={() => setActiveStep(steps[Math.max(currentIndex - 1, 0)].id)}>Back</button><button className="primary-button" onClick={goNext}>Continue <ArrowRight size={16} /></button></div>}
+            {activeStep !== 'welcome' && activeStep !== 'execute' && activeStep !== 'summary' && <div className="flow-footer"><button className="secondary-button" onClick={() => setActiveStep(steps[Math.max(currentIndex - 1, 0)].id)}>Back</button><button className="primary-button" onClick={goNext} disabled={!canAdvance}>Continue <ArrowRight size={16} /></button></div>}
           </section>
 
           <aside className="inspector-column">

@@ -2,7 +2,7 @@ import type { BackendStatus, LogEntry, NamedOperation } from './types'
 
 export const backendStatus: BackendStatus = {
   version: 'v1.43',
-  frontendVersion: '0.1.0-alpha.1-web',
+  frontendVersion: '0.1.0-alpha.2-web',
   integrity: 'validated',
   releasePath: './backend',
   lastValidated: 'Just now',

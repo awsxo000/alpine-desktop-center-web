@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.2
+
+This iteration makes the local browser UI behave like a dedicated installer window rather than a normal browser tab. The launcher uses an isolated Chromium app window or Firefox kiosk mode, blocks future installer steps until the current step is completed, and corrects the light theme surfaces and visual hierarchy.
+
 ## Web era — 0.1.0-alpha.1
 
 This release establishes the browser-first line of Alpine Desktop Center.
