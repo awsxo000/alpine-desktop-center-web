@@ -84,23 +84,24 @@ function App() {
     setLogs((current) => [...current, { time: now, level, text }])
   }
 
-  const runOperation = async (namedOperation: NamedOperation, label: string) => {
+  const runOperation = async (namedOperation: NamedOperation, label: string, parameters: Record<string, string> = {}) => {
     if (operation === 'running') return
     setOperation('running')
     setActiveStep('execute')
     addLog('info', `Starting named operation: ${label}`)
     setBridgeMessage('Opening a protected local operation channel…')
     try {
-      const response = await startNamedOperation(namedOperation)
-      const payload = await response.json().catch(() => ({})) as { message?: string }
+      const response = await startNamedOperation(namedOperation, parameters)
+      const payload = await response.json().catch(() => ({})) as { message?: string; output?: string }
       if (!response.ok) throw new Error(payload.message ?? `Local bridge returned HTTP ${response.status}`)
+      if (payload.output) payload.output.split('\n').filter(Boolean).slice(-40).forEach((line) => addLog('info', line))
       setOperation('success')
       setBridgeMessage('Operation completed. Review the captured output before continuing.')
       addLog('success', `${label} completed successfully.`)
     } catch (error) {
       setOperation('error')
       const detail = error instanceof Error ? error.message : 'The local bridge is not reachable.'
-      setBridgeMessage(bridgeConnected ? 'The local bridge is connected, but this named operation adapter is not enabled in the test package.' : 'The UI is ready, but the local backend bridge is not connected in this Preview.')
+      setBridgeMessage(bridgeConnected ? 'The local bridge returned an execution error. Review the captured backend output.' : 'The UI is ready, but the local backend bridge is not connected in this Preview.')
       addLog('warning', `${label} is waiting for the local bridge: ${detail}`)
     }
   }
@@ -124,7 +125,7 @@ function App() {
           </div>
         </div>
 
-        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.3</strong></div>
+        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.4</strong></div>
 
         <nav className="stepper" aria-label="Installer steps">
           <p className="nav-caption">WORKSPACE SECTIONS</p>
@@ -153,7 +154,6 @@ function App() {
           <div className="top-actions">
             <span className="connection-pill"><span className={`status-led ${bridgeConnected ? 'green' : 'amber'}`} /> {bridgeConnected ? 'Local bridge connected' : 'Preview bridge pending'}</span>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label="Toggle theme" title="Toggle theme">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
-            <div className="avatar">J</div>
           </div>
         </header>
 
@@ -185,7 +185,7 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onRun={() => runOperation('apply-module', `Apply ${selected.name} module`)} operation={operation} />}
+            {activeStep === 'modules' && <ModulesPanel modules={modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onRun={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selectedModule })} operation={operation} />}
             {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel')} operation={operation} />}
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
@@ -249,7 +249,7 @@ function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: Opera
 }
 
 function ExecutionPanel({ operation, logs, onRun }: { operation: OperationState; logs: LogEntry[]; onRun: () => void }) {
-  return <div className="panel-card execution-panel"><PanelHeader icon={<TerminalSquare size={22} />} eyebrow="CONTROLLED EXECUTION" title="Every step stays visible." detail="The browser will stream the named operation, its current state and raw output without hiding the terminal reality." /><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'idle' ? 'Ready to run' : operation === 'running' ? 'Running operation' : operation === 'error' ? 'Local bridge unavailable in Preview' : 'Operation finished'}</strong><p>Named command: <code>apply-full</code></p></div><OperationButton onClick={onRun} operation={operation}>Apply full configuration</OperationButton></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div>
+  return <div className="panel-card execution-panel"><PanelHeader icon={<TerminalSquare size={22} />} eyebrow="CONTROLLED EXECUTION" title="Every step stays visible." detail="The browser records the named operation, its current state and captured backend output without hiding the terminal reality." /><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'idle' ? 'Ready to run' : operation === 'running' ? 'Running operation' : operation === 'error' ? 'Local bridge returned an error' : 'Operation finished'}</strong><p>Named command: <code>apply-full</code></p></div><OperationButton onClick={onRun} operation={operation}>Apply full configuration</OperationButton></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div>
 }
 
 function SummaryPanel({ operation, onRestart }: { operation: OperationState; onRestart: () => void }) {

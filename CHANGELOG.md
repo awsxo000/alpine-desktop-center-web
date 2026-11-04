@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.4
+
+The local bridge now executes the real v1.43 backend targets through a closed allowlist: structured module diagnostics, Stable Nix channel checks/migration, Nix application updates, full Apply, diagnostic Apply and module Apply. Every command is revalidated against the embedded SHA-256 manifest immediately before execution, and output is saved inside `.alpine-state/web/operations/`. The unused profile avatar was removed.
+
 ## 0.1.0-alpha.3
 
 This revision replaces the previous improvised palette with the user's Rokko visual reference: light gray workspace surfaces, white content panels, deep institutional green navigation, vivid green selection states, dark readable typography and restrained borders. Agama/openSUSE remains a structural reference for clarity, not a color or branding reference.

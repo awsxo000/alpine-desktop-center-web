@@ -1,84 +1,83 @@
-/* Rokko-inspired Alpine identity: light workspace, deep forest navigation, vivid green actions. */
-.app-shell { --rokko-forest: #103f36; --rokko-green: #29bd82; --rokko-green-dark: #16825a; --bg: #f1f1ef; --surface: #ffffff; --surface-2: #f7f8f6; --surface-3: #e9ece9; --line: #d9dfdc; --text: #19231f; --muted: #586660; --faint: #718078; --cyan: #146d61; --cyan-deep: #10584e; --green: #167d56; --amber: #8c5b08; --violet: #5a4a9c; --signature: var(--rokko-green); --signature-strong: var(--rokko-forest); --shadow: 0 7px 24px rgba(31, 52, 43, .07); background: var(--bg); }
+/* Rokko palette: extracted from the user's published visual system. Agama is only a layout reference. */
+.app-shell { --rokko-ink: #071225; --rokko-blue: #123c9c; --rokko-blue-soft: #e7edf9; --rokko-green: #1d9b62; --bg: #f4f6fa; --surface: #ffffff; --surface-2: #f8f9fb; --surface-3: #e7edf9; --line: #ccd4e1; --text: #1a1a19; --muted: #52617b; --faint: #64718a; --cyan: #123c9c; --cyan-deep: #0b276f; --green: #1d9b62; --amber: #8c5b08; --violet: #5a4a9c; --signature: var(--rokko-blue); --signature-strong: var(--rokko-ink); --shadow: 0 7px 24px rgba(7, 18, 37, .07); background: var(--bg); }
 .app-shell.light { color-scheme: light; background: var(--bg); }
-.app-shell.dark { --bg: #101a17; --surface: #18251f; --surface-2: #1d2d26; --surface-3: #263a31; --line: #344b40; --text: #edf5ef; --muted: #b8c9bf; --faint: #8fa398; --cyan: #78d6bd; --cyan-deep: #55b99f; --green: #76dca6; --amber: #f2c36e; --signature: #33c991; --signature-strong: #dff9eb; --shadow: none; background: var(--bg); }
-.app-shell.dark .sidebar { background: #0e1815; border-color: var(--line); }
+.app-shell.dark { --bg: #071225; --surface: #0d1b35; --surface-2: #102653; --surface-3: #172b53; --line: #3f5377; --text: #f4f6fa; --muted: #b4c2dc; --faint: #91a0b9; --cyan: #9bbaff; --cyan-deep: #5f8fff; --green: #6f9bf0; --signature: #5f8fff; --signature-strong: #d7e2ff; --shadow: none; background: var(--bg); }
+.app-shell.dark .sidebar { background: #0a162b; border-color: var(--line); }
 .app-shell.dark .main-content { background: var(--bg); }
 .app-shell.dark .hero-card { background: var(--surface); border-color: var(--line); }
 .app-shell.dark .hero-card h3, .app-shell.dark .hero-card p, .app-shell.dark .hero-kicker { color: var(--text); }
 .app-shell.dark .hero-card h3 em { color: var(--cyan); }
 
-.sidebar { width: 222px; flex-basis: 222px; padding: 24px 13px 18px; background: #eceeeb; border-right: 1px solid #dfe4e0; }
-.light .sidebar { background: #eceeeb; border-color: #dfe4e0; }
-.brand-mark { width: 29px; height: 29px; padding: 5px; border-radius: 6px; background: var(--rokko-forest); clip-path: none; transform: none; }
+.sidebar { width: 222px; flex-basis: 222px; padding: 24px 13px 18px; background: #eef2f8; border-right: 1px solid #d9e2f6; }
+.light .sidebar { background: #eef2f8; border-color: #d9e2f6; }
+.brand-mark { width: 29px; height: 29px; padding: 5px; border-radius: 6px; background: var(--rokko-ink); clip-path: none; transform: none; }
 .brand-mark span { background: #ffffff; clip-path: none; transform: none; }
-.brand-mark span:nth-child(2) { background: var(--rokko-green); }
-.brand-mark span:nth-child(3) { background: #c8e9da; }
-.brand-lockup .eyebrow { color: var(--rokko-forest); }
+.brand-mark span:nth-child(2) { background: var(--rokko-blue); }
+.brand-mark span:nth-child(3) { background: var(--rokko-green); }
+.brand-lockup .eyebrow { color: var(--rokko-blue); }
 .brand-lockup h1 { color: var(--text); }
-.release-chip { margin: 22px 5px 27px; padding: 8px 9px; border-radius: 5px; background: #f7f8f6; border-color: #d9dfdc; color: #586660; }
-.release-chip strong { color: var(--rokko-forest); }
-.step-item { border-radius: 6px; padding: 10px; color: #586660; }
-.step-item:hover { color: var(--rokko-forest); background: #e2e7e3; }
-.step-item.active { color: #10251f; border: 1px solid #1eaa72; border-left-width: 1px; background: var(--rokko-green); }
-.step-item.active .step-number { color: #10251f; border-color: #10251f; background: transparent; }
-.step-item.past .step-number { color: var(--rokko-forest); border-color: #56b98e; background: #d8f0e4; }
-.step-arrow { color: var(--rokko-forest); }
-.sidebar-foot { border-color: #d9dfdc; }
-.mini-status { color: #586660; }
-.mini-status svg { color: var(--rokko-forest); }
-.mini-status strong { color: var(--rokko-forest); }
+.release-chip { margin: 22px 5px 27px; padding: 8px 9px; border-radius: 5px; background: #f8f9fb; border-color: #d9e2f6; color: #52617b; }
+.release-chip strong { color: var(--rokko-ink); }
+.step-item { border-radius: 6px; padding: 10px; color: #52617b; }
+.step-item:hover { color: var(--rokko-ink); background: #e7edf9; }
+.step-item.active { color: #ffffff; border: 1px solid var(--rokko-blue); border-left-width: 1px; background: var(--rokko-blue); }
+.step-item.active .step-number { color: #ffffff; border-color: #ffffff; background: transparent; }
+.step-item.past .step-number { color: var(--rokko-green); border-color: #8ac9a9; background: #e3f4eb; }
+.step-arrow { color: #ffffff; }
+.sidebar-foot { border-color: #d9e2f6; }
+.mini-status { color: #52617b; }
+.mini-status svg { color: var(--rokko-blue); }
+.mini-status strong { color: var(--rokko-ink); }
 
 .main-content { max-width: 1560px; padding: 0 42px 48px; background: var(--bg); }
-.light .main-content { background: #f1f1ef; }
-.topbar { height: 70px; border-bottom: 1px solid #dfe4e0; }
-.crumb { color: #718078; }
-.crumb strong { color: var(--rokko-forest); }
-.connection-pill { color: #586660; border-color: #cdd7d2; background: #ffffff; }
-.icon-button { color: #586660; border-color: #cdd7d2; background: #ffffff; }
-.icon-button:hover { color: var(--rokko-forest); border-color: #52b88a; }
-.avatar { color: #ffffff; background: var(--rokko-forest); }
+.light .main-content { background: #f4f6fa; }
+.topbar { height: 70px; border-bottom: 1px solid #d9e2f6; }
+.crumb { color: #64718a; }
+.crumb strong { color: var(--rokko-ink); }
+.connection-pill { color: #52617b; border-color: #ccd4e1; background: #ffffff; }
+.icon-button { color: #52617b; border-color: #ccd4e1; background: #ffffff; }
+.icon-button:hover { color: var(--rokko-blue); border-color: #789df4; }
 .page-heading { padding: 38px 0 28px; }
 .page-heading h2 { color: var(--text); }
-.accent-text, .text-button { color: var(--rokko-forest); }
-.heading-meta { color: #718078; }
-.heading-meta strong { color: var(--rokko-forest); }
+.accent-text, .text-button { color: var(--rokko-blue); }
+.heading-meta { color: #64718a; }
+.heading-meta strong { color: var(--rokko-ink); }
 
-.hero-card { min-height: 290px; border: 1px solid #d9dfdc; border-radius: 12px; background: #ffffff; box-shadow: var(--shadow); }
+.hero-card { min-height: 290px; border: 1px solid #d9e2f6; border-radius: 12px; background: #ffffff; box-shadow: var(--shadow); }
 .hero-content { max-width: 100%; padding: 37px 39px; }
-.hero-kicker { color: var(--rokko-forest); }
-.hero-kicker .line { background: var(--rokko-green); }
-.icon-square { color: var(--rokko-forest); border-color: #b8d8ca; border-radius: 6px; background: #edf8f2; }
+.hero-kicker { color: var(--rokko-blue); }
+.hero-kicker .line { background: var(--rokko-blue); }
+.icon-square { color: var(--rokko-blue); border-color: #9bbaff; border-radius: 6px; background: #edf3ff; }
 .hero-card h3 { color: var(--text); font-size: clamp(28px, 3.1vw, 43px); }
-.hero-card h3 em { color: var(--rokko-forest); }
-.hero-card p { color: #586660; }
-.hero-card .ghost-button { color: var(--rokko-forest); }
+.hero-card h3 em { color: var(--rokko-blue); }
+.hero-card p { color: #52617b; }
+.hero-card .ghost-button { color: var(--rokko-blue); }
 .hero-visual, .hero-orbit { display: none; }
 .hero-actions { margin-top: 27px; }
-.primary-button { border-radius: 6px; border: 1px solid var(--rokko-forest); color: #ffffff; background: var(--rokko-forest); box-shadow: 0 4px 10px rgba(16, 63, 54, .12); }
-.primary-button:hover { background: #18594d; box-shadow: 0 6px 14px rgba(16, 63, 54, .16); }
-.light .hero-card .primary-button { color: #ffffff; background: var(--rokko-forest); border-color: var(--rokko-forest); }
-.light .hero-card .primary-button:hover { background: #18594d; }
+.primary-button { border-radius: 6px; border: 1px solid var(--rokko-blue); color: #ffffff; background: var(--rokko-blue); box-shadow: 0 4px 10px rgba(18, 60, 156, .15); }
+.primary-button:hover { background: #0b276f; box-shadow: 0 6px 14px rgba(18, 60, 156, .2); }
+.light .hero-card .primary-button { color: #ffffff; background: var(--rokko-blue); border-color: var(--rokko-blue); }
+.light .hero-card .primary-button:hover { background: #0b276f; }
 .section-row { border-top: 0; padding-top: 7px; }
 .section-row h3 { color: var(--text); }
 
-.health-card, .inspector-card, .audit-card, .help-card, .panel-card { border-radius: 10px; border-color: #d9dfdc; background: #ffffff; box-shadow: var(--shadow); }
-.light .health-card, .light .inspector-card, .light .audit-card, .light .help-card, .light .panel-card { border-color: #d9dfdc; background: #ffffff; }
-.card-icon { border-radius: 6px; background: #edf4ef; }
-.card-icon.green { color: var(--rokko-forest); }
-.card-icon.blue { color: #176b79; }
+.health-card, .inspector-card, .audit-card, .help-card, .panel-card { border-radius: 10px; border-color: #d9e2f6; background: #ffffff; box-shadow: var(--shadow); }
+.light .health-card, .light .inspector-card, .light .audit-card, .light .help-card, .light .panel-card { border-color: #d9e2f6; background: #ffffff; }
+.card-icon { border-radius: 6px; background: #edf3ff; }
+.card-icon.green { color: var(--rokko-green); }
+.card-icon.blue { color: var(--rokko-blue); }
 .card-icon.violet { color: #5a4a9c; }
 .panel-icon, .operation-icon, .big-state-icon, .help-icon { border-radius: 6px; }
 .state-badge, .connection-pill, .secondary-button, .icon-button, .module-row, .selected-module, .metric, .config-option, .channel-card, .validation-banner { border-radius: 6px; }
-.state-badge.success { color: var(--rokko-forest); background: #dff3e8; }
-.secondary-button { color: var(--rokko-forest); border-color: #b9c9c1; background: #ffffff; }
-.secondary-button:hover { color: #10251f; border-color: var(--rokko-green); background: #edf8f2; }
-.module-row.selected { border-color: #4cc891; background: #e6f7ee; }
-.module-row:hover { background: #f1f6f3; }
-.selected-module, .metric, .config-option { background: #f7f8f6; border-color: #d9dfdc; }
-.channel-card { border-color: #9ecdb6; background: #edf8f2; }
-.channel-mark { background: var(--rokko-forest); }
-.validation-banner { border-color: #9ecdb6; background: #edf8f2; }
-.check-status.pass { color: var(--rokko-forest); background: #dff3e8; }
+.state-badge.success { color: #146b45; background: #e3f4eb; }
+.secondary-button { color: var(--rokko-blue); border-color: #b9c6da; background: #ffffff; }
+.secondary-button:hover { color: var(--rokko-ink); border-color: var(--rokko-blue); background: #edf3ff; }
+.module-row.selected { border-color: #789df4; background: #edf3ff; }
+.module-row:hover { background: #f0f4fb; }
+.selected-module, .metric, .config-option { background: #f8f9fb; border-color: #d9e2f6; }
+.channel-card { border-color: #9bbaff; background: #edf3ff; }
+.channel-mark { background: var(--rokko-blue); }
+.validation-banner { border-color: #9ac9b1; background: #e3f4eb; }
+.check-status.pass { color: #146b45; background: #e3f4eb; }
 .flow-footer { background: linear-gradient(180deg, transparent, var(--bg) 22%); }
-.light .flow-footer { background: linear-gradient(180deg, transparent, #f1f1ef 22%); }
+.light .flow-footer { background: linear-gradient(180deg, transparent, #f4f6fa 22%); }

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Local browser bridge for Alpine Desktop Center.
 
-This first portable slice serves the compiled UI and exposes health plus the
-closed operation contract. Backend execution adapters are added behind these
-named routes; arbitrary shell input is never accepted.
+The bridge serves the compiled UI and exposes only named backend operations.
+Every operation revalidates the embedded backend immediately before execution,
+then records its output under the release-local .alpine-state directory.
 """
 from __future__ import annotations
 
@@ -12,6 +12,11 @@ import hashlib
 import json
 import mimetypes
 import os
+import shutil
+import subprocess
+import time
+import uuid
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -29,6 +34,22 @@ OPERATIONS = {
     "migrate-stable-channel",
     "apply-module",
 }
+
+DIAGNOSTIC_MODULES = (
+    "base",
+    "audio",
+    "energia",
+    "fontes",
+    "kde",
+    "bluetooth",
+    "rede",
+    "nix",
+    "nix_opengl",
+    "steam",
+    "swap",
+)
+
+PRIVILEGED_OPERATIONS = {"apply-full", "apply-diagnostics", "apply-module"}
 
 
 def validate_backend(root: Path) -> tuple[bool, str]:
@@ -58,8 +79,152 @@ def validate_backend(root: Path) -> tuple[bool, str]:
     return True, "Embedded backend matches the release manifest."
 
 
+def operation_dir(root: Path) -> Path:
+    directory = root / ".alpine-state" / "web" / "operations"
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def command_environment(root: Path) -> dict[str, str]:
+    env = os.environ.copy()
+    paths = [
+        str(Path.home() / ".local/bin"),
+        str(Path.home() / ".nix-profile/bin"),
+        "/nix/var/nix/profiles/default/bin",
+        "/usr/local/sbin",
+        "/usr/local/bin",
+        "/usr/sbin",
+        "/usr/bin",
+        "/sbin",
+        "/bin",
+        env.get("PATH", ""),
+    ]
+    env["PATH"] = os.pathsep.join(path for path in paths if path)
+    env["ALPINE_DESKTOP_CENTER_ROOT"] = str(root)
+    return env
+
+
+def diagnostic_command(module: str) -> list[str]:
+    return ["python3", "scripts/diagnostico-modulo.py", module, "--json"]
+
+
+def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
+    if operation == "system-check":
+        modules = ("base", "audio", "rede", "energia")
+        return ([diagnostic_command(module) for module in modules], "read-only system checks")
+    if operation == "check-all-modules":
+        return ([diagnostic_command(module) for module in DIAGNOSTIC_MODULES], "all module diagnostics")
+    if operation == "check-stable-channel":
+        return (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel")
+    if operation == "migrate-stable-channel":
+        return (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel")
+    if operation == "refresh-nix-apps":
+        return (["make", "atualizar-aplicativos-nix"], "refresh Nix applications")
+    if operation == "apply-full":
+        return (["make", "aplicar"], "apply full configuration")
+    if operation == "apply-diagnostics":
+        return (["make", "diagnostico"], "apply configuration with diagnostics")
+    if operation == "apply-module":
+        module = payload.get("module")
+        if not isinstance(module, str) or module not in DIAGNOSTIC_MODULES:
+            raise ValueError("A valid module identifier is required for apply-module.")
+        return (["make", "aplicar-modulo", f"MODULO={module}"], f"apply module {module}")
+    raise ValueError(f"Unsupported operation: {operation}")
+
+
+def execute_operation(root: Path, operation: str, payload: dict[str, object]) -> dict[str, object]:
+    valid, message = validate_backend(root)
+    if not valid:
+        return {"status": "blocked", "operation": operation, "message": message}
+    if operation == "validate-backend":
+        return {"status": "success", "operation": operation, "message": message, "output": message}
+
+    try:
+        commands, description = resolve_command(operation, payload)
+    except ValueError as exc:
+        return {"status": "error", "operation": operation, "message": str(exc)}
+
+    operation_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    log_path = operation_dir(root) / f"{operation_id}.log"
+    started = time.monotonic()
+    env = command_environment(root)
+    backend = root / "backend"
+    output_parts: list[str] = [
+        f"Operation: {description}",
+        f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}",
+        f"Backend: {backend}",
+        "Backend integrity: PASS immediately before execution",
+        "",
+    ]
+    return_code = 0
+    try:
+        with log_path.open("w", encoding="utf-8") as log:
+            for command in commands:
+                valid, validation_message = validate_backend(root)
+                if not valid:
+                    return_code = 2
+                    output_parts.append(f"Backend validation failed immediately before command: {validation_message}")
+                    break
+                command_line = " ".join(command)
+                output_parts.append(f"$ {command_line}")
+                log.write(f"$ {command_line}\n")
+                log.flush()
+                stdin = None
+                if operation in PRIVILEGED_OPERATIONS and Path("/dev/tty").exists():
+                    try:
+                        stdin = Path("/dev/tty").open("r", encoding="utf-8")
+                    except OSError:
+                        stdin = subprocess.DEVNULL
+                try:
+                    completed = subprocess.run(
+                        command,
+                        cwd=backend,
+                        env=env,
+                        stdin=stdin,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        check=False,
+                        timeout=900,
+                    )
+                finally:
+                    if hasattr(stdin, "close"):
+                        stdin.close()
+                command_output = completed.stdout or ""
+                log.write(command_output)
+                log.flush()
+                output_parts.append(command_output.rstrip())
+                if completed.returncode != 0:
+                    return_code = completed.returncode
+                    break
+    except FileNotFoundError as exc:
+        return_code = 127
+        output_parts.append(f"Cannot start backend command: {exc}. Install the required backend dependencies first.")
+    except subprocess.TimeoutExpired:
+        return_code = 124
+        output_parts.append("The backend command exceeded the 15-minute safety timeout.")
+    except OSError as exc:
+        return_code = 1
+        output_parts.append(f"Could not execute backend command: {exc}")
+
+    output = "\n".join(part for part in output_parts if part is not None)
+    log_path.write_text(output + "\n", encoding="utf-8")
+    elapsed = round(time.monotonic() - started, 2)
+    status = "success" if return_code == 0 else "error"
+    return {
+        "status": status,
+        "operation": operation,
+        "message": f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}",
+        "output": output,
+        "log_id": operation_id,
+        "log_path": str(log_path.relative_to(root)),
+        "return_code": return_code,
+        "elapsed_seconds": elapsed,
+    }
+
+
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AlpineDesktopCenterLocal/0.1"
+    server_version = "AlpineDesktopCenterLocal/0.2"
 
     @property
     def root(self) -> Path:
@@ -69,7 +234,7 @@ class Handler(BaseHTTPRequestHandler):
         print(fmt % args, flush=True)
 
     def send_json(self, payload: dict[str, object], status: int = HTTPStatus.OK) -> None:
-        data = json.dumps(payload).encode("utf-8")
+        data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
@@ -104,18 +269,23 @@ class Handler(BaseHTTPRequestHandler):
         if operation not in OPERATIONS:
             self.send_json({"error": "Operation is not in the named allowlist."}, HTTPStatus.NOT_FOUND)
             return
-        valid, message = validate_backend(self.root)
-        if not valid:
-            self.send_json({"status": "blocked", "message": message}, HTTPStatus.CONFLICT)
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length) if length else b"{}"
+            payload = json.loads(raw.decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("Request body must be a JSON object.")
+        except (ValueError, json.JSONDecodeError) as exc:
+            self.send_json({"status": "error", "message": f"Invalid operation request: {exc}"}, HTTPStatus.BAD_REQUEST)
             return
-        if operation == "validate-backend":
-            self.send_json({"status": "success", "operation": operation, "message": message})
-            return
-        self.send_json({
-            "status": "adapter_pending",
-            "operation": operation,
-            "message": "The local bridge validated the backend. The execution adapter is the next migration layer.",
-        }, HTTPStatus.NOT_IMPLEMENTED)
+
+        result = execute_operation(self.root, operation, payload)
+        status = {
+            "success": HTTPStatus.OK,
+            "error": HTTPStatus.BAD_GATEWAY,
+            "blocked": HTTPStatus.CONFLICT,
+        }.get(str(result.get("status")), HTTPStatus.BAD_REQUEST)
+        self.send_json(result, status)
 
     def serve_static(self, path: str) -> None:
         relative = "index.html" if path in ("", "/") else path.lstrip("/")
@@ -147,7 +317,9 @@ def main() -> int:
     args = parser.parse_args()
     root = args.root.resolve()
     valid, message = validate_backend(root)
+    make_status = shutil.which("make", path=command_environment(root)["PATH"]) or "not found"
     print(f"Backend validation: {'PASS' if valid else 'FAIL'} — {message}", flush=True)
+    print(f"Make executable: {make_status}", flush=True)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.root = root  # type: ignore[attr-defined]
     print(f"Alpine Desktop Center listening on http://{args.host}:{args.port}", flush=True)
