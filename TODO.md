@@ -30,4 +30,5 @@
 
 - [x] The web project has a healthy Preview listener and a synchronized route manifest.
 - [x] The first vertical slice is typechecked, buildable and checkpointed in the managed project repository.
-- [ ] The local release launcher opens the browser application while preserving independent terminal execution of the backend.
+- [x] The local release launcher opens the browser application while preserving independent terminal execution of the backend.
+- [ ] The local bridge executes the complete named operation allowlist against the embedded backend with streamed output.

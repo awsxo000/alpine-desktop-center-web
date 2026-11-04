@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Alpine Desktop Center
+Comment=Open the local browser control center
+Exec=/bin/sh -c "exec \"$(dirname \"$1\")/launch-from-desktop.sh\" \"$1\"" dummy %k
+Terminal=false
+Type=Application
+Categories=Settings;System;
+StartupNotify=true

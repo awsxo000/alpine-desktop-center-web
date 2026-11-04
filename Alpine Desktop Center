@@ -1,0 +1,45 @@
+#!/bin/sh
+set -eu
+APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+PYTHON=${ALPINE_DESKTOP_CENTER_PYTHON:-python3}
+STATE_DIR="$APP_DIR/.alpine-state/web"
+LOG_FILE="$STATE_DIR/server.log"
+PID_FILE="$STATE_DIR/server.pid"
+
+if ! command -v "$PYTHON" >/dev/null 2>&1; then
+  TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || true)
+  if [ -z "$TERMINAL" ]; then
+    printf '%s\n' 'Python 3 is required. Install it, then run Alpine Desktop Center again.' >&2
+    exit 1
+  fi
+  exec "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && sh instalar.sh; status=\$?; printf '\\nSetup finished with exit code %s. Press Enter to close...' \"\$status\"; read -r _; exit \"\$status\""
+fi
+
+mkdir -p "$STATE_DIR"
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+  PID=$(cat "$PID_FILE")
+else
+  PORT=${ALPINE_DESKTOP_CENTER_PORT:-43127}
+  while ! "$PYTHON" -c "import socket; s=socket.socket(); s.bind(('127.0.0.1', int('$PORT'))); s.close()" >/dev/null 2>&1; do
+    PORT=$((PORT + 1))
+  done
+  nohup "$PYTHON" "$APP_DIR/server/local_server.py" --root "$APP_DIR" --host 127.0.0.1 --port "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  PID=$!
+  printf '%s\n' "$PID" > "$PID_FILE"
+  sleep 0.4
+fi
+
+URL=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$LOG_FILE" | tail -n 1 || true)
+if [ -z "$URL" ]; then
+  URL="http://127.0.0.1:${ALPINE_DESKTOP_CENTER_PORT:-43127}"
+fi
+if command -v xdg-open >/dev/null 2>&1; then
+  xdg-open "$URL" >/dev/null 2>&1 &
+elif command -v kioclient6 >/dev/null 2>&1; then
+  kioclient6 exec "$URL" >/dev/null 2>&1 &
+elif command -v kioclient >/dev/null 2>&1; then
+  kioclient exec "$URL" >/dev/null 2>&1 &
+else
+  printf '%s\n' "Open $URL in your browser."
+fi
+printf '%s\n' "Alpine Desktop Center is running at $URL"

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   Activity,
@@ -57,10 +57,25 @@ function App() {
   const [operation, setOperation] = useState<OperationState>('idle')
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [darkMode, setDarkMode] = useState(true)
-  const [bridgeMessage, setBridgeMessage] = useState('The browser control center is ready. The local bridge will be connected in the next migration slice.')
+  const [bridgeConnected, setBridgeConnected] = useState(false)
+  const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 
   const selected = useMemo(() => modules.find((module) => module.id === selectedModule) ?? modules[0], [selectedModule])
   const currentIndex = stepIndex(activeStep)
+
+  useEffect(() => {
+    fetch('/api/health')
+      .then(async (response) => {
+        const payload = await response.json() as { backend?: string; message?: string }
+        if (!response.ok || payload.backend !== 'validated') throw new Error(payload.message ?? 'Backend validation failed.')
+        setBridgeConnected(true)
+        setBridgeMessage('Local bridge connected. The embedded backend is validated and ready for named operations.')
+      })
+      .catch(() => {
+        setBridgeConnected(false)
+        setBridgeMessage('The browser preview is ready. Start the packaged launcher to connect the local backend bridge.')
+      })
+  }, [])
 
   const addLog = (level: LogEntry['level'], text: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -75,14 +90,15 @@ function App() {
     setBridgeMessage('Opening a protected local operation channel…')
     try {
       const response = await startNamedOperation(namedOperation)
-      if (!response.ok) throw new Error(`Local bridge returned HTTP ${response.status}`)
+      const payload = await response.json().catch(() => ({})) as { message?: string }
+      if (!response.ok) throw new Error(payload.message ?? `Local bridge returned HTTP ${response.status}`)
       setOperation('success')
       setBridgeMessage('Operation completed. Review the captured output before continuing.')
       addLog('success', `${label} completed successfully.`)
     } catch (error) {
       setOperation('error')
       const detail = error instanceof Error ? error.message : 'The local bridge is not reachable.'
-      setBridgeMessage('The UI is ready, but the local backend bridge is not connected in this Preview.')
+      setBridgeMessage(bridgeConnected ? 'The local bridge is connected, but this named operation adapter is not enabled in the test package.' : 'The UI is ready, but the local backend bridge is not connected in this Preview.')
       addLog('warning', `${label} is waiting for the local bridge: ${detail}`)
     }
   }
@@ -130,7 +146,7 @@ function App() {
         <header className="topbar">
           <div className="crumb"><span>LOCAL INSTALLER</span><ChevronRight size={14} /><strong>{steps[currentIndex]?.label}</strong></div>
           <div className="top-actions">
-            <span className="connection-pill"><span className="status-led amber" /> Preview bridge pending</span>
+            <span className="connection-pill"><span className={`status-led ${bridgeConnected ? 'green' : 'amber'}`} /> {bridgeConnected ? 'Local bridge connected' : 'Preview bridge pending'}</span>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label="Toggle theme" title="Toggle theme">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
             <div className="avatar">J</div>
           </div>
