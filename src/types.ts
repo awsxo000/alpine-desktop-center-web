@@ -23,6 +23,7 @@ export type NamedOperation =
   | 'validate-backend'
   | 'system-check'
   | 'check-all-modules'
+  | 'diagnose-module'
   | 'apply-full'
   | 'apply-diagnostics'
   | 'refresh-nix-apps'
