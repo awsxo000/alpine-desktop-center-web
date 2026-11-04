@@ -19,6 +19,7 @@ const endpointFor: Record<NamedOperation, string> = {
   'validate-backend': '/api/operations/validate-backend',
   'system-check': '/api/operations/system-check',
   'check-all-modules': '/api/operations/check-all-modules',
+  'diagnose-module': '/api/operations/diagnose-module',
   'apply-full': '/api/operations/apply-full',
   'apply-diagnostics': '/api/operations/apply-diagnostics',
   'refresh-nix-apps': '/api/operations/refresh-nix-apps',

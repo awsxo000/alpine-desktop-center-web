@@ -75,6 +75,7 @@
 .module-row.selected { border-color: #789df4; background: #edf3ff; }
 .module-row:hover { background: #f0f4fb; }
 .selected-module, .metric, .config-option { background: #f8f9fb; border-color: #d9e2f6; }
+.module-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .channel-card { border-color: #9bbaff; background: #edf3ff; }
 .channel-mark { background: var(--rokko-blue); }
 .validation-banner { border-color: #9ac9b1; background: #e3f4eb; }

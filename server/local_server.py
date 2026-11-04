@@ -27,6 +27,7 @@ OPERATIONS = {
     "validate-backend",
     "system-check",
     "check-all-modules",
+    "diagnose-module",
     "apply-full",
     "apply-diagnostics",
     "refresh-nix-apps",
@@ -48,8 +49,16 @@ DIAGNOSTIC_MODULES = (
     "steam",
     "swap",
 )
+PUBLIC_MODULE_ALIASES = {"network": "rede"}
 
 PRIVILEGED_OPERATIONS = {"apply-full", "apply-diagnostics", "apply-module"}
+
+
+def backend_module(module: object) -> str | None:
+    if not isinstance(module, str):
+        return None
+    normalized = PUBLIC_MODULE_ALIASES.get(module, module)
+    return normalized if normalized in DIAGNOSTIC_MODULES else None
 
 
 def validate_backend(root: Path) -> tuple[bool, str]:
@@ -114,6 +123,11 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
         return ([diagnostic_command(module) for module in modules], "read-only system checks")
     if operation == "check-all-modules":
         return ([diagnostic_command(module) for module in DIAGNOSTIC_MODULES], "all module diagnostics")
+    if operation == "diagnose-module":
+        module = backend_module(payload.get("module"))
+        if module is None:
+            raise ValueError("A valid module identifier is required for diagnose-module.")
+        return ([diagnostic_command(module)], f"check module {module}")
     if operation == "check-stable-channel":
         return (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel")
     if operation == "migrate-stable-channel":
@@ -125,8 +139,8 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
     if operation == "apply-diagnostics":
         return (["make", "diagnostico"], "apply configuration with diagnostics")
     if operation == "apply-module":
-        module = payload.get("module")
-        if not isinstance(module, str) or module not in DIAGNOSTIC_MODULES:
+        module = backend_module(payload.get("module"))
+        if module is None:
             raise ValueError("A valid module identifier is required for apply-module.")
         return (["make", "aplicar-modulo", f"MODULO={module}"], f"apply module {module}")
     raise ValueError(f"Unsupported operation: {operation}")

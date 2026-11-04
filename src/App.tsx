@@ -62,8 +62,6 @@ function App() {
 
   const selected = useMemo(() => modules.find((module) => module.id === selectedModule) ?? modules[0], [selectedModule])
   const currentIndex = stepIndex(activeStep)
-  const requiresCompletedOperation = activeStep === 'validate' || activeStep === 'checks' || activeStep === 'config'
-  const canAdvance = !requiresCompletedOperation || operation === 'success'
 
   useEffect(() => {
     fetch('/api/health')
@@ -93,8 +91,8 @@ function App() {
     try {
       const response = await startNamedOperation(namedOperation, parameters)
       const payload = await response.json().catch(() => ({})) as { message?: string; output?: string }
-      if (!response.ok) throw new Error(payload.message ?? `Local bridge returned HTTP ${response.status}`)
       if (payload.output) payload.output.split('\n').filter(Boolean).slice(-40).forEach((line) => addLog('info', line))
+      if (!response.ok) throw new Error(payload.message ?? `Local bridge returned HTTP ${response.status}`)
       setOperation('success')
       setBridgeMessage('Operation completed. Review the captured output before continuing.')
       addLog('success', `${label} completed successfully.`)
@@ -133,7 +131,7 @@ function App() {
             const isActive = step.id === activeStep
             const isPast = index < currentIndex
             return (
-              <button className={`step-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} disabled={index > currentIndex} aria-current={isActive ? 'step' : undefined}>
+              <button className={`step-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} aria-current={isActive ? 'step' : undefined}>
                 <span className="step-number">{isPast ? <Check size={14} strokeWidth={3} /> : step.number}</span>
                 <span className="step-copy"><strong>{step.label}</strong><small>{step.note}</small></span>
                 {isActive && <ChevronRight size={15} className="step-arrow" />}
@@ -185,12 +183,12 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onRun={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selectedModule })} operation={operation} />}
+            {activeStep === 'modules' && <ModulesPanel modules={modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selectedModule })} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selectedModule })} operation={operation} />}
             {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel')} operation={operation} />}
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
 
-            {activeStep !== 'welcome' && activeStep !== 'execute' && activeStep !== 'summary' && <div className="flow-footer"><button className="secondary-button" onClick={() => setActiveStep(steps[Math.max(currentIndex - 1, 0)].id)}>Back</button><button className="primary-button" onClick={goNext} disabled={!canAdvance}>Continue <ArrowRight size={16} /></button></div>}
+            {activeStep !== 'welcome' && activeStep !== 'execute' && activeStep !== 'summary' && <div className="flow-footer"><button className="secondary-button" onClick={() => setActiveStep(steps[Math.max(currentIndex - 1, 0)].id)}>Back</button><button className="primary-button" onClick={goNext}>Continue <ArrowRight size={16} /></button></div>}
           </section>
 
           <aside className="inspector-column">
@@ -240,8 +238,8 @@ function ChecksPanel({ onRun, operation }: { onRun: () => void; operation: Opera
   return <div className="panel-card"><PanelHeader icon={<ClipboardCheck size={22} />} eyebrow="READ-ONLY INSPECTION" title="See the system before changing it." detail="These checks never apply configuration. They provide the context needed for a safe decision." /><div className="check-table">{checks.map((check) => <div className="check-row" key={check.label}><span className={`check-status ${check.state}`}>{check.state === 'pass' ? <Check size={14} /> : check.state === 'warn' ? <CircleAlert size={14} /> : <CircleDashed size={14} />}</span><div><strong>{check.label}</strong><small>{check.value}</small></div><ChevronRight size={16} /></div>)}</div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation}>Run system check</OperationButton><span className="muted-note"><LockKeyhole size={13} /> Read-only operation</span></div></div>
 }
 
-function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, onRun, operation }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; onRun: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose what you want to inspect." detail="Modules map directly to the backend roles. Select one to view its signals, dependencies and safe actions." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div><div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. A live diagnostic can be run before any Ansible action.</p></div><OperationButton onClick={onRun} operation={operation} icon={<Activity size={15} />}>Inspect {selected.name}</OperationButton></div></div>
+ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, onCheck, onApply, operation }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; onCheck: () => void; onApply: () => void; operation: OperationState }) {
+  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose what you want to inspect." detail="Modules map directly to the backend roles. Check a module without changing it, or apply only the selected module." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div><div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. Check status is read-only; Apply module runs only this backend tag.</p></div><div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />}>Apply module</OperationButton></div></div></div>
 }
 
 function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
