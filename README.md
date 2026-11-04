@@ -1,5 +1,7 @@
 # Alpine Desktop Center Web
 
+> **Web era begins here.** This repository is the browser-first continuation of Alpine Desktop Center. The original desktop direction remains part of the project's history; this line makes the local browser experience the primary interface.
+
 This project is the browser-first migration of Alpine Desktop Center. The web interface is designed as a calm, transparent system installer: a left-hand flow of explicit steps, an inspection-first main panel, protected execution states and a live audit stream.
 
 The first vertical slice is intentionally honest about its boundary. It renders the browser experience and sends only named operation requests to `/api/operations/*`; the local bridge that connects those requests to the embedded Ansible backend is the next implementation layer. No arbitrary shell input is accepted by the client.
