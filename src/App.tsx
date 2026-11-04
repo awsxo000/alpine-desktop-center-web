@@ -56,7 +56,7 @@ function App() {
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
-  const [darkMode, setDarkMode] = useState(true)
+  const [darkMode, setDarkMode] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true)
   const [bridgeConnected, setBridgeConnected] = useState(false)
   const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 
@@ -124,10 +124,10 @@ function App() {
           </div>
         </div>
 
-        <div className="release-chip"><span className="pulse-dot" /> Browser control center <strong>alpha.2</strong></div>
+        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.3</strong></div>
 
         <nav className="stepper" aria-label="Installer steps">
-          <p className="nav-caption">INSTALLATION FLOW</p>
+          <p className="nav-caption">WORKSPACE SECTIONS</p>
           {steps.map((step, index) => {
             const isActive = step.id === activeStep
             const isPast = index < currentIndex
@@ -149,7 +149,7 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
-          <div className="crumb"><span>LOCAL INSTALLER</span><ChevronRight size={14} /><strong>{steps[currentIndex]?.label}</strong></div>
+          <div className="crumb"><span>ALPINE WORKSPACE</span><ChevronRight size={14} /><strong>{steps[currentIndex]?.label}</strong></div>
           <div className="top-actions">
             <span className="connection-pill"><span className={`status-led ${bridgeConnected ? 'green' : 'amber'}`} /> {bridgeConnected ? 'Local bridge connected' : 'Preview bridge pending'}</span>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label="Toggle theme" title="Toggle theme">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
@@ -160,8 +160,8 @@ function App() {
         <section className="page-heading">
           <div>
             <p className="eyebrow accent-text">STEP {steps[currentIndex]?.number} / {steps.length}</p>
-            <h2>{activeStep === 'welcome' ? 'Configure your Alpine desktop.' : steps[currentIndex]?.label}</h2>
-            <p className="lede">A transparent browser workflow for a stable system — inspect first, change only what you approve.</p>
+            <h2>{activeStep === 'welcome' ? 'See the system. Decide the change.' : steps[currentIndex]?.label}</h2>
+            <p className="lede">One clear workspace for inspection, decisions and safe changes. Nothing is hidden behind a generic success state.</p>
           </div>
           <div className="heading-meta"><span className="meta-label">FRONTEND</span><strong>{backendStatus.frontendVersion}</strong><span className="meta-divider" /><span className="meta-label">BACKEND</span><strong>{backendStatus.version}</strong></div>
         </section>
@@ -172,14 +172,14 @@ function App() {
               <div className="hero-card">
                 <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
                 <div className="hero-content">
-                  <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> RELEASE READY <span className="line" /></div>
-                  <h3>One calm place to<br /><em>understand your system.</em></h3>
-                  <p>Move through a guided setup, keep the backend visible, and never lose the context behind an action.</p>
-                  <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>Begin system setup <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>Explore modules</button></div>
+                  <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> SYSTEM WORKSPACE <span className="line" /></div>
+                  <h3>Make the next step<br /><em>obvious and accountable.</em></h3>
+                  <p>Inspect the current system, choose a bounded action, and keep its evidence with you from start to finish.</p>
+                  <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>Inspect the release <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>Browse modules</button></div>
                 </div>
                 <div className="hero-visual"><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="visual-label"><span className="status-led green" /> SYSTEM READY</div></div>
               </div>
-              <div className="section-row"><div><p className="section-kicker">AT A GLANCE</p><h3>Release health</h3></div><button className="text-button" onClick={() => setActiveStep('validate')}>View validation <ArrowRight size={15} /></button></div>
+              <div className="section-row"><div><p className="section-kicker">CURRENT SNAPSHOT</p><h3>System signals</h3></div><button className="text-button" onClick={() => setActiveStep('validate')}>Open integrity check <ArrowRight size={15} /></button></div>
               <div className="health-grid"><HealthCard icon={<FolderLock size={18} />} label="Backend integrity" value="Validated" detail="SHA-256 manifest matches" tone="green" /><HealthCard icon={<HardDrive size={18} />} label="Release state" value="Fresh workspace" detail="No previous logs found" tone="blue" /><HealthCard icon={<Network size={18} />} label="Stable channel" value="nixos-26.05" detail="Official channel · current" tone="violet" /></div>
             </>}
 

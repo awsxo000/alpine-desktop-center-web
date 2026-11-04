@@ -1,0 +1,50 @@
+/* Alpha.3 contrast pass: prioritize readable text over decorative color. */
+.app-shell { color-scheme: dark; }
+.app-shell.light { color-scheme: light; --bg: #f5f7fa; --surface: #ffffff; --surface-2: #f0f3f7; --surface-3: #e5eaf0; --line: #d2dbe5; --text: #172334; --muted: #526275; --faint: #637489; --cyan: #076b8d; --cyan-deep: #075a76; --green: #16734b; --amber: #895c08; --violet: #5a4a9c; --shadow: 0 8px 24px rgba(35, 54, 77, .08); background: var(--bg); }
+.app-shell.dark { --muted: #a5b5c6; --faint: #8194a9; }
+.light .sidebar { background: #eef2f6; border-color: #cbd6e1; }
+.light .brand-lockup .eyebrow, .light .accent-text, .light .text-button, .light .step-arrow { color: #075f7d; }
+.light .release-chip, .light .connection-pill { color: #526275; background: #ffffff; border-color: #cbd6e1; }
+.light .nav-caption, .light .eyebrow, .light .section-kicker, .light .meta-label, .light .channel-label { color: #637489; }
+.light .step-item { color: #526275; }
+.light .step-item:hover { color: #172334; background: #e1e8ef; }
+.light .step-item.active { color: #172334; border-color: #9bb8c8; background: #dcecf2; }
+.light .step-number { color: #637489; border-color: #bdc9d5; }
+.light .step-item.active .step-number { color: #075f7d; border-color: #2e829f; background: #c5e3ed; }
+.light .step-item.past .step-number { color: #16734b; border-color: #7db69d; background: #d8eee3; }
+.light .step-copy small, .light .mini-status small, .light .crumb, .light .crumb svg { color: #637489; }
+.light .mini-status { color: #526275; }
+.light .mini-status strong, .light .health-card strong, .light .module-copy strong, .light .panel-header h3, .light .inspector-heading h3 { color: #172334; }
+.light .main-content { background: #f5f7fa; }
+.light .hero-card { background: #e7f3f7; border-color: #a7cbd7; box-shadow: none; }
+.light .hero-card h3, .light .hero-card p, .light .hero-kicker { color: #172334; }
+.light .hero-card h3 em { color: #075f7d; }
+.light .hero-card p { color: #526275; }
+.light .hero-card .ghost-button { color: #075f7d; }
+.light .hero-card .primary-button { color: #ffffff; background: #075f7d; border-color: #075f7d; }
+.light .hero-card .primary-button:hover { background: #064d65; }
+.light .health-card, .light .inspector-card, .light .audit-card, .light .help-card, .light .panel-card { border-color: #d2dbe5; background: #ffffff; box-shadow: 0 8px 24px rgba(35, 54, 77, .08); }
+.light .health-card p, .light .health-card small, .light .panel-header > div:last-child > p:last-child, .light .operation-line p, .light .help-card p, .light .module-copy small, .light .selected-module p:last-child, .light .channel-card p, .light .config-option small, .light .check-row small, .light .lede { color: #526275; }
+.light .card-icon.green, .light .card-icon.blue, .light .card-icon.violet { background: #edf3f7; }
+.light .card-icon.green, .light .module-avatar.green { color: #16734b; }
+.light .card-icon.blue, .light .module-avatar.blue { color: #075f7d; }
+.light .card-icon.violet, .light .module-avatar.violet { color: #5a4a9c; }
+.light .module-row:hover { background: #f0f3f7; }
+.light .module-row.selected { border-color: #9bb8c8; background: #e7f3f7; }
+.light .module-state { color: #526275; }
+.light .selected-module, .light .metric, .light .config-option { border-color: #d2dbe5; background: #f5f7fa; }
+.light .selected-module h4, .light .metric strong, .light .config-option strong, .light .check-row strong { color: #172334; }
+.light .validation-banner { border-color: #9ac8b1; background: #e7f4ed; }
+.light .validation-banner strong { color: #172334; }
+.light .validation-banner p, .light .muted-note { color: #526275; }
+.light .channel-card { border-color: #a7cbd7; background: #e7f3f7; }
+.light .state-badge { color: #526275; background: #e5eaf0; }
+.light .state-badge.success { color: #16734b; background: #d8eee3; }
+.light .secondary-button { color: #172334; border-color: #bdc9d5; background: #ffffff; }
+.light .secondary-button:hover { border-color: #2e829f; color: #075f7d; }
+.light .icon-button { color: #526275; border-color: #bdc9d5; background: #ffffff; }
+.light .icon-button:hover { color: #075f7d; }
+.light .audit-link { color: #075f7d; }
+.light .topbar { border-color: #d2dbe5; }
+.light .meta-divider { background: #bdc9d5; }
+.light .flow-footer { background: linear-gradient(180deg, transparent, #f5f7fa 22%); }

@@ -1,0 +1,53 @@
+/* Alpine Desktop Center identity: a compact system workspace, not an installer imitation. */
+.app-shell { --signature: #ef8050; --signature-strong: #c95d32; --surface: #151b20; --surface-2: #1b232a; --surface-3: #252f38; --line: #34424c; --text: #f4f1ea; --muted: #b6c0c6; --faint: #8c9aa4; --cyan: #87d4c9; --cyan-deep: #5eb8ad; --shadow: none; background: #0f1418; }
+.app-shell.light { --signature: #c95d32; --signature-strong: #a84826; --surface: #ffffff; --surface-2: #f1f2ef; --surface-3: #e5e8e5; --line: #d0d6d4; --text: #1b2529; --muted: #536269; --faint: #68777e; --cyan: #086f69; --cyan-deep: #075a55; --green: #247348; --amber: #865b09; --shadow: none; background: #f5f4ef; }
+.app-shell, .app-shell.light { border-radius: 0; }
+.sidebar { width: 226px; flex-basis: 226px; padding: 25px 14px 18px; background: #11181d; border-right: 1px solid var(--line); }
+.light .sidebar { background: #e9ece9; border-color: #cbd2cf; }
+.brand-mark { background: var(--signature); clip-path: none; border-radius: 3px; transform: rotate(45deg); }
+.brand-mark span { background: #10171b; clip-path: none; transform: rotate(-45deg); }
+.brand-mark span:nth-child(2) { background: var(--cyan); }
+.brand-mark span:nth-child(3) { background: #f5f4ef; }
+.brand-lockup .eyebrow { color: var(--signature); }
+.release-chip { margin: 24px 6px 28px; border-radius: 3px; background: transparent; border-color: var(--line); }
+.step-item { border-radius: 3px; padding: 9px 10px; }
+.step-item.active { border-color: var(--signature); border-left-width: 3px; background: rgba(239,128,80,.09); }
+.step-item.active .step-number { color: var(--signature); border-color: var(--signature); background: transparent; }
+.step-item.past .step-number { color: var(--cyan); border-color: var(--cyan); background: transparent; }
+.step-arrow { color: var(--signature); }
+.main-content { max-width: 1560px; padding: 0 48px 52px; background: #0f1418; }
+.light .main-content { background: #f5f4ef; }
+.topbar { height: 70px; border-color: var(--line); }
+.page-heading { padding: 38px 0 26px; }
+.page-heading h2 { font-size: clamp(26px, 3vw, 40px); letter-spacing: -.06em; }
+.accent-text, .text-button { color: var(--signature); }
+.heading-meta { color: var(--muted); }
+.hero-card { min-height: 280px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); box-shadow: none; }
+.light .hero-card { background: #ffffff; border-color: #cbd2cf; }
+.hero-content { max-width: 100%; padding: 35px 38px; }
+.hero-kicker { color: var(--signature); }
+.hero-kicker .line { background: var(--signature); }
+.icon-square { color: var(--signature); border-color: var(--signature); border-radius: 3px; background: transparent; }
+.hero-card h3 { color: var(--text); font-size: clamp(28px, 3.1vw, 43px); }
+.hero-card h3 em { color: var(--cyan); }
+.hero-card p { color: var(--muted); }
+.hero-visual, .hero-orbit { display: none; }
+.hero-actions { margin-top: 26px; }
+.primary-button { border-radius: 3px; border: 1px solid var(--signature); color: #ffffff; background: var(--signature-strong); box-shadow: none; }
+.primary-button:hover { background: var(--signature); box-shadow: none; }
+.ghost-button { color: var(--cyan); }
+.section-row { border-top: 1px solid var(--line); padding-top: 20px; }
+.health-card, .inspector-card, .audit-card, .help-card, .panel-card { border-radius: 4px; border-color: var(--line); box-shadow: none; background: var(--surface); }
+.health-card { min-height: 138px; }
+.card-icon { border-radius: 3px; background: var(--surface-3); }
+.panel-card { padding: 25px; }
+.panel-icon, .operation-icon, .big-state-icon, .help-icon { border-radius: 3px; }
+.state-badge, .connection-pill, .secondary-button, .icon-button, .module-row, .selected-module, .metric, .config-option, .channel-card, .validation-banner { border-radius: 3px; }
+.state-badge.success { color: var(--green); }
+.flow-footer { background: linear-gradient(180deg, transparent, var(--bg) 22%); }
+.light .flow-footer { background: linear-gradient(180deg, transparent, #f5f4ef 22%); }
+.light .hero-card .primary-button { color: #fff; background: var(--signature-strong); border-color: var(--signature-strong); }
+.light .hero-card .primary-button:hover { background: var(--signature); }
+.light .hero-card h3, .light .hero-card p, .light .hero-kicker { color: var(--text); }
+.light .hero-card h3 em { color: var(--cyan); }
+.light .hero-card .ghost-button { color: var(--cyan); }
