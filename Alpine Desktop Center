@@ -23,15 +23,29 @@ else
   while ! "$PYTHON" -c "import socket; s=socket.socket(); s.bind(('127.0.0.1', int('$PORT'))); s.close()" >/dev/null 2>&1; do
     PORT=$((PORT + 1))
   done
-  nohup "$PYTHON" "$APP_DIR/server/local_server.py" --root "$APP_DIR" --host 127.0.0.1 --port "$PORT" >"$LOG_FILE" 2>&1 </dev/null &
+  SESSION_TOKEN=$($PYTHON -c 'import secrets; print(secrets.token_urlsafe(32))')
+  nohup "$PYTHON" "$APP_DIR/server/local_server.py" --root "$APP_DIR" --host 127.0.0.1 --port "$PORT" --token "$SESSION_TOKEN" >"$LOG_FILE" 2>&1 </dev/null &
   PID=$!
   printf '%s\n' "$PID" > "$PID_FILE"
-  sleep 0.4
+  printf '%s\n' "$SESSION_TOKEN" > "$STATE_DIR/session.token"
+  chmod 0600 "$STATE_DIR/session.token"
 fi
 
-URL=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$LOG_FILE" | tail -n 1 || true)
-if [ -z "$URL" ]; then
-  URL="http://127.0.0.1:${ALPINE_DESKTOP_CENTER_PORT:-43127}"
+PORT=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$LOG_FILE" | tail -n 1 | sed 's/.*://' || printf '%s' "${PORT:-43127}")
+SESSION_TOKEN=$(cat "$STATE_DIR/session.token")
+URL="http://127.0.0.1:${PORT}/?session=$SESSION_TOKEN"
+HEALTH_URL="http://127.0.0.1:${PORT}/api/health"
+READY=0
+for _ in $(seq 1 50); do
+  if curl -fsS -H "Host: 127.0.0.1:${PORT}" -H "X-ADC-Token: $SESSION_TOKEN" "$HEALTH_URL" >/dev/null 2>&1; then
+    READY=1
+    break
+  fi
+  sleep 0.2
+done
+if [ "$READY" -ne 1 ]; then
+  printf '%s\n' 'Alpine Desktop Center local bridge did not become ready. Check .alpine-state/web/server.log.' >&2
+  exit 1
 fi
 
 open_app_window() {

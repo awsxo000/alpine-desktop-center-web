@@ -2,7 +2,7 @@
 set -eu
 
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-FRONTEND_VERSION=${1:-0.1.0-alpha.4-web}
+FRONTEND_VERSION=${1:-0.1.0-alpha.5-web}
 BACKEND_SOURCE=${BACKEND_SOURCE:-}
 BACKEND_MANIFEST=${BACKEND_MANIFEST:-}
 BUILD_ROOT=${BUILD_ROOT:-"$REPO_ROOT/dist-portable"}

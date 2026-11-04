@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.5
+
+Secured the loopback bridge with a per-launch session token, loopback Host/Origin validation, strict JSON operation requests and JSON API 404 responses. Added server-side operation locking, process-group timeout cleanup, version-namespaced operation logs, module catalog and log listing endpoints. The launcher now waits for authenticated health before opening the app window. The frontend consumes the authenticated health and module catalog instead of presenting fixed validation state as current fact.
+
 ## 0.1.0-alpha.4
 
 The local bridge now executes the real v1.43 backend targets through a closed allowlist: structured module diagnostics, Stable Nix channel checks/migration, Nix application updates, full Apply, diagnostic Apply and module Apply. Every command is revalidated against the embedded SHA-256 manifest immediately before execution, and output is saved inside `.alpine-state/web/operations/`. The unused profile avatar was removed.

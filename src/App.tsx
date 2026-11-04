@@ -27,7 +27,7 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react'
-import { backendStatus, initialLogs, startNamedOperation } from './api'
+import { backendStatus, getBridgeHealth, getModuleCatalog, initialLogs, startNamedOperation } from './api'
 import type { LogEntry, Module, NamedOperation, OperationState, StepId } from './types'
 
 const steps: Array<{ id: StepId; number: string; label: string; note: string }> = [
@@ -41,18 +41,19 @@ const steps: Array<{ id: StepId; number: string; label: string; note: string }> 
 ]
 
 const modules: Module[] = [
-  { id: 'base', name: 'Base', description: 'Core packages, users and shell defaults.', state: 'Ready', detail: 'All required signals present', accent: 'cyan' },
-  { id: 'audio', name: 'Audio', description: 'PipeWire, WirePlumber and session audio.', state: 'Needs attention', detail: '2 checks need review', accent: 'amber' },
-  { id: 'network', name: 'Network', description: 'NetworkManager and managed devices.', state: 'Ready', detail: 'Connected · 1 device', accent: 'green' },
-  { id: 'kde', name: 'KDE Plasma', description: 'Desktop shell, menu and session defaults.', state: 'Ready', detail: 'Plasma session detected', accent: 'violet' },
-  { id: 'nix', name: 'Nix', description: 'Stable channel and user profile tooling.', state: 'Ready', detail: 'nixos-26.05 · current', accent: 'blue' },
-  { id: 'steam', name: 'Steam', description: 'Gaming stack and Nix application path.', state: 'Unknown', detail: 'Run a live diagnostic', accent: 'pink' },
+  { id: 'base', name: 'Base', description: 'Core packages, users and shell defaults.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'cyan' },
+  { id: 'audio', name: 'Audio', description: 'PipeWire, WirePlumber and session audio.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'amber' },
+  { id: 'network', name: 'Network', description: 'NetworkManager and managed devices.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'green' },
+  { id: 'kde', name: 'KDE Plasma', description: 'Desktop shell, menu and session defaults.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'violet' },
+  { id: 'nix', name: 'Nix', description: 'Stable channel and user profile tooling.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'blue' },
+  { id: 'steam', name: 'Steam', description: 'Gaming stack and Nix application path.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'pink' },
 ]
 
 const stepIndex = (id: StepId) => steps.findIndex((step) => step.id === id)
 
 function App() {
   const [activeStep, setActiveStep] = useState<StepId>('welcome')
+  const [moduleCatalog, setModuleCatalog] = useState<Module[]>([])
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
@@ -60,20 +61,19 @@ function App() {
   const [bridgeConnected, setBridgeConnected] = useState(false)
   const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 
-  const selected = useMemo(() => modules.find((module) => module.id === selectedModule) ?? modules[0], [selectedModule])
+  const selected = useMemo(() => moduleCatalog.find((module) => module.id === selectedModule) ?? moduleCatalog[0] ?? modules[0], [moduleCatalog, selectedModule])
   const currentIndex = stepIndex(activeStep)
 
   useEffect(() => {
-    fetch('/api/health')
-      .then(async (response) => {
-        const payload = await response.json() as { backend?: string; message?: string }
-        if (!response.ok || payload.backend !== 'validated') throw new Error(payload.message ?? 'Backend validation failed.')
+    Promise.all([getBridgeHealth(), getModuleCatalog()])
+      .then(([payload, catalog]) => {
+        setModuleCatalog(catalog)
         setBridgeConnected(true)
-        setBridgeMessage('Local bridge connected. The embedded backend is validated and ready for named operations.')
+        setBridgeMessage(payload.message)
       })
-      .catch(() => {
+      .catch((error) => {
         setBridgeConnected(false)
-        setBridgeMessage('The browser preview is ready. Start the packaged launcher to connect the local backend bridge.')
+        setBridgeMessage(error instanceof Error ? error.message : 'The local backend bridge is not connected.')
       })
   }, [])
 
@@ -123,7 +123,7 @@ function App() {
           </div>
         </div>
 
-        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.4</strong></div>
+        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.5</strong></div>
 
         <nav className="stepper" aria-label="Installer steps">
           <p className="nav-caption">WORKSPACE SECTIONS</p>
@@ -178,12 +178,12 @@ function App() {
                 <div className="hero-visual"><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="visual-label"><span className="status-led green" /> SYSTEM READY</div></div>
               </div>
               <div className="section-row"><div><p className="section-kicker">CURRENT SNAPSHOT</p><h3>System signals</h3></div><button className="text-button" onClick={() => setActiveStep('validate')}>Open integrity check <ArrowRight size={15} /></button></div>
-              <div className="health-grid"><HealthCard icon={<FolderLock size={18} />} label="Backend integrity" value="Validated" detail="SHA-256 manifest matches" tone="green" /><HealthCard icon={<HardDrive size={18} />} label="Release state" value="Fresh workspace" detail="No previous logs found" tone="blue" /><HealthCard icon={<Network size={18} />} label="Stable channel" value="nixos-26.05" detail="Official channel · current" tone="violet" /></div>
+              <div className="health-grid"><HealthCard icon={<FolderLock size={18} />} label="Backend integrity" value={bridgeConnected ? 'Validated' : 'Unknown'} detail={bridgeConnected ? 'SHA-256 manifest matches' : 'Start the local bridge to validate'} tone="green" /><HealthCard icon={<HardDrive size={18} />} label="Release state" value="Local workspace" detail="Operation history is stored inside this release" tone="blue" /><HealthCard icon={<Network size={18} />} label="Stable channel" value="Not checked" detail="Run the Stable channel check for current data" tone="violet" /></div>
             </>}
 
-            {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} />}
+            {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} connected={bridgeConnected} message={bridgeMessage} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selectedModule })} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selectedModule })} operation={operation} />}
+            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id })} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id })} operation={operation} />}
             {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel')} operation={operation} />}
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
@@ -229,8 +229,8 @@ function OperationButton({ children, onClick, operation, icon = <Play size={15} 
   return <button className="primary-button" onClick={onClick} disabled={operation === 'running'}>{operation === 'running' ? <LoaderCircle className="spin" size={15} /> : icon}{children}</button>
 }
 
-function ValidationPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<ShieldCheck size={22} />} eyebrow="BACKEND VALIDATION" title="The execution lock is active." detail="Every action starts with a fresh check of the embedded backend and its SHA-256 manifest." /><div className="validation-banner"><CheckCircle2 size={20} /><div><strong>Backend detected and validated</strong><p>95 embedded files match the release manifest. No external backend will be used.</p></div><span className="state-badge success">PASS</span></div><div className="metric-list"><Metric label="Backend version" value="v1.43" /><Metric label="Diagnostic schema" value="1" /><Metric label="Release location" value="./backend" /><Metric label="Last validation" value="Just now" /></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Validate again</OperationButton></div></div>
+function ValidationPanel({ onRun, operation, connected, message }: { onRun: () => void; operation: OperationState; connected: boolean; message: string }) {
+  return <div className="panel-card"><PanelHeader icon={<ShieldCheck size={22} />} eyebrow="BACKEND VALIDATION" title="The execution lock is active." detail="Every action starts with a fresh check of the embedded backend and its SHA-256 manifest." /><div className={`validation-banner ${connected ? '' : 'invalid'}`}><>{connected ? <CheckCircle2 size={20} /> : <CircleAlert size={20} />}</><div><strong>{connected ? 'Backend detected and validated' : 'Backend validation unavailable'}</strong><p>{message}</p></div><span className={`state-badge ${connected ? 'success' : 'error'}`}>{connected ? 'PASS' : 'BLOCKED'}</span></div><div className="metric-list"><Metric label="Backend version" value={backendStatus.version} /><Metric label="Diagnostic schema" value="1" /><Metric label="Release location" value={backendStatus.releasePath} /><Metric label="Last validation" value={connected ? 'Current session' : 'Not validated'} /></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Validate again</OperationButton></div></div>
 }
 
 function ChecksPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
@@ -243,7 +243,7 @@ function ChecksPanel({ onRun, operation }: { onRun: () => void; operation: Opera
 }
 
 function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." /><div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>nixos-26.05</strong><p>Official Stable channel · current according to the last check.</p></div><span className="state-badge success">STABLE</span></div><div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Check Stable channel</OperationButton></div></div>
+  return <div className="panel-card"><PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." /><div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>Not checked</strong><p>Run the check to query the installed official Stable channel.</p></div><span className="state-badge">PENDING</span></div><div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Check Stable channel</OperationButton></div></div>
 }
 
 function ExecutionPanel({ operation, logs, onRun }: { operation: OperationState; logs: LogEntry[]; onRun: () => void }) {

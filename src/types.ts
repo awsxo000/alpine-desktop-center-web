@@ -40,3 +40,10 @@ export type BackendStatus = {
   operation: OperationState
   activeOperation: string
 }
+
+export type BridgeHealth = {
+  bridge: 'local' | 'unknown'
+  backend: 'validated' | 'failed'
+  message: string
+  frontend_version?: string
+}
