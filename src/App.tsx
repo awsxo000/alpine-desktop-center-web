@@ -56,7 +56,7 @@ function App() {
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
-  const [darkMode, setDarkMode] = useState(() => window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true)
+  const [darkMode, setDarkMode] = useState(false)
   const [bridgeConnected, setBridgeConnected] = useState(false)
   const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 

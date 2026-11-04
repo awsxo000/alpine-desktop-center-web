@@ -1,53 +1,84 @@
-/* Alpine Desktop Center identity: a compact system workspace, not an installer imitation. */
-.app-shell { --signature: #ef8050; --signature-strong: #c95d32; --surface: #151b20; --surface-2: #1b232a; --surface-3: #252f38; --line: #34424c; --text: #f4f1ea; --muted: #b6c0c6; --faint: #8c9aa4; --cyan: #87d4c9; --cyan-deep: #5eb8ad; --shadow: none; background: #0f1418; }
-.app-shell.light { --signature: #c95d32; --signature-strong: #a84826; --surface: #ffffff; --surface-2: #f1f2ef; --surface-3: #e5e8e5; --line: #d0d6d4; --text: #1b2529; --muted: #536269; --faint: #68777e; --cyan: #086f69; --cyan-deep: #075a55; --green: #247348; --amber: #865b09; --shadow: none; background: #f5f4ef; }
-.app-shell, .app-shell.light { border-radius: 0; }
-.sidebar { width: 226px; flex-basis: 226px; padding: 25px 14px 18px; background: #11181d; border-right: 1px solid var(--line); }
-.light .sidebar { background: #e9ece9; border-color: #cbd2cf; }
-.brand-mark { background: var(--signature); clip-path: none; border-radius: 3px; transform: rotate(45deg); }
-.brand-mark span { background: #10171b; clip-path: none; transform: rotate(-45deg); }
-.brand-mark span:nth-child(2) { background: var(--cyan); }
-.brand-mark span:nth-child(3) { background: #f5f4ef; }
-.brand-lockup .eyebrow { color: var(--signature); }
-.release-chip { margin: 24px 6px 28px; border-radius: 3px; background: transparent; border-color: var(--line); }
-.step-item { border-radius: 3px; padding: 9px 10px; }
-.step-item.active { border-color: var(--signature); border-left-width: 3px; background: rgba(239,128,80,.09); }
-.step-item.active .step-number { color: var(--signature); border-color: var(--signature); background: transparent; }
-.step-item.past .step-number { color: var(--cyan); border-color: var(--cyan); background: transparent; }
-.step-arrow { color: var(--signature); }
-.main-content { max-width: 1560px; padding: 0 48px 52px; background: #0f1418; }
-.light .main-content { background: #f5f4ef; }
-.topbar { height: 70px; border-color: var(--line); }
-.page-heading { padding: 38px 0 26px; }
-.page-heading h2 { font-size: clamp(26px, 3vw, 40px); letter-spacing: -.06em; }
-.accent-text, .text-button { color: var(--signature); }
-.heading-meta { color: var(--muted); }
-.hero-card { min-height: 280px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); box-shadow: none; }
-.light .hero-card { background: #ffffff; border-color: #cbd2cf; }
-.hero-content { max-width: 100%; padding: 35px 38px; }
-.hero-kicker { color: var(--signature); }
-.hero-kicker .line { background: var(--signature); }
-.icon-square { color: var(--signature); border-color: var(--signature); border-radius: 3px; background: transparent; }
+/* Rokko-inspired Alpine identity: light workspace, deep forest navigation, vivid green actions. */
+.app-shell { --rokko-forest: #103f36; --rokko-green: #29bd82; --rokko-green-dark: #16825a; --bg: #f1f1ef; --surface: #ffffff; --surface-2: #f7f8f6; --surface-3: #e9ece9; --line: #d9dfdc; --text: #19231f; --muted: #586660; --faint: #718078; --cyan: #146d61; --cyan-deep: #10584e; --green: #167d56; --amber: #8c5b08; --violet: #5a4a9c; --signature: var(--rokko-green); --signature-strong: var(--rokko-forest); --shadow: 0 7px 24px rgba(31, 52, 43, .07); background: var(--bg); }
+.app-shell.light { color-scheme: light; background: var(--bg); }
+.app-shell.dark { --bg: #101a17; --surface: #18251f; --surface-2: #1d2d26; --surface-3: #263a31; --line: #344b40; --text: #edf5ef; --muted: #b8c9bf; --faint: #8fa398; --cyan: #78d6bd; --cyan-deep: #55b99f; --green: #76dca6; --amber: #f2c36e; --signature: #33c991; --signature-strong: #dff9eb; --shadow: none; background: var(--bg); }
+.app-shell.dark .sidebar { background: #0e1815; border-color: var(--line); }
+.app-shell.dark .main-content { background: var(--bg); }
+.app-shell.dark .hero-card { background: var(--surface); border-color: var(--line); }
+.app-shell.dark .hero-card h3, .app-shell.dark .hero-card p, .app-shell.dark .hero-kicker { color: var(--text); }
+.app-shell.dark .hero-card h3 em { color: var(--cyan); }
+
+.sidebar { width: 222px; flex-basis: 222px; padding: 24px 13px 18px; background: #eceeeb; border-right: 1px solid #dfe4e0; }
+.light .sidebar { background: #eceeeb; border-color: #dfe4e0; }
+.brand-mark { width: 29px; height: 29px; padding: 5px; border-radius: 6px; background: var(--rokko-forest); clip-path: none; transform: none; }
+.brand-mark span { background: #ffffff; clip-path: none; transform: none; }
+.brand-mark span:nth-child(2) { background: var(--rokko-green); }
+.brand-mark span:nth-child(3) { background: #c8e9da; }
+.brand-lockup .eyebrow { color: var(--rokko-forest); }
+.brand-lockup h1 { color: var(--text); }
+.release-chip { margin: 22px 5px 27px; padding: 8px 9px; border-radius: 5px; background: #f7f8f6; border-color: #d9dfdc; color: #586660; }
+.release-chip strong { color: var(--rokko-forest); }
+.step-item { border-radius: 6px; padding: 10px; color: #586660; }
+.step-item:hover { color: var(--rokko-forest); background: #e2e7e3; }
+.step-item.active { color: #10251f; border: 1px solid #1eaa72; border-left-width: 1px; background: var(--rokko-green); }
+.step-item.active .step-number { color: #10251f; border-color: #10251f; background: transparent; }
+.step-item.past .step-number { color: var(--rokko-forest); border-color: #56b98e; background: #d8f0e4; }
+.step-arrow { color: var(--rokko-forest); }
+.sidebar-foot { border-color: #d9dfdc; }
+.mini-status { color: #586660; }
+.mini-status svg { color: var(--rokko-forest); }
+.mini-status strong { color: var(--rokko-forest); }
+
+.main-content { max-width: 1560px; padding: 0 42px 48px; background: var(--bg); }
+.light .main-content { background: #f1f1ef; }
+.topbar { height: 70px; border-bottom: 1px solid #dfe4e0; }
+.crumb { color: #718078; }
+.crumb strong { color: var(--rokko-forest); }
+.connection-pill { color: #586660; border-color: #cdd7d2; background: #ffffff; }
+.icon-button { color: #586660; border-color: #cdd7d2; background: #ffffff; }
+.icon-button:hover { color: var(--rokko-forest); border-color: #52b88a; }
+.avatar { color: #ffffff; background: var(--rokko-forest); }
+.page-heading { padding: 38px 0 28px; }
+.page-heading h2 { color: var(--text); }
+.accent-text, .text-button { color: var(--rokko-forest); }
+.heading-meta { color: #718078; }
+.heading-meta strong { color: var(--rokko-forest); }
+
+.hero-card { min-height: 290px; border: 1px solid #d9dfdc; border-radius: 12px; background: #ffffff; box-shadow: var(--shadow); }
+.hero-content { max-width: 100%; padding: 37px 39px; }
+.hero-kicker { color: var(--rokko-forest); }
+.hero-kicker .line { background: var(--rokko-green); }
+.icon-square { color: var(--rokko-forest); border-color: #b8d8ca; border-radius: 6px; background: #edf8f2; }
 .hero-card h3 { color: var(--text); font-size: clamp(28px, 3.1vw, 43px); }
-.hero-card h3 em { color: var(--cyan); }
-.hero-card p { color: var(--muted); }
+.hero-card h3 em { color: var(--rokko-forest); }
+.hero-card p { color: #586660; }
+.hero-card .ghost-button { color: var(--rokko-forest); }
 .hero-visual, .hero-orbit { display: none; }
-.hero-actions { margin-top: 26px; }
-.primary-button { border-radius: 3px; border: 1px solid var(--signature); color: #ffffff; background: var(--signature-strong); box-shadow: none; }
-.primary-button:hover { background: var(--signature); box-shadow: none; }
-.ghost-button { color: var(--cyan); }
-.section-row { border-top: 1px solid var(--line); padding-top: 20px; }
-.health-card, .inspector-card, .audit-card, .help-card, .panel-card { border-radius: 4px; border-color: var(--line); box-shadow: none; background: var(--surface); }
-.health-card { min-height: 138px; }
-.card-icon { border-radius: 3px; background: var(--surface-3); }
-.panel-card { padding: 25px; }
-.panel-icon, .operation-icon, .big-state-icon, .help-icon { border-radius: 3px; }
-.state-badge, .connection-pill, .secondary-button, .icon-button, .module-row, .selected-module, .metric, .config-option, .channel-card, .validation-banner { border-radius: 3px; }
-.state-badge.success { color: var(--green); }
+.hero-actions { margin-top: 27px; }
+.primary-button { border-radius: 6px; border: 1px solid var(--rokko-forest); color: #ffffff; background: var(--rokko-forest); box-shadow: 0 4px 10px rgba(16, 63, 54, .12); }
+.primary-button:hover { background: #18594d; box-shadow: 0 6px 14px rgba(16, 63, 54, .16); }
+.light .hero-card .primary-button { color: #ffffff; background: var(--rokko-forest); border-color: var(--rokko-forest); }
+.light .hero-card .primary-button:hover { background: #18594d; }
+.section-row { border-top: 0; padding-top: 7px; }
+.section-row h3 { color: var(--text); }
+
+.health-card, .inspector-card, .audit-card, .help-card, .panel-card { border-radius: 10px; border-color: #d9dfdc; background: #ffffff; box-shadow: var(--shadow); }
+.light .health-card, .light .inspector-card, .light .audit-card, .light .help-card, .light .panel-card { border-color: #d9dfdc; background: #ffffff; }
+.card-icon { border-radius: 6px; background: #edf4ef; }
+.card-icon.green { color: var(--rokko-forest); }
+.card-icon.blue { color: #176b79; }
+.card-icon.violet { color: #5a4a9c; }
+.panel-icon, .operation-icon, .big-state-icon, .help-icon { border-radius: 6px; }
+.state-badge, .connection-pill, .secondary-button, .icon-button, .module-row, .selected-module, .metric, .config-option, .channel-card, .validation-banner { border-radius: 6px; }
+.state-badge.success { color: var(--rokko-forest); background: #dff3e8; }
+.secondary-button { color: var(--rokko-forest); border-color: #b9c9c1; background: #ffffff; }
+.secondary-button:hover { color: #10251f; border-color: var(--rokko-green); background: #edf8f2; }
+.module-row.selected { border-color: #4cc891; background: #e6f7ee; }
+.module-row:hover { background: #f1f6f3; }
+.selected-module, .metric, .config-option { background: #f7f8f6; border-color: #d9dfdc; }
+.channel-card { border-color: #9ecdb6; background: #edf8f2; }
+.channel-mark { background: var(--rokko-forest); }
+.validation-banner { border-color: #9ecdb6; background: #edf8f2; }
+.check-status.pass { color: var(--rokko-forest); background: #dff3e8; }
 .flow-footer { background: linear-gradient(180deg, transparent, var(--bg) 22%); }
-.light .flow-footer { background: linear-gradient(180deg, transparent, #f5f4ef 22%); }
-.light .hero-card .primary-button { color: #fff; background: var(--signature-strong); border-color: var(--signature-strong); }
-.light .hero-card .primary-button:hover { background: var(--signature); }
-.light .hero-card h3, .light .hero-card p, .light .hero-kicker { color: var(--text); }
-.light .hero-card h3 em { color: var(--cyan); }
-.light .hero-card .ghost-button { color: var(--cyan); }
+.light .flow-footer { background: linear-gradient(180deg, transparent, #f1f1ef 22%); }

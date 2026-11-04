@@ -2,7 +2,7 @@
 
 ## 0.1.0-alpha.3
 
-This revision abandons the Anaconda/Agama visual language. Alpine Desktop Center now uses its own compact system-workspace identity: warm paper and ink surfaces, teal status signals, terracotta actions, squared geometry and local typography. The copy and navigation were also changed from installer language to workspace language.
+This revision replaces the previous improvised palette with the user's Rokko visual reference: light gray workspace surfaces, white content panels, deep institutional green navigation, vivid green selection states, dark readable typography and restrained borders. Agama/openSUSE remains a structural reference for clarity, not a color or branding reference.
 
 ## 0.1.0-alpha.2
 
