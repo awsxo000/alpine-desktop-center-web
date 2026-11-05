@@ -14,6 +14,14 @@ The target release keeps the embedded backend, the SHA-256 integrity lock, versi
 
 The release is designed to run without external hosting. Extract the package and double-click `Alpine Desktop Center`. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens the dedicated local browser window. The browser talks only to that local process; logs and state remain inside the release directory. Privileged operations use the existing doas path from the backend and report their captured output in the activity panel.
 
+On first launch, if backend prerequisites such as `make`, Ansible or `doas`
+are missing, the launcher opens a visible terminal and runs the embedded
+backend installer. The terminal explains what it is preparing, shows the
+installer output and is the only place where a privilege password may be
+requested. The web application does not collect or store that password. The
+browser window opens only after the dependency setup and local bridge are
+ready.
+
 ## Development
 
 ```sh
