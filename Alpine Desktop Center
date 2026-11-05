@@ -15,28 +15,6 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
   exec "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center needs Python 3 before it can start.' 'The backend installer will prepare Python, Ansible, make and doas.' 'The password, if requested by doas, is typed only in this terminal and is not stored by the application.'; sh instalar.sh; status=\$?; if [ \"\$status\" -ne 0 ]; then printf '\\nSetup failed with exit code %s. Press Enter to close...' \"\$status\"; read -r _; fi; exit \"\$status\""
 fi
 
-needs_setup=0
-missing_dependencies=""
-for dependency in make ansible-playbook doas; do
-  if ! command -v "$dependency" >/dev/null 2>&1; then
-    needs_setup=1
-    missing_dependencies="$missing_dependencies $dependency"
-  fi
-done
-if [ "$needs_setup" -eq 1 ]; then
-  TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
-  if [ -z "$TERMINAL" ]; then
-    printf '%s\n' "Missing backend dependencies:$missing_dependencies" 'Install a supported terminal emulator and run Alpine Desktop Center again.' >&2
-    exit 1
-  fi
-  printf '%s\n' "Missing backend dependencies:$missing_dependencies" 'Opening a terminal to prepare the Alpine Desktop Center backend.'
-  "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center dependency setup' 'The installer will explain each step and may install make, Python 3, Ansible, doas and the required Ansible collection.' 'The installer does not collect or store your password.' 'This terminal closes automatically after a successful setup.'; printf '\\n'; sh instalar.sh; status=\$?; if [ \"\$status\" -ne 0 ]; then printf '\\nSetup failed with exit code %s. Press Enter to continue...' \"\$status\"; read -r _; fi; exit \"\$status\""
-  if [ "$?" -ne 0 ]; then
-    printf '%s\n' 'Dependency setup failed. Check the terminal output and run Alpine Desktop Center again.' >&2
-    exit 1
-  fi
-fi
-
 mkdir -p "$STATE_DIR"
 if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   PID=$(cat "$PID_FILE")

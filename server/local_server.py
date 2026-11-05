@@ -7,10 +7,14 @@ The bridge is intentionally local-only, session-bound and release-contained.
 from __future__ import annotations
 
 import argparse
+import dataclasses
+import errno
 import hashlib
 import json
 import mimetypes
 import os
+import pty
+import select
 import shlex
 import secrets
 import shutil
@@ -38,6 +42,8 @@ MODULE_LABELS = {
     "nix": "Nix", "nix_opengl": "Nix OpenGL", "steam": "Steam", "swap": "Swap",
 }
 PRIVILEGED_OPERATIONS = {"apply-full", "apply-diagnostics", "apply-module", "migrate-stable-channel", "refresh-nix-apps"}
+SESSIONS: dict[str, "OperationSession"] = {}
+SESSIONS_LOCK = threading.Lock()
 
 
 def backend_module(module: object) -> str | None:
@@ -45,6 +51,39 @@ def backend_module(module: object) -> str | None:
         return None
     normalized = PUBLIC_MODULE_ALIASES.get(module, module)
     return normalized if normalized in DIAGNOSTIC_MODULES else None
+
+
+@dataclasses.dataclass
+class OperationSession:
+    session_id: str
+    root: Path
+    operation: str
+    payload: dict[str, object]
+    status: str = "running"
+    message: str = "Operation is running."
+    return_code: int | None = None
+    output: str = ""
+    master_fd: int | None = None
+    thread: threading.Thread | None = None
+    lock: threading.Lock = dataclasses.field(default_factory=threading.Lock)
+
+    def append(self, text: str) -> None:
+        if not text:
+            return
+        with self.lock:
+            self.output += text
+
+    def snapshot(self, cursor: int = 0) -> dict[str, object]:
+        with self.lock:
+            safe_cursor = max(0, min(cursor, len(self.output)))
+            return {
+                "session_id": self.session_id,
+                "status": self.status,
+                "message": self.message,
+                "return_code": self.return_code,
+                "output": self.output[safe_cursor:],
+                "next_cursor": len(self.output),
+            }
 
 
 def validate_backend(root: Path) -> tuple[bool, str]:
@@ -188,6 +227,144 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
     raise ValueError(f"Unsupported operation: {operation}")
 
 
+def run_pty_command(session: OperationSession, command: list[str], log: object, env: dict[str, str], backend: Path) -> int:
+    """Run a named command in a real PTY and stream output into the session."""
+    pid, master_fd = pty.fork()
+    if pid == 0:
+        try:
+            os.chdir(backend)
+            os.execvpe(command[0], command, env)
+        except BaseException:
+            os._exit(127)
+    session.master_fd = master_fd
+    chunks: list[bytes] = []
+    child_status: int | None = None
+    saw_eof = False
+    try:
+        while True:
+            try:
+                readable, _, _ = select.select([master_fd], [], [], 0.2)
+            except (OSError, ValueError):
+                readable = []
+            if master_fd in readable:
+                try:
+                    chunk = os.read(master_fd, 4096)
+                except OSError as exc:
+                    if exc.errno == errno.EIO:
+                        chunk = b""
+                    else:
+                        raise
+                if chunk:
+                    chunks.append(chunk)
+                    text = chunk.decode("utf-8", errors="replace")
+                    session.append(text)
+                    log.write(text)
+                    log.flush()
+                else:
+                    saw_eof = True
+            try:
+                waited, status = os.waitpid(pid, os.WNOHANG)
+                if waited == pid:
+                    child_status = status
+            except ChildProcessError:
+                child_status = 0
+            if child_status is not None and (saw_eof or not readable):
+                break
+        if child_status is None:
+            _, child_status = os.waitpid(pid, 0)
+    finally:
+        try:
+            os.close(master_fd)
+        except OSError:
+            pass
+        session.master_fd = None
+    return os.waitstatus_to_exitcode(child_status or 0)
+
+
+def run_session(session: OperationSession, operation_lock: threading.Lock) -> None:
+    backend = session.root / "backend"
+    operation_path = operation_dir(session.root)
+    log_path = operation_path / f"{session.session_id}.log"
+    env = command_environment(session.root)
+    try:
+        valid, message = validate_backend(session.root)
+        if not valid:
+            session.status = "blocked"
+            session.message = message
+            session.return_code = 2
+            return
+        if session.operation == "validate-backend":
+            session.append(message + "\n")
+            session.status = "success"
+            session.message = message
+            session.return_code = 0
+            return
+        commands, description = resolve_command(session.operation, session.payload)
+        with log_path.open("w", encoding="utf-8") as log:
+            header = "\n".join([
+                f"Operation: {description}",
+                f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}",
+                f"Backend: {backend}",
+                "Backend integrity: PASS immediately before execution",
+                "",
+            ])
+            session.append(header)
+            log.write(header)
+            log.flush()
+            return_code = 0
+            pending_commands = list(commands)
+            if operation in PRIVILEGED_OPERATIONS and shutil.which("make", path=env["PATH"]) is None:
+                pending_commands.insert(0, ["sh", "scripts/preparar-ansible.sh"])
+                session.append("\nBackend prerequisites are missing; preparing them inside this application terminal.\n")
+            for command in pending_commands:
+                valid, validation_message = validate_backend(session.root)
+                if not valid:
+                    session.append(f"\nBackend validation failed immediately before command: {validation_message}\n")
+                    return_code = 2
+                    break
+                command_line = " ".join(shlex.quote(part) for part in command)
+                session.append(f"\n$ {command_line}\n")
+                log.write(f"\n$ {command_line}\n")
+                log.flush()
+                return_code = run_pty_command(session, command, log, env, backend)
+                if return_code != 0:
+                    break
+            session.return_code = return_code
+            session.status = "success" if return_code == 0 else "error"
+            session.message = f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}"
+            session.append(f"\n{session.message}\n")
+            log.write(f"\n{session.message}\n")
+    except (OSError, ValueError) as exc:
+        session.return_code = 1
+        session.status = "error"
+        session.message = str(exc)
+        session.append(f"\n{exc}\n")
+    finally:
+        operation_lock.release()
+
+
+def start_operation(root: Path, operation: str, payload: dict[str, object], operation_lock: threading.Lock) -> dict[str, object]:
+    if not operation_lock.acquire(blocking=False):
+        return {"status": "blocked", "operation": operation, "message": "Another backend operation is already running. Wait for it to finish."}
+    valid, message = validate_backend(root)
+    if not valid:
+        operation_lock.release()
+        return {"status": "blocked", "operation": operation, "message": message}
+    if operation != "validate-backend":
+        try:
+            resolve_command(operation, payload)
+        except ValueError as exc:
+            operation_lock.release()
+            return {"status": "error", "operation": operation, "message": str(exc)}
+    session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    session = OperationSession(session_id, root, operation, payload)
+    with SESSIONS_LOCK:
+        SESSIONS[session_id] = session
+    session.thread = threading.Thread(target=run_session, args=(session, operation_lock), daemon=True)
+    session.thread.start()
+    return {"status": "running", "operation": operation, "operation_id": session_id, "message": "Operation started."}
+
+
 def execute_operation(root: Path, operation: str, payload: dict[str, object], lock: threading.Lock) -> dict[str, object]:
     if not lock.acquire(blocking=False):
         return {"status": "blocked", "operation": operation, "message": "Another backend operation is already running. Wait for it to finish."}
@@ -305,9 +482,21 @@ class Handler(BaseHTTPRequestHandler):
         return True
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
         if path.startswith("/api/") and not self.authorized():
             return
+        if path.startswith("/api/operations/"):
+            session_id = path.removeprefix("/api/operations/")
+            with SESSIONS_LOCK:
+                session = SESSIONS.get(session_id)
+            if session is not None:
+                try:
+                    cursor = int(parse_qs(parsed.query).get("cursor", ["0"])[0])
+                except ValueError:
+                    cursor = 0
+                self.send_json(session.snapshot(cursor))
+                return
         if path == "/api/health":
             valid, message = validate_backend(self.root)
             self.send_json({"bridge": "local", "backend": "validated" if valid else "failed", "message": message, "release_root": str(self.root), "frontend_version": release_version(self.root)}, HTTPStatus.OK if valid else HTTPStatus.SERVICE_UNAVAILABLE)
@@ -338,10 +527,6 @@ class Handler(BaseHTTPRequestHandler):
         if not path.startswith(prefix):
             self.send_json({"error": "Unknown API endpoint."}, HTTPStatus.NOT_FOUND)
             return
-        operation = path.removeprefix(prefix)
-        if operation not in OPERATIONS:
-            self.send_json({"error": "Operation is not in the named allowlist."}, HTTPStatus.NOT_FOUND)
-            return
         try:
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length) if length else b"{}"
@@ -351,8 +536,31 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, json.JSONDecodeError) as exc:
             self.send_json({"status": "error", "message": f"Invalid operation request: {exc}"}, HTTPStatus.BAD_REQUEST)
             return
-        result = execute_operation(self.root, operation, payload, self.app_server.operation_lock)
-        status = {"success": HTTPStatus.OK, "error": HTTPStatus.BAD_GATEWAY, "blocked": HTTPStatus.CONFLICT}.get(str(result.get("status")), HTTPStatus.BAD_REQUEST)
+        route = path.removeprefix(prefix)
+        if route.endswith("/input"):
+            session_id = route.removesuffix("/input")
+            with SESSIONS_LOCK:
+                session = SESSIONS.get(session_id)
+            if session is None or session.master_fd is None:
+                self.send_json({"status": "error", "message": "No interactive operation is waiting for input."}, HTTPStatus.NOT_FOUND)
+                return
+            value = payload.get("input", "")
+            if not isinstance(value, str) or len(value) > 4096:
+                self.send_json({"status": "error", "message": "Interactive input is invalid."}, HTTPStatus.BAD_REQUEST)
+                return
+            try:
+                os.write(session.master_fd, value.encode("utf-8"))
+            except OSError as exc:
+                self.send_json({"status": "error", "message": f"Could not send input to the operation: {exc}"}, HTTPStatus.BAD_GATEWAY)
+                return
+            self.send_json({"status": "success", "message": "Input sent to the local PTY."})
+            return
+        operation = route
+        if operation not in OPERATIONS:
+            self.send_json({"error": "Operation is not in the named allowlist."}, HTTPStatus.NOT_FOUND)
+            return
+        result = start_operation(self.root, operation, payload, self.app_server.operation_lock)
+        status = {"running": HTTPStatus.ACCEPTED, "error": HTTPStatus.BAD_GATEWAY, "blocked": HTTPStatus.CONFLICT}.get(str(result.get("status")), HTTPStatus.BAD_REQUEST)
         self.send_json(result, status)
 
     def serve_static(self, path: str) -> None:

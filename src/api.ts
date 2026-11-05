@@ -43,6 +43,34 @@ export async function startNamedOperation(operation: NamedOperation, parameters:
   })
 }
 
+export type OperationUpdate = {
+  session_id: string
+  status: 'running' | 'success' | 'error' | 'blocked'
+  message: string
+  return_code: number | null
+  output: string
+  next_cursor: number
+}
+
+export async function getOperationUpdate(sessionId: string, cursor = 0): Promise<OperationUpdate> {
+  const response = await localApi(`/api/operations/${encodeURIComponent(sessionId)}?cursor=${cursor}`)
+  const payload = await response.json() as OperationUpdate
+  if (!response.ok) throw new Error(payload.message || 'Could not read the operation session.')
+  return payload
+}
+
+export async function sendOperationInput(sessionId: string, input: string): Promise<void> {
+  const response = await localApi(`/api/operations/${encodeURIComponent(sessionId)}/input`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input }),
+  })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({})) as { message?: string }
+    throw new Error(payload.message || 'Could not send input to the local terminal.')
+  }
+}
+
 export async function getBridgeHealth(): Promise<BridgeHealth> {
   const response = await localApi('/api/health')
   const payload = await response.json() as BridgeHealth

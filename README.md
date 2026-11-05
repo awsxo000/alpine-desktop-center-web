@@ -14,20 +14,19 @@ The target release keeps the embedded backend, the SHA-256 integrity lock, versi
 
 The release is designed to run without external hosting. Extract the package and double-click `Alpine Desktop Center`. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens the dedicated local browser window. The browser talks only to that local process; logs and state remain inside the release directory. Privileged operations use the existing doas path from the backend and report their captured output in the activity panel.
 
-On first launch, if backend prerequisites such as `make`, Ansible or `doas`
-are missing, the launcher opens a visible terminal and runs the embedded
-backend installer. The terminal explains what it is preparing, shows the
+Backend prerequisites such as `make`, Ansible or `doas` are prepared through
+the embedded PTY terminal in the application when the first privileged
+operation needs them. The terminal explains what it is preparing, shows the
 installer output and is the only place where a privilege password may be
-requested. The web application does not collect or store that password. The
-browser window opens only after the dependency setup and local bridge are
-ready. After a successful setup or privileged operation, the auxiliary
-terminal closes automatically; it remains open after an error so its details
-can be inspected.
+requested. The web application does not collect or store that password.
+There is no external terminal for normal operations.
 
 Use `Alpine Desktop Center.desktop` from the desktop environment or application
 menu to get the single app-style browser window with `Terminal=false`. When
 launching from an existing shell, that shell remains open by design because it
-belongs to the user's terminal, not to Alpine Desktop Center.
+belongs to the user's terminal, not to Alpine Desktop Center. Firefox or
+Chromium is used only as the rendering window; operation interaction stays in
+the embedded logs terminal.
 
 ## Development
 

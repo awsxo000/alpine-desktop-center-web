@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import {
   Activity,
   ArrowRight,
@@ -27,7 +27,7 @@ import {
   Wrench,
   XCircle,
 } from 'lucide-react'
-import { backendStatus, getBridgeHealth, getModuleCatalog, initialLogs, startNamedOperation } from './api'
+import { backendStatus, getBridgeHealth, getModuleCatalog, getOperationUpdate, initialLogs, sendOperationInput, startNamedOperation } from './api'
 import type { LogEntry, Module, NamedOperation, OperationState, StepId } from './types'
 
 const steps: Array<{ id: StepId; number: string; label: string; note: string }> = [
@@ -54,6 +54,7 @@ function App() {
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [activeOperation, setActiveOperation] = useState<NamedOperation | null>(null)
+  const [operationId, setOperationId] = useState<string | null>(null)
   const [logsOpen, setLogsOpen] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [darkMode, setDarkMode] = useState(false)
@@ -85,14 +86,30 @@ function App() {
     if (operation === 'running') return
     setOperation('running')
     setActiveOperation(namedOperation)
+    setOperationId(null)
     if (targetStep) setActiveStep(targetStep)
     addLog('info', `Starting named operation: ${label}`)
     setBridgeMessage('Opening a protected local operation channel…')
     try {
       const response = await startNamedOperation(namedOperation, parameters)
-      const payload = await response.json().catch(() => ({})) as { message?: string; output?: string }
-      if (payload.output) payload.output.split('\n').filter(Boolean).slice(-40).forEach((line) => addLog('info', line))
+      const payload = await response.json().catch(() => ({})) as { message?: string; operation_id?: string }
       if (!response.ok) throw new Error(payload.message ?? `Local bridge returned HTTP ${response.status}`)
+      if (!payload.operation_id) throw new Error('The local bridge did not return an operation session.')
+      setOperationId(payload.operation_id)
+      let cursor = 0
+      let finalStatus: 'success' | 'error' | 'blocked' = 'success'
+      while (true) {
+        await new Promise((resolve) => window.setTimeout(resolve, 250))
+        const update = await getOperationUpdate(payload.operation_id, cursor)
+        if (update.output) update.output.split('\n').filter(Boolean).forEach((line) => addLog('info', line))
+        cursor = update.next_cursor
+        if (update.status !== 'running') {
+          finalStatus = update.status
+          if (update.status !== 'success') throw new Error(update.message)
+          break
+        }
+      }
+      void finalStatus
       setOperation('success')
       setBridgeMessage('Operation completed. Review the captured output before continuing.')
       addLog('success', `${label} completed successfully.`)
@@ -192,7 +209,7 @@ function App() {
             <div className="help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Every operation will show its command, state and raw output in the browser.</p></div></div>
           </aside>
         </div>
-        {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} logs={logs} onClose={() => setLogsOpen(false)} />}
+        {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} operationId={operationId} logs={logs} onSendInput={async (input) => { if (operationId) await sendOperationInput(operationId, input) }} onClose={() => setLogsOpen(false)} />}
       </main>
     </div>
   )
@@ -241,8 +258,21 @@ function ConfigPanel({ onRun, onApplyFull, operation }: { onRun: () => void; onA
   return <div className="panel-card"><PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." /><div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>Not checked</strong><p>Run the check to query the installed official Stable channel.</p></div><span className="state-badge">PENDING</span></div><div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Check Stable channel</OperationButton><OperationButton onClick={onApplyFull} operation={operation} icon={<Wrench size={15} />}>Apply full configuration</OperationButton></div></div>
 }
 
-function LogsModal({ operation, activeOperation, logs, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; logs: LogEntry[]; onClose: () => void }) {
-  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend terminal output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div></div>
+function LogsModal({ operation, activeOperation, operationId, logs, onSendInput, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; operationId: string | null; logs: LogEntry[]; onSendInput: (input: string) => Promise<void>; onClose: () => void }) {
+  const [input, setInput] = useState('')
+  const [sending, setSending] = useState(false)
+  const submitInput = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!input || !operationId || sending) return
+    setSending(true)
+    try {
+      await onSendInput(`${input}\n`)
+      setInput('')
+    } finally {
+      setSending(false)
+    }
+  }
+  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend terminal output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div>{operation === 'running' && <form className="terminal-input-row" onSubmit={submitInput}><input type="password" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Senha ou confirmação solicitada pelo backend" aria-label="Terminal input" disabled={!operationId || sending} /><button className="primary-button" type="submit" disabled={!operationId || !input || sending}>{sending ? 'Sending…' : 'Send'}</button></form>}</div></div>
 }
 
 function SummaryPanel({ operation, onRestart }: { operation: OperationState; onRestart: () => void }) {
