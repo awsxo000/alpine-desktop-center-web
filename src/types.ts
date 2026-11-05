@@ -73,3 +73,37 @@ export type BridgeHealth = {
   backend_commit: string
   diagnostic_schema: string
 }
+
+export type OperationLogStatus = 'success' | 'error' | 'blocked' | 'running' | 'unknown'
+
+export type OperationLogSummary = {
+  id: string
+  path: string
+  modified: number
+  operation: string
+  module: ModuleId | null
+  label: string
+  status: OperationLogStatus
+  started_at: string | null
+}
+
+export type SavedOperationLog = OperationLogSummary & { content: string }
+
+export type StableChannelReport = {
+  status: 'current' | 'update_available' | 'unknown'
+  current_version?: string
+  latest_version?: string
+  latest_channel?: string
+  source?: string
+  message?: string
+}
+
+export type PersistedStableChannelStatus = {
+  checked: boolean
+  status: OperationLogStatus | 'not_checked'
+  report: StableChannelReport | null
+  checked_at: string | null
+  log_id: string | null
+  log_path: string | null
+  message: string
+}

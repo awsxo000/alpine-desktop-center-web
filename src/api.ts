@@ -1,4 +1,4 @@
-import type { BridgeHealth, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation } from './types'
+import type { BridgeHealth, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation, OperationLogSummary, PersistedStableChannelStatus, SavedOperationLog } from './types'
 
 export const initialLogs: LogEntry[] = [
   { time: '--:--:--', level: 'info', text: 'Waiting for the local bridge.' },
@@ -109,10 +109,43 @@ export async function getOperationUpdate(sessionId: string, cursor = 0): Promise
 export async function getBridgeHealth(): Promise<BridgeHealth> {
   const response = await localApi('/api/health')
   const value = await response.json().catch(() => null) as unknown
-  if (!response.ok || !isRecord(value) || value.bridge !== 'local' || (value.backend !== 'validated' && value.backend !== 'failed') || typeof value.message !== 'string' || typeof value.release_root !== 'string' || typeof value.frontend_version !== 'string' || typeof value.backend_version !== 'string' || typeof value.backend_commit !== 'string' || typeof value.diagnostic_schema !== 'string') {
+  if ((!response.ok && response.status !== 503) || !isRecord(value) || value.bridge !== 'local' || (value.backend !== 'validated' && value.backend !== 'failed') || typeof value.message !== 'string' || typeof value.release_root !== 'string' || typeof value.frontend_version !== 'string' || typeof value.backend_version !== 'string' || typeof value.backend_commit !== 'string' || typeof value.diagnostic_schema !== 'string') {
     throw new Error(isRecord(value) && typeof value.message === 'string' ? value.message : 'Backend validation failed.')
   }
   return value as unknown as BridgeHealth
+}
+
+export async function getOperationHistory(): Promise<OperationLogSummary[]> {
+  const response = await localApi('/api/logs')
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || !Array.isArray(value.logs)) {
+    throw new Error(isRecord(value) && typeof value.error === 'string' ? value.error : 'Could not read operation history.')
+  }
+  return value.logs.map((entry): OperationLogSummary => {
+    if (!isRecord(entry) || typeof entry.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(entry.id) || typeof entry.path !== 'string' || typeof entry.modified !== 'number' || !Number.isFinite(entry.modified) || typeof entry.operation !== 'string' || (entry.module !== null && !isModuleId(entry.module)) || typeof entry.label !== 'string' || !['success', 'error', 'blocked', 'running', 'unknown'].includes(String(entry.status)) || (entry.started_at !== null && typeof entry.started_at !== 'string')) {
+      throw new Error('The backend returned an invalid operation-history entry.')
+    }
+    return entry as unknown as OperationLogSummary
+  })
+}
+
+export async function getSavedOperationLog(id: string): Promise<SavedOperationLog> {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error('Invalid operation log identifier.')
+  const response = await localApi(`/api/logs/${encodeURIComponent(id)}`)
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || typeof value.content !== 'string' || typeof value.id !== 'string' || typeof value.path !== 'string' || typeof value.modified !== 'number' || typeof value.operation !== 'string' || typeof value.label !== 'string' || typeof value.status !== 'string' || (value.module !== null && !isModuleId(value.module)) || (value.started_at !== null && typeof value.started_at !== 'string')) {
+    throw new Error(isRecord(value) && typeof value.error === 'string' ? value.error : 'Could not read the saved operation log.')
+  }
+  return value as unknown as SavedOperationLog
+}
+
+export async function getPersistedStableChannelStatus(): Promise<PersistedStableChannelStatus> {
+  const response = await localApi('/api/stable-channel/status')
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || typeof value.checked !== 'boolean' || typeof value.status !== 'string' || !['success', 'error', 'blocked', 'running', 'unknown', 'not_checked'].includes(value.status) || typeof value.message !== 'string' || (value.report !== null && !isRecord(value.report)) || (value.checked_at !== null && typeof value.checked_at !== 'string') || (value.log_id !== null && typeof value.log_id !== 'string') || (value.log_path !== null && typeof value.log_path !== 'string')) {
+    throw new Error(isRecord(value) && typeof value.error === 'string' ? value.error : 'Could not read the persisted Stable channel status.')
+  }
+  return value as unknown as PersistedStableChannelStatus
 }
 
 export async function getModuleCatalog(): Promise<Module[]> {

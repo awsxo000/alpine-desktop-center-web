@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.1.0-alpha.31-web — System Check, histórico e canal Stable
+
+- **Welcome:** os sinais de integridade do backend e canal Stable agora têm atualização real. O bridge revalida o manifesto e catálogo, e o último resultado Stable é reconstruído do log salvo ao reabrir o app; uma instalação limpa continua em **Not checked**. Respostas iniciais atrasadas não sobrescrevem um check concluído depois.
+- **System Check:** concentra diagnósticos individuais e de todos os módulos, status por componente e histórico local de operações. Logs podem ser abertos pelo identificador gerado, sem expor endpoints de caminho arbitrário; GETs de status/histórico não criam diretórios nem alteram permissões, e o endpoint Stable não autoriza migração com evidência histórica.
+- **Modules:** fica dedicado a aplicar módulo ou configuração completa. **Configuration** oferece apenas política Stable e não exibe switch Unstable nem Apply all; a tela Summary agora apresenta contadores, logs persistidos e navegação para os fluxos.
+- Ajusta contraste, títulos, controles de status/canal e superfícies em tema escuro. Reduz a altura ociosa no painel de aplicação, mantendo listas, detalhes longos e histórico com rolagem delimitada.
+- Documenta em português a hierarquia/caminho de logs, inclui o guia no pacote e acrescenta testes de regressão para histórico, logs protegidos, symlink/traversal e o estado Stable inicial/persistido.
+- Mantém o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`. O Undo automático permanece fora desta versão: ainda é necessário snapshot externo de VM.
+
+Validação automatizada: `pnpm check`, `pnpm build`, compilação Python e 40 testes do bridge passam. A prévia visual de sandbox confirma contraste em tema escuro, Modules compacto e rolagens contidas, mas estava sem bridge Alpine; esta candidata não foi testada operacionalmente em Alpine real. Testar em VM descartável com snapshot antes de qualquer uso estável.
+- Mantém o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`. O Undo automático permanece fora desta versão: ainda é necessário snapshot externo de VM.
+
+Validação automatizada: `pnpm check`, `pnpm build`, compilação Python e 40 testes do bridge passam. A prévia visual de sandbox confirma contraste em tema escuro, Modules compacto e rolagens contidas, mas estava sem bridge Alpine; esta candidata não foi testada operacionalmente em Alpine real. Testar em VM descartável com snapshot antes de qualquer uso estável.
+
 ## 0.1.0-alpha.30-web — polimento visual de Modules e Session Audit
 
 - A área **Session Audit** agora mostra até 100 eventos recentes num viewport com rolagem própria; mensagens longas quebram linha e não ocupam o lugar de cartões vizinhos. A ação **Show logs** continua oferecendo o histórico completo.

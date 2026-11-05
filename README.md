@@ -6,9 +6,9 @@ This project is the browser-first migration of Alpine Desktop Center. The web in
 
 The current backend is a post-install configurator, not an operating-system installer: Alpine must already be installed with `setup-alpine` and the graphical desktop prepared with `setup-desktop`. The backend currently targets Alpine Linux 3.24.3 Stable; supported hardware and desktop combinations still require validation on real Alpine installations.
 
-> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The alpha.30 candidate embeds the fixed backend branch at a pinned commit, streams terminal output into the UI and confines scrolling to module panes and the session audit. It remains an alpha, not a stable release; use only in a disposable VM with a snapshot.
+> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The alpha.31 candidate embeds the fixed backend branch at a pinned commit, adds persistent Stable-check/history reporting, live integrity refresh, separated System Check/Modules flows and confined module scrolling. It remains an alpha, not a stable release; use only in a disposable VM with a snapshot.
 
-The local bridge executes named operations against the alpha.30 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and operations are logged under `.alpine-state/web/<frontend-version>/operations/general/` or `modules/<module>/` for an individual module.
+The local bridge executes named operations against the alpha.31 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and operations are logged under `.alpine-state/web/<frontend-version>/operations/general/` or `modules/<module>/` for an individual module.
 
 The visual direction uses the user's [Rokko institutional site](https://rokko-institucional.pages.dev/) as its color reference: `#f4f6fa` surfaces, `#123c9c` blue actions, `#071225` ink and `#1d9b62` success states. Agama/openSUSE is used only as a structural reference for clarity and clean information density, not as the visual identity.
 
@@ -18,9 +18,9 @@ The target release keeps the embedded backend, the SHA-256 integrity lock, versi
 
 The release is designed to run without external hosting. Extract the package and run `install-desktop.sh` once to register Alpine Desktop Center in the user application menu. Then launch **Alpine Desktop Center** from that menu. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens the dedicated local browser window. The browser talks only to that local process; logs and state remain inside the release directory. Privileged operations open a separate system terminal; enter any doas password or confirmation only there. The browser does not receive terminal input.
 
-While a terminal operation is active, its command output is streamed into **Show logs** and the private operation log. Authentication prompts still appear only in the system terminal. The Modules screen uses bounded module-list and detail/check panes; narrow screens use a stacked layout. The module list shows a semantic icon, name and accessible status indicator. **Session Audit** displays the 100 most recent events in its own bounded scroll area, so long messages do not push or cover adjacent cards; **Show logs** remains available for the full history. The selected-module details and its “Need to understand a step?” guidance are grouped in the main pane, with actions aligned consistently. Button hover colors are adjusted separately for light and dark themes.
+While a terminal operation is active, its command output is streamed into **Show logs** and the private operation log. Authentication prompts still appear only in the system terminal. **System Check** owns read-only module checks, per-component status, recent operation history and saved-log access; its check and history panes scroll within bounded areas. **Modules** is dedicated to applying one module or the full configuration. The module list keeps its semantic icon, name and accessible status indicator, and hover/focus colors are tuned independently for light and dark themes.
 
-The app shows each operation's saved log path. Full and aggregate runs go to `operations/general/<session>.log`; a module-only check or apply goes to `operations/modules/<module>/<session>.log`. The `.log` files are private to the local user and kept under the release-version state directory.
+The app shows each operation's saved log path. Full runs, all-module checks and the official Stable channel check go to `operations/general/<session>.log`; a module-only check or apply goes to `operations/modules/<module>/<session>.log`. System Check and Summary can read the last 50 saved operation summaries and open an individual log by generated operation ID; the bridge never accepts an arbitrary file path from the browser. A fresh release starts with no operation logs, so the Stable status is initially **Not checked**. After a check, Welcome restores the last Stable result from its general-operation log. The `.log` files are private to the local user and kept under the release-version state directory. See the Portuguese [System Check and log guide](docs/verificacao-e-logs.md) for the exact path structure and behavior.
 
 The current system-terminal integration supports Konsole, xterm and XFCE Terminal. On a
 desktop without one of these, operations requiring that terminal are blocked with an error;
@@ -42,7 +42,7 @@ failed after its URL was saved (for example, because the VM clock caused a TLS
 certificate error), the next Apply retries the download instead of proceeding
 to a later `nixpkgs.<package> not found` failure.
 
-The current `doas` flow intentionally keeps administrator authentication in the system terminal; it does not bypass the password or create a broad `nopass` rule. Installing a KDE Polkit agent alone does not turn `doas` prompts into graphical dialogs. A terminal-free authorization flow would require a fixed, root-owned helper and a narrowly scoped Polkit action; that integration is not part of alpha.30.
+The current `doas` flow intentionally keeps administrator authentication in the system terminal; it does not bypass the password or create a broad `nopass` rule. Installing a KDE Polkit agent alone does not turn `doas` prompts into graphical dialogs. A terminal-free authorization flow would require a fixed, root-owned helper and a narrowly scoped Polkit action; that integration is not part of alpha.31.
 
 The Configuration section offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a
@@ -54,13 +54,13 @@ still requires a separate explicit confirmation before Apply.
 
 **Apply module** is disabled until that module has a recent valid live
 diagnostic (not `unknown`) and every declared dependency has a recent `complete` diagnostic.
-The selected module's component checks (for example, PipeWire and WirePlumber) are displayed with their status and message, so missing packages or configuration are visible; Apply module can repair those gaps once prerequisites are ready. The module diagnostic's dependency declaration must also match the live catalog. The backend and UI enforce this gate; an `unknown` module status is not treated as success. A check older than 10 minutes expires and must be rerun. **Apply all modules** is available from both Modules and Configuration and still requires the explicit confirmation gate.
+The module's component checks (for example, PipeWire and WirePlumber) are displayed in System Check with their status and message, so missing packages or configuration are visible; Apply module can repair those gaps once prerequisites are ready. Use System Check to run individual diagnostics or check every module, and use Summary to review the persistent operation history. The module diagnostic's dependency declaration must also match the live catalog. The backend and UI enforce this gate; an `unknown` module status is not treated as success. A check older than 10 minutes expires and must be rerun. **Apply all modules** is available only from Modules and still requires the explicit confirmation gate.
 
 Stable migration is enabled only after a successful check of the official Nix
 Stable source reports `update_available`. Both UI and bridge require the result
 to be no older than 10 minutes; another check or system-changing operation
 invalidates it. **Validate again** refreshes bridge health and module catalog
-after a successful integrity recheck, without requiring a browser restart.
+after a successful integrity recheck, without requiring a browser restart. Welcome continues to display the last saved Stable result as history, but that saved result alone never authorizes a migration; run a fresh check in the current bridge process first.
 
 Use `Alpine Desktop Center.desktop` from the desktop environment, or the
 registered **Alpine Desktop Center** menu entry, to get the app-style browser
@@ -90,14 +90,14 @@ separate repositories, matching the original Qt project. The portable release
 builder combines this frontend with a pinned release of
 [`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
 `BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
-`RELEASE-VERSIONS`. The alpha.30 test package uses backend candidate `v1.44-dev`
+`RELEASE-VERSIONS`. The alpha.31 test package uses backend candidate `v1.44-dev`
 from branch `fix/one-shot-doas-authorization`, pinned to commit
 `52712cb7872792c04495d8b63d1a917a35861e31`. This is a development candidate,
 not an official backend release; the packager rejects a different SHA for this
 pin. The old v1.43 pin is retained only for historical reproducibility.
 
 ```sh
-sh scripts/package-portable.sh 0.1.0-alpha.30-web v1.44-dev
+sh scripts/package-portable.sh 0.1.0-alpha.31-web v1.44-dev
 ```
 
 The resulting archive contains `frontend/`, `server/` and `backend/` in one
@@ -106,7 +106,7 @@ cloning the official tag, set `BACKEND_SOURCE`:
 
 ```sh
 BACKEND_SOURCE=/path/to/alpine \
-  sh scripts/package-portable.sh 0.1.0-alpha.30-web v1.44-dev
+  sh scripts/package-portable.sh 0.1.0-alpha.31-web v1.44-dev
 ```
 
 The backend must remain beside the launcher in the extracted release. The

@@ -94,6 +94,8 @@ find "$STAGE/backend" -type d -exec chmod a-w {} +
 cp "$REPO_ROOT/Alpine Desktop Center" "$REPO_ROOT/Alpine Desktop Center.desktop" "$REPO_ROOT/launch-from-desktop.sh" "$REPO_ROOT/install-desktop.sh" "$REPO_ROOT/alpine-desktop-center.svg" "$STAGE/"
 chmod 0755 "$STAGE/Alpine Desktop Center" "$STAGE/launch-from-desktop.sh" "$STAGE/install-desktop.sh" "$STAGE/server/local_server.py"
 cp "$REPO_ROOT/README.md" "$REPO_ROOT/CHANGELOG.md" "$REPO_ROOT/TODO.md" "$REPO_ROOT/LICENSE" "$STAGE/"
+mkdir -p "$STAGE/docs"
+cp "$REPO_ROOT/docs/verificacao-e-logs.md" "$STAGE/docs/"
 
 if [ -n "$BACKEND_MANIFEST" ] && [ -f "$BACKEND_MANIFEST" ]; then
   cp "$BACKEND_MANIFEST" "$STAGE/BACKEND-MANIFEST.sha256"

@@ -2,9 +2,9 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .modules-panel > .panel-header {
@@ -14,7 +14,7 @@
 .modules-workspace {
   display: grid;
   grid-template-columns: minmax(210px, 0.7fr) minmax(0, 1.3fr);
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   gap: 14px;
   min-width: 0;
   min-height: 0;
@@ -24,7 +24,8 @@
 .modules-panel .module-list {
   min-width: 0;
   min-height: 0;
-  height: 100%;
+  height: auto;
+  max-height: min(52vh, 420px);
   margin: 0;
   padding: 0 4px 0 0;
   overflow-x: hidden;
@@ -40,6 +41,7 @@
 .module-detail-pane {
   min-width: 0;
   min-height: 0;
+  max-height: min(55vh, 460px);
   padding: 0 4px 0 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -56,7 +58,7 @@
 
 .app-shell .modules-panel .module-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: stretch;
   gap: 8px;
   min-width: 0;
@@ -231,7 +233,7 @@
 }
 
 .modules-panel .module-help-card {
-  margin-top: auto;
+  margin-top: 0;
   padding: 14px 16px;
   border-color: rgba(69, 154, 192, .2);
   background: linear-gradient(110deg, var(--surface-2), var(--surface));
@@ -366,15 +368,15 @@
 
 @media (min-width: 761px) {
   .modules-panel .selected-module-block {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .modules-panel .selected-module {
-    flex: 1 1 auto;
+    flex: 0 0 auto;
   }
 
   .modules-panel .module-actions {
-    margin-top: auto;
+    margin-top: 12px;
   }
 }
 

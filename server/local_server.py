@@ -186,7 +186,7 @@ def release_version(root: Path) -> str:
     return release_metadata(root).get("frontend", "unknown")
 
 
-def operation_dir(root: Path) -> Path:
+def operation_dir(root: Path, create: bool = True) -> Path:
     version = release_version(root)
     if not re.fullmatch(r"[A-Za-z0-9._+-]{1,128}", version) or version in {".", ".."}:
         raise OSError("Frontend release version is invalid for a state directory.")
@@ -199,8 +199,13 @@ def operation_dir(root: Path) -> Path:
     for directory in directories:
         if directory.is_symlink():
             raise OSError("Release-local state path may not be a symbolic link.")
-        directory.mkdir(mode=0o700, exist_ok=True)
-        directory.chmod(0o700)
+        if create:
+            directory.mkdir(mode=0o700, exist_ok=True)
+            directory.chmod(0o700)
+        elif not directory.exists():
+            break
+        elif not directory.is_dir():
+            raise OSError("Release-local state path contains a non-directory component.")
     resolved = directories[-1].resolve()
     try:
         resolved.relative_to(root.resolve())
@@ -512,6 +517,142 @@ def read_private_file_chunk(path: Path, offset: int, limit: int) -> bytes:
         return os.read(fd, limit)
     finally:
         os.close(fd)
+
+
+def read_log_segments(path: Path) -> tuple[str, str, os.stat_result]:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise OSError("Operation log has unsafe ownership or permissions.")
+        head = os.read(fd, min(info.st_size, 8192)).decode("utf-8", errors="replace")
+        tail = ""
+        if info.st_size > 8192:
+            tail_size = min(info.st_size, 4096)
+            os.lseek(fd, info.st_size - tail_size, os.SEEK_SET)
+            tail = os.read(fd, tail_size).decode("utf-8", errors="replace")
+        return head, tail, info
+    finally:
+        os.close(fd)
+
+
+def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, object] | None:
+    try:
+        if path.is_symlink():
+            return None
+        resolved = path.resolve()
+        resolved.relative_to(base.resolve())
+        head, tail, info = read_log_segments(path)
+        relative = path.relative_to(base)
+    except (OSError, ValueError):
+        return None
+    content = f"{head}\n{tail}"
+    description_match = re.search(r"^Operation: (.+)$", content, re.MULTILINE)
+    named_match = re.search(r"^Named operation: ([a-z-]+)$", content, re.MULTILINE)
+    module_match = re.search(r"^Module: ([a-z_]+)$", content, re.MULTILINE)
+    started_match = re.search(r"^Started: (.+)$", content, re.MULTILINE)
+    status_match = re.search(r"^Operation status: (success|error|blocked|running)$", content, re.MULTILINE)
+    description = description_match.group(1).strip() if description_match else "Operation log"
+    named_operation = named_match.group(1) if named_match else None
+    parts = relative.parts
+    module = module_match.group(1) if module_match else (parts[1] if len(parts) >= 3 and parts[0] == "modules" else None)
+    if named_operation is None:
+        normalized = description.lower()
+        named_operation = next((operation for phrase, operation in (
+            ("check official stable nix channel", "check-stable-channel"),
+            ("migrate official stable nix channel", "migrate-stable-channel"),
+            ("apply module ", "apply-module"),
+            ("check module ", "diagnose-module"),
+            ("apply full configuration", "apply-full"),
+            ("all module diagnostics", "check-all-modules"),
+            ("read-only system checks", "system-check"),
+            ("preview full configuration", "simulate-full"),
+            ("refresh nix applications", "refresh-nix-apps"),
+        ) if normalized.startswith(phrase)), None)
+    status = status_match.group(1) if status_match else "unknown"
+    if module is not None and backend_module(module) is None:
+        module = None
+    if status == "unknown":
+        with SESSIONS_LOCK:
+            active_session = SESSIONS.get(path.stem)
+        if active_session is not None and active_session.snapshot().get("status") == "running":
+            status = "running"
+    if status == "unknown":
+        if "completed successfully." in tail.lower():
+            status = "success"
+        elif "blocked" in tail.lower():
+            status = "blocked"
+        elif "failed." in tail.lower():
+            status = "error"
+    return {
+        "id": path.stem,
+        "path": (root / path.relative_to(root)).relative_to(root).as_posix(),
+        "modified": info.st_mtime,
+        "operation": named_operation or "unknown",
+        "module": module,
+        "label": description,
+        "status": status,
+        "started_at": started_match.group(1).strip() if started_match else None,
+    }
+
+
+def list_operation_logs(root: Path, limit: int = 50, create: bool = False) -> list[dict[str, object]]:
+    base = operation_dir(root, create=create)
+    candidates: list[tuple[float, Path]] = []
+    for path in base.rglob("*.log"):
+        if path.is_symlink():
+            continue
+        try:
+            info = path.lstat()
+            path.resolve().relative_to(base.resolve())
+        except (OSError, ValueError):
+            continue
+        if stat.S_ISREG(info.st_mode):
+            candidates.append((info.st_mtime, path))
+    candidates.sort(key=lambda item: item[0], reverse=True)
+    summaries = [operation_log_summary(root, base, path) for _, path in candidates[:max(1, min(limit, 50))]]
+    return [summary for summary in summaries if summary is not None]
+
+
+def read_operation_log(root: Path, log_id: str, create: bool = False) -> dict[str, object] | None:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", log_id):
+        return None
+    base = operation_dir(root, create=create)
+    for path in base.rglob("*.log"):
+        if path.stem != log_id or path.is_symlink():
+            continue
+        summary = operation_log_summary(root, base, path)
+        if summary is None:
+            continue
+        try:
+            content = read_private_file(path, 1_000_000)
+        except OSError:
+            return None
+        return {**summary, "content": content}
+    return None
+
+
+def latest_stable_channel_check(root: Path) -> dict[str, object]:
+    for summary in list_operation_logs(root, 50):
+        description = str(summary.get("label", "")).lower()
+        if summary.get("operation") != "check-stable-channel" and not description.startswith("check official stable nix channel"):
+            continue
+        detail = read_operation_log(root, str(summary["id"]))
+        output = str(detail.get("content", "")) if detail else ""
+        report = parse_stable_channel_report(output)
+        status = str(summary.get("status", "unknown"))
+        if status == "success" and report is None:
+            status = "unknown"
+        return {
+            "checked": True,
+            "status": status,
+            "report": report,
+            "checked_at": summary.get("started_at"),
+            "log_id": summary.get("id"),
+            "log_path": summary.get("path"),
+            "message": report.get("message") if report else str(summary.get("label", "Stable channel check")),
+        }
+    return {"checked": False, "status": "not_checked", "report": None, "checked_at": None, "log_id": None, "log_path": None, "message": "No Stable channel check log exists in this release state."}
 
 
 def process_descendants(root_pid: int) -> set[int]:
@@ -846,7 +987,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
         session.log_path = log_path.relative_to(session.root).as_posix()
         valid, message = validate_backend(session.root)
         if not valid:
-            log_path.write_text(f"Persistent log: {session.log_path}\nBackend validation failed: {message}\n", encoding="utf-8")
+            log_path.write_text(f"Named operation: {session.operation}\nOperation: {session.operation}\nStarted: {datetime.now().astimezone().isoformat(timespec='seconds')}\nPersistent log: {session.log_path}\nBackend validation failed: {message}\nOperation status: blocked\n", encoding="utf-8")
             log_path.chmod(0o600)
             session.status = "blocked"
             session.message = message
@@ -854,7 +995,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             return
         if session.operation == "validate-backend":
             session.append(message + "\n")
-            log_path.write_text(f"Persistent log: {session.log_path}\n{message}\n", encoding="utf-8")
+            log_path.write_text(f"Named operation: {session.operation}\nOperation: Validate embedded backend\nStarted: {datetime.now().astimezone().isoformat(timespec='seconds')}\nPersistent log: {session.log_path}\n{message}\nOperation status: success\n", encoding="utf-8")
             log_path.chmod(0o600)
             session.status = "success"
             session.message = message
@@ -865,6 +1006,8 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             log_path.chmod(0o600)
             header = "\n".join([
                 f"Operation: {description}",
+                f"Named operation: {session.operation}",
+                *([f"Module: {backend_module(session.payload.get('module'))}"] if backend_module(session.payload.get("module")) else []),
                 f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}",
                 f"Backend: {backend}",
                 "Backend integrity: PASS immediately before execution",
@@ -890,7 +1033,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 session.return_code = 2
                 session.message = "Preview is blocked because backend prerequisites or prepared release-local Ansible state are missing. Prepare them explicitly, then run the preview again."
                 session.append(f"\n{session.message}\n")
-                log.write(f"\n{session.message}\n")
+                log.write(f"\n{session.message}\nOperation status: blocked\n")
                 log.flush()
                 return
             if session.operation in PRIVILEGED_OPERATIONS and prerequisites_missing:
@@ -903,6 +1046,8 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                     session.status = "blocked"
                     session.message = f"Backend integrity check failed before command: {validation_message}"
                     session.append(f"\n{session.message}\n")
+                    log.write(f"\n{session.message}\n")
+                    log.flush()
                     break
                 command_line = " ".join(shlex.quote(part) for part in command)
                 session.append(f"\n$ {command_line}\n")
@@ -940,12 +1085,13 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 session.status = "success" if return_code == 0 else "error"
                 session.message = f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}"
             session.append(f"\n{session.message}\n")
-            log.write(f"\n{session.message}\n")
+            session.append(f"Operation status: {session.status}\n")
+            log.write(f"\n{session.message}\nOperation status: {session.status}\n")
     except (OSError, ValueError) as exc:
         session.return_code = 1
         session.status = "error"
         session.message = str(exc)
-        session.append(f"\n{exc}\n")
+        session.append(f"\n{exc}\nOperation status: error\n")
         if session.log_path:
             try:
                 failed_log = session.root / session.log_path
@@ -953,7 +1099,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 if not failed_log.is_symlink():
                     with failed_log.open("a", encoding="utf-8") as log:
                         failed_log.chmod(0o600)
-                        log.write(f"\nOperation error: {exc}\n")
+                        log.write(f"\nOperation error: {exc}\nOperation status: error\n")
             except (OSError, ValueError):
                 pass
     finally:
@@ -1112,6 +1258,17 @@ class Handler(BaseHTTPRequestHandler):
                     cursor = 0
                 self.send_json(session.snapshot(cursor))
                 return
+        if path.startswith("/api/logs/"):
+            log_id = path.removeprefix("/api/logs/")
+            entry = read_operation_log(self.root, log_id)
+            if entry is None:
+                self.send_json({"error": "Operation log was not found or is not readable."}, HTTPStatus.NOT_FOUND)
+            else:
+                self.send_json(entry)
+            return
+        if path == "/api/stable-channel/status":
+            self.send_json(latest_stable_channel_check(self.root))
+            return
         if path == "/api/health":
             valid, message = validate_backend(self.root)
             metadata = release_metadata(self.root)
@@ -1132,22 +1289,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"modules": [{"id": module, "name": MODULE_LABELS[module], "description": str(catalog.get(module, {}).get("description", "")), "state": "Unknown", "detail": "Run a live diagnostic.", "accent": MODULE_ACCENTS[module], "dependencies": catalog.get(module, {}).get("dependencies", [])} for module in DIAGNOSTIC_MODULES]})
             return
         if path == "/api/logs":
-            logs = []
-            base = operation_dir(self.root)
-            candidates = []
-            for log_path in base.rglob("*.log"):
-                if log_path.is_symlink():
-                    continue
-                try:
-                    info = log_path.lstat()
-                    log_path.resolve().relative_to(base.resolve())
-                except (OSError, ValueError):
-                    continue
-                if stat.S_ISREG(info.st_mode):
-                    candidates.append((info.st_mtime, log_path))
-            for modified, log_path in sorted(candidates, key=lambda item: item[0], reverse=True)[:50]:
-                logs.append({"id": log_path.stem, "path": log_path.relative_to(self.root).as_posix(), "modified": modified})
-            self.send_json({"logs": logs})
+            self.send_json({"logs": list_operation_logs(self.root, 50)})
             return
         if path.startswith("/api/"):
             self.send_json({"error": "Unknown API endpoint."}, HTTPStatus.NOT_FOUND)

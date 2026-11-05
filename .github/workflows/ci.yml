@@ -83,6 +83,7 @@ jobs:
           grep -Fx "backend=$BACKEND_VERSION" "$release/RELEASE-VERSIONS"
           grep -Fx "backend_commit=$BACKEND_COMMIT" "$release/RELEASE-VERSIONS"
           test -s "$release/LICENSE"
+          test -s "$release/docs/verificacao-e-logs.md"
           if find "$release" -type d -name __pycache__ -print -quit | grep -q .; then
             echo "Unexpected Python bytecode cache in portable release." >&2
             exit 1

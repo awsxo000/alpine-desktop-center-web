@@ -430,6 +430,61 @@ class BridgeTestCase(unittest.TestCase):
         paths = {item["path"] for item in payload["logs"]}
         self.assertIn(".alpine-state/web/unknown/operations/modules/audio/api-audio.log", paths)
         self.assertNotIn(".alpine-state/web/unknown/operations/modules/audio/linked.log", paths)
+        with self.assertRaises(HTTPError) as caught:
+            urlopen(Request(f"{base_url}/api/logs/linked", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}), timeout=3)
+        self.assertEqual(caught.exception.code, 404)
+        with self.assertRaises(HTTPError) as caught:
+            urlopen(Request(f"{base_url}/api/logs/%2e%2e%2foutside", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}), timeout=3)
+        self.assertEqual(caught.exception.code, 404)
+
+    def test_operation_history_lists_metadata_and_reads_only_the_named_log(self) -> None:
+        _, base_url, host = self.start_http_server()
+        log_path = local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "api-audio-history")
+        log_path.write_text("Operation: apply module audio\nNamed operation: apply-module\nModule: audio\nStarted: 2026-11-05T12:00:00-03:00\nOperation status: success\nApplied PipeWire.\n", encoding="utf-8")
+        log_path.chmod(0o600)
+        state_dirs = [self.root / ".alpine-state", self.root / ".alpine-state" / "web", self.root / ".alpine-state" / "web" / "unknown", self.root / ".alpine-state" / "web" / "unknown" / "operations"]
+        for directory in state_dirs:
+            directory.chmod(0o750)
+        headers = {"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}
+        with urlopen(Request(f"{base_url}/api/logs", headers=headers), timeout=3) as response:
+            history = json.loads(response.read().decode("utf-8"))["logs"]
+        entry = next(item for item in history if item["id"] == "api-audio-history")
+        self.assertEqual(entry["operation"], "apply-module")
+        self.assertEqual(entry["module"], "audio")
+        self.assertEqual(entry["status"], "success")
+        self.assertEqual(entry["label"], "apply module audio")
+        with urlopen(Request(f"{base_url}/api/logs/api-audio-history", headers=headers), timeout=3) as response:
+            detail = json.loads(response.read().decode("utf-8"))
+        self.assertIn("Applied PipeWire.", detail["content"])
+        self.assertEqual(detail["path"], entry["path"])
+        self.assertEqual([directory.stat().st_mode & 0o777 for directory in state_dirs], [0o750] * len(state_dirs))
+
+    def test_stable_channel_status_starts_not_checked_without_saved_logs(self) -> None:
+        _, base_url, host = self.start_http_server()
+        headers = {"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}
+        with urlopen(Request(f"{base_url}/api/logs", headers=headers), timeout=3) as response:
+            self.assertEqual(json.loads(response.read().decode("utf-8"))["logs"], [])
+        request = Request(f"{base_url}/api/stable-channel/status", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"})
+        with urlopen(request, timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        self.assertFalse(payload["checked"])
+        self.assertEqual(payload["status"], "not_checked")
+        self.assertIsNone(payload["log_path"])
+        self.assertFalse((self.root / ".alpine-state").exists())
+
+    def test_stable_channel_status_recovers_latest_report_from_private_log(self) -> None:
+        log_path = local_server.operation_log_path(self.root, "check-stable-channel", {}, "stable-check-1")
+        log_path.write_text("Operation: check official Stable Nix channel\nNamed operation: check-stable-channel\nStarted: 2026-11-05T12:00:00-03:00\n{\n  \"status\": \"current\",\n  \"current_version\": \"25.05\",\n  \"latest_version\": \"25.05\",\n  \"latest_channel\": \"https://nixos.org/channels/nixos-25.05\",\n  \"source\": \"https://status.nixos.org/\"\n}\nOperation status: success\n", encoding="utf-8")
+        log_path.chmod(0o600)
+        _, base_url, host = self.start_http_server()
+        request = Request(f"{base_url}/api/stable-channel/status", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"})
+        with urlopen(request, timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        self.assertTrue(payload["checked"])
+        self.assertEqual(payload["status"], "success")
+        self.assertEqual(payload["report"]["status"], "current")
+        self.assertEqual(payload["log_id"], "stable-check-1")
+        self.assertTrue(payload["log_path"].endswith("/operations/general/stable-check-1.log"))
 
     def test_browser_session_cookie_is_httponly_and_authenticates_without_header(self) -> None:
         _, base_url, host = self.start_http_server()
