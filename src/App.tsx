@@ -458,7 +458,8 @@ function PanelHeader({ icon, eyebrow, title, detail }: { icon: ReactNode; eyebro
 }
 
 function OperationButton({ children, onClick, operation, icon = <Play size={15} />, disabled = false }: { children: ReactNode; onClick: () => void; operation: OperationState; icon?: ReactNode; disabled?: boolean }) {
-  return <button className="primary-button" onClick={onClick} disabled={operation === 'running' || disabled}>{operation === 'running' ? <LoaderCircle className="spin" size={15} /> : icon}{children}</button>
+  const isRunning = operation === 'running'
+  return <button className={`primary-button${isRunning ? ' is-running' : ''}`} onClick={onClick} disabled={isRunning || disabled} aria-busy={isRunning}>{isRunning ? <LoaderCircle className="spin" size={15} /> : icon}{children}</button>
 }
 
 function ValidationPanel({ onRun, operation, connected, message, backendVersion, frontendVersion, releasePath }: { onRun: () => void; operation: OperationState; connected: boolean; message: string; backendVersion: string; frontendVersion: string; releasePath: string }) {
@@ -492,7 +493,10 @@ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, se
 
 function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { module: Module; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
   const requiresSystemTerminal = activeOperation === 'apply-module'
-  return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{activeOperation === 'diagnose-module' ? `Checking ${module.name}` : `Applying ${module.name}`}</h4><p>The operation is bounded to the selected backend module.</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Authentication happens outside the browser.</strong> If doas asks for a password, enter it only in the separate system terminal.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
+  const waitingMessage = requiresSystemTerminal
+    ? 'The page waits for the separate system terminal to finish. Check whether it is behind this window; open Show logs if it seems stuck, and do not retry the operation.'
+    : 'The read-only diagnostic is running. Open Show logs if it takes longer than expected.'
+  return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{activeOperation === 'diagnose-module' ? `Checking ${module.name}` : `Applying ${module.name}`}</h4><p>{waitingMessage}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Authentication happens outside the browser.</strong> If doas asks for a password, enter it only in the separate system terminal.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
 }
 
 function ConfigPanel({ onRun, onPreview, onApplyFull, onRefreshNixApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { onRun: () => void; onPreview: () => void; onApplyFull: () => void; onRefreshNixApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {

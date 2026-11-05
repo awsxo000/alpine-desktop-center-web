@@ -1,24 +1,24 @@
-# Alpine Desktop Center Web — candidata local alpha.25
+# Alpine Desktop Center Web — candidata local alpha.26
 
-A alpha.25 é uma candidata de teste, não uma versão estável nem uma release pública. Ela incorpora o backend do branch `fix/one-shot-doas-authorization`, commit `e07a1221c310a19a8c5450217476c8e3da105b8d`, sob o rótulo explícito `v1.44-dev`. A alpha.24, que usava backend v1.43, foi retirada: a release está em rascunho e sua tag pública foi removida.
+A alpha.26 é uma build local para repetir os testes de interface e operação, não uma release pública ou estável. Ela mantém o backend `v1.44-dev` fixado no commit `e07a1221c310a19a8c5450217476c8e3da105b8d`. A alpha.24 permanece retirada e não deve ser republicada.
 
 ## Implementado
 
-- [x] Bridge do frontend com allowlist de operações, autenticação somente em terminal externo, cookie `HttpOnly`, restrição a loopback e validação de sessão/backend.
-- [x] Gates de diagnóstico/dependência, migração Nix Stable, validação de schema e manifesto SHA-256.
-- [x] No backend: remover o wrapper que criava uma regra ampla `doas nopass`; fazer uma única transição `doas -u root` no terminal e usar `su` para as transições internas do Ansible.
-- [x] Na primeira operação privilegiada, remover os dois drop-ins amplos conhecidos de versões antigas antes de executar Ansible; falhar fechado se a remoção não for possível.
-- [x] Adicionar teste de regressão e CI do backend. A CI do backend passou no commit `e07a122` (sintaxe shell e verificação do modelo de privilégio).
-- [x] Fixar o backend candidato pelo SHA no empacotador/CI do frontend e incluir `LICENSE` no pacote portátil.
-- [x] Escolher e adicionar MIT aos repositórios frontend e backend.
+- [x] Bridge com allowlist, autenticação privilegiada em terminal externo, cookies `HttpOnly`, loopback e manifesto SHA-256.
+- [x] Backend candidato sem regra ampla `doas nopass`; autorização única pelo terminal, limpeza fail-closed de dois drop-ins legados e `su` nas transições internas do Ansible.
+- [x] Testes automatizados e CI verde para o backend (`e07a122`) e a candidata alpha.25.
+- [x] Licença MIT nos dois repositórios e no pacote portátil.
+- [x] Corrigir o cursor: `not-allowed` para ações desabilitadas por gate; `progress` somente enquanto há operação realmente em execução.
+- [x] Corrigir o tema claro: valores `--muted`/`--faint` no CSS base que antes eram redefinidos para contraste insuficiente; estilizar o Apply desabilitado com texto legível.
+- [x] Melhorar a mensagem de espera da operação do módulo, orientando a verificar o terminal separado e **Show logs** sem repetir a ação.
 
 ## Bloqueios antes de publicar
 
-- [ ] Testar o artefato alpha.25 numa VM Alpine 3.24.3 descartável com snapshot: terminal visível, prompt `doas` fora do browser, operação Ansible, transição `su` para o usuário desktop e confirmação de que nenhum drop-in `nopass` permanece.
-- [ ] Interromper uma operação na VM (inclusive encerramento abrupto) e verificar que não ficam regras de autorização temporária, serviços ou processos órfãos; validar a remoção das duas regras legadas conhecidas.
-- [ ] Validar Konsole, xterm e XFCE Terminal; confirmar recuperação quando o terminal fecha ou `apk`/rede está bloqueado.
-- [ ] Rodar e obter CI verde do frontend após a troca de pin e do pacote alpha.25.
-- [ ] Rever prévia Ansible: continua best-effort e não prova ausência de efeitos para tarefas sem suporte a check mode.
-- [ ] Completar documentação de contribuição, matriz de plataformas e procedimentos de recuperação; revisar acessibilidade e cancelamento.
+- [ ] Executar a alpha.26 em VM Alpine 3.24.3 descartável com snapshot; verificar legibilidade no KDE e se o cursor do Apply desabilitado já não indica carregamento.
+- [ ] Confirmar a razão exibida ao lado do Apply, rodar diagnóstico do módulo e das dependências, e só então validar o Apply quando todos os estados necessários estiverem recentes e `complete`.
+- [ ] Se a operação ficar em andamento, inspecionar o terminal separado e logs em `.alpine-state/web/0.1.0-alpha.26-web/operations/`; não iniciar novamente a mesma operação sem conferir o estado.
+- [ ] Testar `doas`, playbook, transição `su`, ausência de drop-ins `nopass` após sucesso/interrupção e compatibilidade dos terminais.
+- [ ] Rodar e obter CI verde do frontend após as mudanças alpha.26.
+- [ ] Rever preview Ansible (continua best-effort), cancelamento/recuperação, acessibilidade e matriz de plataformas.
 
-**Critério de saída:** não publicar nem chamar de estável antes de validar o artefato alpha.25 em VM real e concluir os checks de integração. Usar somente VM descartável com snapshot; nunca testar Apply em uma instalação com dados importantes.
+**Critério de saída:** não publicar nem chamar de estável antes dos testes de integração na VM real. Usar somente uma VM descartável com snapshot; nunca testar Apply em uma instalação com dados importantes.

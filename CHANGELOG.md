@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.26-web — build local de UX, não publicada
+
+- Corrige o ponteiro de espera enganoso: ações desabilitadas por requisitos mostram `not-allowed`; `progress` fica reservado às operações realmente em execução.
+- O Apply desabilitado no tema claro usa fundo neutro e texto legível; as variáveis de texto secundário foram corrigidas no CSS base, que antes sobrepunha os valores de contraste.
+- A tela de operação de módulo agora orienta a verificar o terminal separado e abrir **Show logs** se a execução parecer parada, sem repetir a operação.
+- Mantém o backend `v1.44-dev` fixado no commit de segurança `e07a1221c310a19a8c5450217476c8e3da105b8d`.
+
+Build destinada a verificar na VM os dois sintomas reportados. A alpha.26 não foi testada em Alpine real nem publicada; Apply e compatibilidade de terminal continuam bloqueados até esse teste.
+
 ## 0.1.0-alpha.25-web — candidata local para teste, não publicada
 
 - Substitui o backend v1.43 pelo branch de correção `v1.44-dev`, fixado no commit `e07a1221c310a19a8c5450217476c8e3da105b8d`.

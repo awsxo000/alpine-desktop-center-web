@@ -6,9 +6,9 @@ This project is the browser-first migration of Alpine Desktop Center. The web in
 
 The current backend is a post-install configurator, not an operating-system installer: Alpine must already be installed with `setup-alpine` and the graphical desktop prepared with `setup-desktop`. The backend currently targets Alpine Linux 3.24.3 Stable; supported hardware and desktop combinations still require validation on real Alpine installations.
 
-> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The local alpha.25 candidate embeds the fixed backend branch at a pinned commit and no longer creates that rule, but it has not yet been tested on a real Alpine VM. Use alpha.25 only in a disposable VM with a snapshot; do not use either candidate on a production system.
+> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The local alpha.26 candidate embeds the fixed backend branch at a pinned commit and no longer creates that rule, but it has not yet been tested on a real Alpine VM. Use alpha.26 only in a disposable VM with a snapshot; do not use either candidate on a production system.
 
-The local bridge executes named operations against the alpha.25 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and each operation records its output under `.alpine-state/web/operations/`.
+The local bridge executes named operations against the alpha.26 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and each operation records its output under `.alpine-state/web/operations/`.
 
 The visual direction uses the user's [Rokko institutional site](https://rokko-institucional.pages.dev/) as its color reference: `#f4f6fa` surfaces, `#123c9c` blue actions, `#071225` ink and `#1d9b62` success states. Agama/openSUSE is used only as a structural reference for clarity and clean information density, not as the visual identity.
 
@@ -78,14 +78,14 @@ separate repositories, matching the original Qt project. The portable release
 builder combines this frontend with a pinned release of
 [`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
 `BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
-`RELEASE-VERSIONS`. The alpha.25 test package uses backend candidate `v1.44-dev`
+`RELEASE-VERSIONS`. The alpha.26 test package uses backend candidate `v1.44-dev`
 from branch `fix/one-shot-doas-authorization`, pinned to commit
 `e07a1221c310a19a8c5450217476c8e3da105b8d`. This is a development candidate,
 not an official backend release; the packager rejects a different SHA for this
 pin. The old v1.43 pin is retained only for historical reproducibility.
 
 ```sh
-sh scripts/package-portable.sh 0.1.0-alpha.25-web v1.44-dev
+sh scripts/package-portable.sh 0.1.0-alpha.26-web v1.44-dev
 ```
 
 The resulting archive contains `frontend/`, `server/` and `backend/` in one
@@ -94,7 +94,7 @@ cloning the official tag, set `BACKEND_SOURCE`:
 
 ```sh
 BACKEND_SOURCE=/path/to/alpine \
-  sh scripts/package-portable.sh 0.1.0-alpha.25-web v1.44-dev
+  sh scripts/package-portable.sh 0.1.0-alpha.26-web v1.44-dev
 ```
 
 The backend must remain beside the launcher in the extracted release. The

@@ -48,3 +48,30 @@
 .light .topbar { border-color: #d2dbe5; }
 .light .meta-divider { background: #bdc9d5; }
 .light .flow-footer { background: linear-gradient(180deg, transparent, #f5f7fa 22%); }
+
+
+/* Alpha.26: preserve readable secondary labels and separate blocked from busy actions. */
+.light .nav-caption,
+.light .eyebrow,
+.light .section-kicker,
+.light .meta-label,
+.light .channel-label,
+.light .step-number,
+.light .step-copy small,
+.light .mini-status small,
+.light .crumb,
+.light .crumb svg { color: #566b80; }
+.light .primary-button:disabled {
+  color: #415265;
+  border-color: #bac6d2;
+  background: #e5eaf0;
+  opacity: 1;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+.light .primary-button:disabled.is-running {
+  color: #334c62;
+  border-color: #a9bdc9;
+  background: #d9e7ee;
+  cursor: progress;
+}
