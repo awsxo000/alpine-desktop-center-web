@@ -27,3 +27,29 @@ The app listens on port 3000. Build and typecheck with:
 pnpm check
 pnpm build
 ```
+
+## Portable release with the official backend
+
+The source repository keeps the web frontend and the Ansible backend in
+separate repositories, matching the original Qt project. The portable release
+builder combines this frontend with a pinned release of
+[`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
+`BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
+`RELEASE-VERSIONS`:
+
+```sh
+sh scripts/package-portable.sh 0.1.0-alpha.5-web v1.43
+```
+
+The resulting archive contains `frontend/`, `server/` and `backend/` in one
+self-contained directory. To package a local backend checkout instead of
+cloning the official tag, set `BACKEND_SOURCE`:
+
+```sh
+BACKEND_SOURCE=/path/to/alpine \
+  sh scripts/package-portable.sh 0.1.0-alpha.5-web v1.43
+```
+
+The backend must remain beside the launcher in the extracted release. The
+launcher validates it before opening the browser, and the web bridge validates
+its checksums again before every named operation.
