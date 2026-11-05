@@ -70,19 +70,49 @@ fi
 open_app_window() {
   BROWSER_PROFILE="$STATE_DIR/browser-profile"
   mkdir -p "$BROWSER_PROFILE"
+  window_ids() {
+    xprop -root _NET_CLIENT_LIST 2>/dev/null | sed -n 's/.*# //p' | tr ',' ' '
+  }
+  set_window_identity() {
+    BEFORE_IDS="$1"
+    command -v xprop >/dev/null 2>&1 || return 0
+    [ -n "${DISPLAY:-}" ] || return 0
+    for _ in $(seq 1 50); do
+      for WINDOW_ID in $(window_ids); do
+        case " $BEFORE_IDS " in *" $WINDOW_ID "*) continue ;; esac
+        WINDOW_TITLE=$(xprop -id "$WINDOW_ID" _NET_WM_NAME 2>/dev/null || true)
+        case "$WINDOW_TITLE" in
+          *Alpine\ Desktop\ Center*)
+            xprop -id "$WINDOW_ID" -f WM_CLASS 8s -set WM_CLASS 'AlpineDesktopCenter\0AlpineDesktopCenter' >/dev/null 2>&1 || true
+            return 0
+            ;;
+        esac
+      done
+      sleep 0.2
+    done
+  }
   if command -v chromium >/dev/null 2>&1; then
+    if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
+    BEFORE_IDS=$(window_ids)
     chromium --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
       --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    set_window_identity "$BEFORE_IDS" &
     return 0
   fi
   if command -v chromium-browser >/dev/null 2>&1; then
+    if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
+    BEFORE_IDS=$(window_ids)
     chromium-browser --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
       --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    set_window_identity "$BEFORE_IDS" &
     return 0
   fi
   if command -v google-chrome >/dev/null 2>&1; then
+    if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
+    BEFORE_IDS=$(window_ids)
     google-chrome --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
       --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+    set_window_identity "$BEFORE_IDS" &
     return 0
   fi
   if command -v firefox >/dev/null 2>&1; then
@@ -95,8 +125,12 @@ open_app_window() {
     # look inaccessible. Only remove lock files when no Firefox process uses it.
     if ! ps -eo args 2>/dev/null | grep -F -- "$FIREFOX_PROFILE" | grep -v grep >/dev/null 2>&1; then
       rm -f "$FIREFOX_PROFILE/.parentlock" "$FIREFOX_PROFILE/parent.lock" "$FIREFOX_PROFILE/lock"
+    else
+      return 0
     fi
-    firefox --no-remote --profile "$FIREFOX_PROFILE" --new-instance --kiosk "$URL" >/dev/null 2>&1 &
+    BEFORE_IDS=$(window_ids)
+    firefox --no-remote --profile "$FIREFOX_PROFILE" --new-instance --name=AlpineDesktopCenter --kiosk "$URL" >/dev/null 2>&1 &
+    set_window_identity "$BEFORE_IDS" &
     return 0
   fi
   printf '%s\n' 'No supported app-window browser was found. Install Chromium or Firefox.' >&2
