@@ -18,7 +18,7 @@ A alpha.26 é uma build local para repetir os testes de interface e operação, 
 - [ ] Confirmar a razão exibida ao lado do Apply, rodar diagnóstico do módulo e das dependências, e só então validar o Apply quando todos os estados necessários estiverem recentes e `complete`.
 - [ ] Se a operação ficar em andamento, inspecionar o terminal separado e logs em `.alpine-state/web/0.1.0-alpha.26-web/operations/`; não iniciar novamente a mesma operação sem conferir o estado.
 - [ ] Testar `doas`, playbook, transição `su`, ausência de drop-ins `nopass` após sucesso/interrupção e compatibilidade dos terminais.
-- [ ] Rodar e obter CI verde do frontend após as mudanças alpha.26.
+- [x] CI verde do frontend alpha.26 após o push.
 - [ ] Rever preview Ansible (continua best-effort), cancelamento/recuperação, acessibilidade e matriz de plataformas.
 
 **Critério de saída:** não publicar nem chamar de estável antes dos testes de integração na VM real. Usar somente uma VM descartável com snapshot; nunca testar Apply em uma instalação com dados importantes.
