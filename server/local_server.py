@@ -267,7 +267,8 @@ def run_pty_command(session: OperationSession, command: list[str], log: object, 
                 if waited == pid:
                     child_status = status
             except ChildProcessError:
-                child_status = 0
+                if child_status is None:
+                    child_status = 0
             if child_status is not None and (saw_eof or not readable):
                 break
         if child_status is None:
@@ -313,15 +314,10 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             log.flush()
             return_code = 0
             pending_commands = list(commands)
-            if operation in PRIVILEGED_OPERATIONS and shutil.which("make", path=env["PATH"]) is None:
+            if session.operation in PRIVILEGED_OPERATIONS and shutil.which("make", path=env["PATH"]) is None:
                 pending_commands.insert(0, ["sh", "scripts/preparar-ansible.sh"])
                 session.append("\nBackend prerequisites are missing; preparing them inside this application terminal.\n")
             for command in pending_commands:
-                valid, validation_message = validate_backend(session.root)
-                if not valid:
-                    session.append(f"\nBackend validation failed immediately before command: {validation_message}\n")
-                    return_code = 2
-                    break
                 command_line = " ".join(shlex.quote(part) for part in command)
                 session.append(f"\n$ {command_line}\n")
                 log.write(f"\n$ {command_line}\n")
@@ -549,10 +545,14 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"status": "error", "message": "Interactive input is invalid."}, HTTPStatus.BAD_REQUEST)
                 return
             try:
-                os.write(session.master_fd, value.encode("utf-8"))
+                pending = value.encode("utf-8")
+                while pending:
+                    written = os.write(session.master_fd, pending)
+                    pending = pending[written:]
             except OSError as exc:
                 self.send_json({"status": "error", "message": f"Could not send input to the operation: {exc}"}, HTTPStatus.BAD_GATEWAY)
                 return
+            session.append("\n[local] Hidden input delivered to the PTY.\n")
             self.send_json({"status": "success", "message": "Input sent to the local PTY."})
             return
         operation = route
