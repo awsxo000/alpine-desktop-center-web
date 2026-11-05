@@ -35,9 +35,28 @@ PORT=$(grep -o 'http://127\.0\.0\.1:[0-9]*' "$LOG_FILE" | tail -n 1 | sed 's/.*:
 SESSION_TOKEN=$(cat "$STATE_DIR/session.token")
 URL="http://127.0.0.1:${PORT}/?session=$SESSION_TOKEN"
 HEALTH_URL="http://127.0.0.1:${PORT}/api/health"
+check_health() {
+  "$PYTHON" - "$HEALTH_URL" "$SESSION_TOKEN" "$PORT" <<'PY'
+import json
+import sys
+from urllib.request import Request, urlopen
+
+url, token, port = sys.argv[1:]
+request = Request(
+    url,
+    headers={"Host": f"127.0.0.1:{port}", "X-ADC-Token": token},
+)
+try:
+    with urlopen(request, timeout=2) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+        raise SystemExit(0 if response.status < 400 and payload.get("backend") == "validated" else 1)
+except Exception:
+    raise SystemExit(1)
+PY
+}
 READY=0
 for _ in $(seq 1 50); do
-  if curl -fsS -H "Host: 127.0.0.1:${PORT}" -H "X-ADC-Token: $SESSION_TOKEN" "$HEALTH_URL" >/dev/null 2>&1; then
+  if check_health; then
     READY=1
     break
   fi
