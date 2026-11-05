@@ -36,8 +36,7 @@ const steps: Array<{ id: StepId; number: string; label: string; note: string }> 
   { id: 'checks', number: '03', label: 'System check', note: 'Read-only signals' },
   { id: 'modules', number: '04', label: 'Modules', note: 'Select roles' },
   { id: 'config', number: '05', label: 'Configuration', note: 'Stable choices' },
-  { id: 'execute', number: '06', label: 'Execution', note: 'Live operations' },
-  { id: 'summary', number: '07', label: 'Summary', note: 'Review outcome' },
+  { id: 'summary', number: '06', label: 'Summary', note: 'Review outcome' },
 ]
 
 const modules: Module[] = [
@@ -55,6 +54,7 @@ function App() {
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [activeOperation, setActiveOperation] = useState<NamedOperation | null>(null)
+  const [logsOpen, setLogsOpen] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [darkMode, setDarkMode] = useState(false)
   const [bridgeConnected, setBridgeConnected] = useState(false)
@@ -81,11 +81,11 @@ function App() {
     setLogs((current) => [...current, { time: now, level, text }])
   }
 
-  const runOperation = async (namedOperation: NamedOperation, label: string, parameters: Record<string, string> = {}, targetStep: StepId = 'execute') => {
+  const runOperation = async (namedOperation: NamedOperation, label: string, parameters: Record<string, string> = {}, targetStep?: StepId) => {
     if (operation === 'running') return
     setOperation('running')
     setActiveOperation(namedOperation)
-    setActiveStep(targetStep)
+    if (targetStep) setActiveStep(targetStep)
     addLog('info', `Starting named operation: ${label}`)
     setBridgeMessage('Opening a protected local operation channel…')
     try {
@@ -174,9 +174,8 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} connected={bridgeConnected} message={bridgeMessage} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setActiveStep('execute')} />}
-            {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel')} operation={operation} />}
-            {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
+            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} />}
+            {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel', {}, 'config')} onApplyFull={() => runOperation('apply-full', 'Apply full configuration', {}, 'config')} operation={operation} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
 
           </section>
@@ -188,11 +187,12 @@ function App() {
               <div className="guard-list"><Guard icon={<LockKeyhole size={14} />} label="Named commands only" /><Guard icon={<ShieldCheck size={14} />} label="Integrity rechecked before run" /><Guard icon={<TerminalSquare size={14} />} label="Password stays in local doas" /></div>
             </div>
 
-            <div className="audit-card"><div className="inspector-heading"><div><p className="section-kicker">LIVE AUDIT</p><h3>Activity stream</h3></div><button className="icon-button subtle" title="Refresh activity"><RefreshCw size={15} /></button></div><div className="stream-list">{logs.slice(-5).reverse().map((log, index) => <div className="stream-item" key={`${log.time}-${index}`}><span className={`stream-dot ${log.level}`} /><div><div className="stream-meta"><span>{log.time}</span><span className={`log-level ${log.level}`}>{log.level}</span></div><p>{log.text}</p></div></div>)}</div><button className="audit-link" onClick={() => setActiveStep('execute')}>Open full audit <FileClock size={15} /></button></div>
+            <div className="audit-card"><div className="inspector-heading"><div><p className="section-kicker">LIVE AUDIT</p><h3>Activity stream</h3></div><button className="icon-button subtle" title="Refresh activity"><RefreshCw size={15} /></button></div><div className="stream-list">{logs.slice(-5).reverse().map((log, index) => <div className="stream-item" key={`${log.time}-${index}`}><span className={`stream-dot ${log.level}`} /><div><div className="stream-meta"><span>{log.time}</span><span className={`log-level ${log.level}`}>{log.level}</span></div><p>{log.text}</p></div></div>)}</div><button className="audit-link" onClick={() => setLogsOpen(true)}>Show logs <FileClock size={15} /></button></div>
 
             <div className="help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Every operation will show its command, state and raw output in the browser.</p></div></div>
           </aside>
         </div>
+        {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} logs={logs} onClose={() => setLogsOpen(false)} />}
       </main>
     </div>
   )
@@ -237,12 +237,12 @@ function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { modul
   return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{activeOperation === 'diagnose-module' ? `Checking ${module.name}` : `Applying ${module.name}`}</h4><p>The backend is running this module independently. You do not need to complete another section.</p>{needsManualAttention && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Watch for manual intervention.</strong> If doas requests authentication or the backend asks for confirmation, open Show logs and follow the terminal prompt.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
 }
 
-function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." /><div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>Not checked</strong><p>Run the check to query the installed official Stable channel.</p></div><span className="state-badge">PENDING</span></div><div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Check Stable channel</OperationButton></div></div>
+function ConfigPanel({ onRun, onApplyFull, operation }: { onRun: () => void; onApplyFull: () => void; operation: OperationState }) {
+  return <div className="panel-card"><PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." /><div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>Not checked</strong><p>Run the check to query the installed official Stable channel.</p></div><span className="state-badge">PENDING</span></div><div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />}>Check Stable channel</OperationButton><OperationButton onClick={onApplyFull} operation={operation} icon={<Wrench size={15} />}>Apply full configuration</OperationButton></div></div>
 }
 
-function ExecutionPanel({ operation, logs, onRun }: { operation: OperationState; logs: LogEntry[]; onRun: () => void }) {
-  return <div className="panel-card execution-panel"><PanelHeader icon={<TerminalSquare size={22} />} eyebrow="CONTROLLED EXECUTION" title="Every step stays visible." detail="The browser records the named operation, its current state and captured backend output without hiding the terminal reality." /><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'idle' ? 'Ready to run' : operation === 'running' ? 'Running operation' : operation === 'error' ? 'Local bridge returned an error' : 'Operation finished'}</strong><p>Named command: <code>apply-full</code></p></div><OperationButton onClick={onRun} operation={operation}>Apply full configuration</OperationButton></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div>
+function LogsModal({ operation, activeOperation, logs, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; logs: LogEntry[]; onClose: () => void }) {
+  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend terminal output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div></div>
 }
 
 function SummaryPanel({ operation, onRestart }: { operation: OperationState; onRestart: () => void }) {

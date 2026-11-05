@@ -1,4 +1,4 @@
-export type StepId = 'welcome' | 'validate' | 'checks' | 'modules' | 'config' | 'execute' | 'summary'
+export type StepId = 'welcome' | 'validate' | 'checks' | 'modules' | 'config' | 'summary'
 
 export type OperationState = 'idle' | 'running' | 'waiting' | 'success' | 'error' | 'blocked'
 
