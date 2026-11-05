@@ -82,3 +82,40 @@
 .check-status.pass { color: #146b45; background: #e3f4eb; }
 .flow-footer { background: linear-gradient(180deg, transparent, var(--bg) 22%); }
 .light .flow-footer { background: linear-gradient(180deg, transparent, #f4f6fa 22%); }
+
+/* Final contrast pass: secondary text remains calm, but never disappears into its surface. */
+.app-shell.light {
+  --text: #172334;
+  --muted: #43536a;
+  --faint: #4e6078;
+  --line: #c4cfdd;
+  --cyan: #075f7d;
+  --green: #146b45;
+  --amber: #795008;
+}
+.app-shell.dark {
+  --text: #f5f8ff;
+  --muted: #c0ccdc;
+  --faint: #aab9ca;
+  --line: #4d6288;
+}
+.light .crumb, .light .crumb svg, .light .heading-meta, .light .nav-caption,
+.light .eyebrow, .light .section-kicker, .light .meta-label, .light .channel-label,
+.light .step-copy small, .light .mini-status small { color: #4e6078; }
+.light .release-chip, .light .connection-pill, .light .step-item,
+.light .mini-status, .light .module-state, .light .muted-note { color: #43536a; }
+.light .health-card p, .light .health-card small, .light .panel-header > div:last-child > p:last-child,
+.light .operation-line p, .light .help-card p, .light .module-copy small,
+.light .selected-module p:last-child, .light .channel-card p, .light .config-option small,
+.light .check-row small, .light .lede, .light .validation-banner p { color: #43536a; }
+.light .heading-meta strong, .light .crumb strong, .light .mini-status strong,
+.light .health-card strong, .light .module-copy strong, .light .panel-header h3,
+.light .inspector-heading h3, .light .selected-module h4, .light .metric strong,
+.light .config-option strong, .light .check-row strong { color: #172334; }
+.dark .health-card p, .dark .health-card small, .dark .panel-header > div:last-child > p:last-child,
+.dark .operation-line p, .dark .help-card p, .dark .module-copy small,
+.dark .selected-module p:last-child, .dark .channel-card p, .dark .config-option small,
+.dark .check-row small, .dark .lede, .dark .validation-banner p { color: #c0ccdc; }
+.dark .nav-caption, .dark .eyebrow, .dark .section-kicker, .dark .meta-label,
+.dark .channel-label, .dark .step-copy small, .dark .mini-status small,
+.dark .crumb, .dark .crumb svg, .dark .heading-meta { color: #aab9ca; }
