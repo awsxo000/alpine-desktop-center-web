@@ -54,6 +54,7 @@ function App() {
   const [moduleCatalog, setModuleCatalog] = useState<Module[]>([])
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
+  const [activeOperation, setActiveOperation] = useState<NamedOperation | null>(null)
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [darkMode, setDarkMode] = useState(false)
   const [bridgeConnected, setBridgeConnected] = useState(false)
@@ -80,10 +81,11 @@ function App() {
     setLogs((current) => [...current, { time: now, level, text }])
   }
 
-  const runOperation = async (namedOperation: NamedOperation, label: string, parameters: Record<string, string> = {}) => {
+  const runOperation = async (namedOperation: NamedOperation, label: string, parameters: Record<string, string> = {}, targetStep: StepId = 'execute') => {
     if (operation === 'running') return
     setOperation('running')
-    setActiveStep('execute')
+    setActiveOperation(namedOperation)
+    setActiveStep(targetStep)
     addLog('info', `Starting named operation: ${label}`)
     setBridgeMessage('Opening a protected local operation channel…')
     try {
@@ -172,7 +174,7 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} connected={bridgeConnected} message={bridgeMessage} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id })} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id })} operation={operation} />}
+            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setActiveStep('execute')} />}
             {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel')} operation={operation} />}
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
@@ -226,8 +228,13 @@ function ChecksPanel({ onRun, operation }: { onRun: () => void; operation: Opera
   return <div className="panel-card"><PanelHeader icon={<ClipboardCheck size={22} />} eyebrow="READ-ONLY INSPECTION" title="See the system before changing it." detail="These checks never apply configuration. They provide the context needed for a safe decision." /><div className="check-table">{checks.map((check) => <div className="check-row" key={check.label}><span className={`check-status ${check.state}`}>{check.state === 'pass' ? <Check size={14} /> : check.state === 'warn' ? <CircleAlert size={14} /> : <CircleDashed size={14} />}</span><div><strong>{check.label}</strong><small>{check.value}</small></div><ChevronRight size={16} /></div>)}</div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation}>Run system check</OperationButton><span className="muted-note"><LockKeyhole size={13} /> Read-only operation</span></div></div>
 }
 
- function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, onCheck, onApply, operation }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; onCheck: () => void; onApply: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose an independent module operation." detail="Modules map directly to backend roles. Inspect or apply one module without completing the other sections or installing modules one by one." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div><div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. Check status is read-only; Apply module runs only this backend tag.</p></div><div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />}>Apply module</OperationButton></div></div></div>
+function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, onCheck, onApply, operation, activeOperation, onShowLogs }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; onCheck: () => void; onApply: () => void; operation: OperationState; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
+  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose an independent module operation." detail="Modules map directly to backend roles. Inspect or apply one module without completing the other sections or installing modules one by one." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div>{operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. Check status is read-only; Apply module runs only this backend tag.</p></div><div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />}>Apply module</OperationButton></div></div>}</div>
+}
+
+function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { module: Module; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
+  const needsManualAttention = activeOperation === 'apply-module'
+  return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{activeOperation === 'diagnose-module' ? `Checking ${module.name}` : `Applying ${module.name}`}</h4><p>The backend is running this module independently. You do not need to complete another section.</p>{needsManualAttention && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Watch for manual intervention.</strong> If doas requests authentication or the backend asks for confirmation, open Show logs and follow the terminal prompt.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
 }
 
 function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
