@@ -5,6 +5,7 @@ Exec=/bin/sh -c "exec \"$(dirname \"$1\")/launch-from-desktop.sh\" \"$1\"" dummy
 Terminal=false
 Type=Application
 Categories=Settings;System;
+Icon=alpine-desktop-center.svg
 StartupNotify=true
 StartupWMClass=AlpineDesktopCenter
 X-GNOME-SingleWindow=true

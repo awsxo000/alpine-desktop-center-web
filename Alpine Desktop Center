@@ -83,6 +83,8 @@ open_app_window() {
         WINDOW_TITLE=$(xprop -id "$WINDOW_ID" _NET_WM_NAME 2>/dev/null || true)
         case "$WINDOW_TITLE" in
           *Alpine\ Desktop\ Center*)
+            xprop -id "$WINDOW_ID" -f _NET_WM_NAME 8u -set _NET_WM_NAME 'Alpine Desktop Center' >/dev/null 2>&1 || true
+            xprop -id "$WINDOW_ID" -f WM_NAME 8u -set WM_NAME 'Alpine Desktop Center' >/dev/null 2>&1 || true
             xprop -id "$WINDOW_ID" -f WM_CLASS 8s -set WM_CLASS 'AlpineDesktopCenter\0AlpineDesktopCenter' >/dev/null 2>&1 || true
             return 0
             ;;

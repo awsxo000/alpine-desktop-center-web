@@ -28,7 +28,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { backendStatus, getBridgeHealth, getModuleCatalog, getOperationUpdate, initialLogs, sendOperationInput, startNamedOperation } from './api'
-import type { LogEntry, Module, NamedOperation, OperationState, StepId } from './types'
+import type { LogEntry, Module, ModuleState, NamedOperation, OperationState, StepId } from './types'
 
 const steps: Array<{ id: StepId; number: string; label: string; note: string }> = [
   { id: 'welcome', number: '01', label: 'Welcome', note: 'Release overview' },
@@ -51,6 +51,7 @@ const modules: Module[] = [
 function App() {
   const [activeStep, setActiveStep] = useState<StepId>('welcome')
   const [moduleCatalog, setModuleCatalog] = useState<Module[]>([])
+  const [moduleStates, setModuleStates] = useState<Record<string, ModuleState>>({})
   const [selectedModule, setSelectedModule] = useState('audio')
   const [operation, setOperation] = useState<OperationState>('idle')
   const [activeOperation, setActiveOperation] = useState<NamedOperation | null>(null)
@@ -112,6 +113,10 @@ function App() {
       void finalStatus
       setOperation('success')
       setBridgeMessage('Operation completed. Review the captured output before continuing.')
+      if (namedOperation === 'diagnose-module') {
+        const moduleId = parameters.module
+        if (moduleId) setModuleStates((current) => ({ ...current, [moduleId]: 'Ready' }))
+      }
       addLog('success', `${label} completed successfully.`)
     } catch (error) {
       setOperation('error')
@@ -191,7 +196,7 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => runOperation('validate-backend', 'Validate embedded backend')} operation={operation} connected={bridgeConnected} message={bridgeMessage} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => runOperation('system-check', 'Run read-only system checks')} operation={operation} />}
-            {activeStep === 'modules' && <ModulesPanel modules={moduleCatalog.length ? moduleCatalog : modules} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} />}
+            {activeStep === 'modules' && <ModulesPanel modules={(moduleCatalog.length ? moduleCatalog : modules).map((module) => moduleStates[module.id] ? { ...module, state: moduleStates[module.id] } : module)} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} onCheck={() => runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => runOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} />}
             {activeStep === 'config' && <ConfigPanel onRun={() => runOperation('check-stable-channel', 'Check official Stable Nix channel', {}, 'config')} onApplyFull={() => runOperation('apply-full', 'Apply full configuration', {}, 'config')} operation={operation} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
 
@@ -272,7 +277,7 @@ function LogsModal({ operation, activeOperation, operationId, logs, onSendInput,
       setSending(false)
     }
   }
-  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend terminal output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div>{operation === 'running' && <form className="terminal-input-row" autoComplete="off" onSubmit={submitInput}><input type="password" name="operation-pty-input" autoComplete="new-password" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Senha ou confirmação solicitada pelo backend" aria-label="Terminal input" disabled={!operationId || sending} /><button className="primary-button" type="submit" disabled={!operationId || !input || sending}>{sending ? 'Sending…' : 'Send'}</button></form>}</div></div>
+  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend terminal output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div><div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · release namespace</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div>{operation === 'running' && <form className="terminal-input-row" autoComplete="off" onSubmit={submitInput}><input type="text" name="terminal-intervention" autoComplete="off" spellCheck="false" data-lpignore="true" data-1p-ignore="true" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Senha ou confirmação solicitada pelo backend" aria-label="Terminal input" disabled={!operationId || sending} /><button className="primary-button" type="submit" disabled={!operationId || !input || sending}>{sending ? 'Sending…' : 'Send'}</button></form>}</div></div>
 }
 
 function SummaryPanel({ operation, onRestart }: { operation: OperationState; onRestart: () => void }) {
