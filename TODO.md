@@ -2,27 +2,16 @@
 
 A alpha.28 é uma candidata de teste para Alpine 3.24.3/KDE, não uma versão estável. Ela fixa o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
 
-## Correção recém-incluída
+## Correção incluída
 
-- [x] Após falha de `nix-channel --update`, verificar se o conteúdo do canal existe em `~/.nix-defexpr/channels/<nome>`; se o cache estiver ausente, repetir o download mesmo que o URL já esteja registrado.
-- [x] Adicionar regressão backend para esse caminho de recuperação.
-- [x] Manter autenticação `doas` no terminal do sistema, sem senha no browser nem regra ampla `nopass`.
-- [x] A alpha.27 corrigiu o argumento duplicado do wrapper, expõe checks por componente, Apply all, logs por módulo/operação e contraste melhor no tema claro.
+A alpha.27 teve uma primeira falha ao executar `nix-channel --update`, causada pelo relógio da VM e pela validade TLS. O Nix gravou a URL do canal antes da falha. Na tentativa posterior, a alpha.27 viu a URL já cadastrada, pulou a atualização e a role Steam terminou com `attribute 'nixpkgs' not found`.
 
-## Validação
+A alpha.28 consulta se o conteúdo local do canal existe em `~/.nix-defexpr/channels/<nome>`. Se estiver ausente, ela tenta novamente `nix-channel --update` antes de instalar pacotes. A correção tem teste de regressão no backend. Mantenha o horário correto e a validação TLS habilitada.
 
-- [x] Regressão backend, shell syntax, ordering/condition da task e `git diff --check` passaram localmente.
-- [x] Typecheck, build e 36 testes do frontend passaram localmente em alpha.28.
-- [x] CI do backend `52712cb` passou.
-- [ ] Aguardar CI do frontend alpha.28.
-- [ ] Gerar duas vezes o tarball alpha.28, comparar SHA e conferir manifest/versões.
+## Teste de integração pendente
 
-## Teste em VM
+Use apenas VM Alpine 3.24.3/KDE descartável com snapshot. Na alpha.28, execute primeiro **Check status** e verifique a condição dos canais Nix. Depois teste a aplicação do módulo que falhou, confirmando que a atualização do canal é tentada se o cache local não existir e que Steam deixa de retornar `attribute 'nixpkgs' not found`.
 
-- [ ] Não repetir Apply total na alpha.27: a execução anterior terminou parcialmente na role Steam. A configuração prévia já pode ter alterações.
-- [ ] Na alpha.28, em snapshot descartável, primeiro executar **Check status** e validar o canal Nix; depois observar se a role repete `nix-channel --update` se o conteúdo estiver ausente.
-- [ ] Repetir Apply módulo/geral só depois de revisar os checks e a saída do canal. Confirmar que a busca `nixpkgs.steam` funciona e que não retorna `attribute 'nixpkgs' not found`.
-- [ ] Retestar áudio e estado PipeWire/WirePlumber, log individual em `operations/modules/<id>/`, log geral em `operations/general/`, terminais Konsole/xterm/XFCE e modo escuro quando o usuário puder.
-- [ ] Após sucesso/interrupção, confirmar ausência dos dois drop-ins antigos e de processos órfãos.
+Como a alpha.27 já aplicou parte da configuração antes de falhar, não repita aquela versão às cegas nem considere que houve rollback. A alpha.28 também precisa de nova validação de **Apply all modules**, checks individuais PipeWire/WirePlumber, logs gerais e por módulo, terminais Konsole/xterm/XFCE Terminal e tema escuro. Após sucesso ou interrupção, confira que não há regra ampla `doas nopass` nem processo órfão.
 
-**Segurança:** ainda é alpha. Usar exclusivamente VM descartável com snapshot. A senha `doas` continua no terminal externo. Não desabilitar verificação TLS nem contornar erro de certificado.
+Antes da distribuição, verificar CI do commit exato e validar o SHA-256 do tarball contra o asset da release. Não é estável: a senha `doas` continua sendo pedida no terminal externo; não digite credenciais na UI nem desative TLS.
