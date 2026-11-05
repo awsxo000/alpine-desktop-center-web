@@ -108,7 +108,17 @@ open_app_window() {
     return 0
   fi
   if command -v firefox >/dev/null 2>&1; then
-    firefox --profile "$BROWSER_PROFILE/firefox" --new-instance --kiosk "$URL" >/dev/null 2>&1 &
+    FIREFOX_PROFILE="$BROWSER_PROFILE/firefox"
+    if ! mkdir -p "$FIREFOX_PROFILE" 2>/dev/null || ! chmod 700 "$FIREFOX_PROFILE" 2>/dev/null || [ ! -w "$FIREFOX_PROFILE" ]; then
+      FIREFOX_PROFILE=$(mktemp -d "${TMPDIR:-/tmp}/alpine-desktop-center-firefox.XXXXXX")
+      chmod 700 "$FIREFOX_PROFILE"
+    fi
+    # A stale Firefox lock from an interrupted launch can make a valid profile
+    # look inaccessible. Only remove lock files when no Firefox process uses it.
+    if ! ps -eo args 2>/dev/null | grep -F -- "$FIREFOX_PROFILE" | grep -v grep >/dev/null 2>&1; then
+      rm -f "$FIREFOX_PROFILE/.parentlock" "$FIREFOX_PROFILE/parent.lock" "$FIREFOX_PROFILE/lock"
+    fi
+    firefox --no-remote --profile "$FIREFOX_PROFILE" --new-instance --kiosk "$URL" >/dev/null 2>&1 &
     return 0
   fi
   printf '%s\n' 'No supported app-window browser was found. Install Chromium or Firefox.' >&2
