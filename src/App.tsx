@@ -485,10 +485,12 @@ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, se
   const checkSummary = selectedDiagnostic
     ? `Diagnostic: ${selectedDiagnostic.status} · ${selectedDiagnostic.summary.passed}/${selectedDiagnostic.summary.total} checks passed · ${selectedDiagnostic.summary.warnings} warnings · checked ${new Date(selectedDiagnostic.checked_at).toLocaleString()}`
     : 'Run Check status before applying this module.'
-  return <div className="panel-card">
+  return <div className="panel-card modules-panel">
     <PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose a module operation." detail="Check the installed components first. Missing items are listed below; Apply module can restore them after dependencies are complete." />
-    <div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div>
-    {operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module-block">
+    <div className="modules-workspace">
+      <nav className="module-list" aria-label="Modules">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'} aria-pressed={selectedModule === module.id}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</nav>
+      <div className="module-detail-pane">
+      {operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module-block">
       <div className="selected-module">
         <div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}</p><p className="muted-note">{checkSummary}</p>{dependencies.length > 0 && <p className="module-dependencies">Dependencies: {dependencies.join(', ')}.</p>}{!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}</div>
         <div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />} disabled={!canExecute}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />} disabled={!canApply}>Apply module</OperationButton><OperationButton onClick={onApplyAll} operation={operation} icon={<Layers3 size={15} />} disabled={!canExecute}>Apply all modules</OperationButton></div>
@@ -501,7 +503,9 @@ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, se
           <span className="diagnostic-check-kind">{check.required ? 'Required' : 'Optional'}</span>
         </li>)}</ul>
       </section>}
-    </div>}
+      </div>}
+      </div>
+    </div>
   </div>
 }
 function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { module: Module; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
@@ -509,7 +513,7 @@ function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { modul
   const requiresSystemTerminal = fullApply || activeOperation === 'apply-module'
   const title = activeOperation === 'diagnose-module' ? `Checking ${module.name}` : fullApply ? 'Applying all modules' : `Applying ${module.name}`
   const waitingMessage = requiresSystemTerminal
-    ? 'The page waits for the system terminal to finish. Check whether it is behind this window; open Show logs if it seems stuck, and do not retry the operation.'
+    ? 'Live output appears in Show logs while the system terminal runs. Check whether the terminal is behind this window; do not retry the operation.'
     : 'The read-only diagnostic is running. Open Show logs if it takes longer than expected.'
   return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{title}</h4><p>{waitingMessage}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Authentication happens outside the browser.</strong> If doas asks for a password, enter it only in the separate system terminal.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
 }

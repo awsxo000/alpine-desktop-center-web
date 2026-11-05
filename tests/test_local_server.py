@@ -134,10 +134,13 @@ class BridgeTestCase(unittest.TestCase):
         output = local_server.read_private_file(private_path, 5)
         self.assertTrue(output.startswith("abcde"))
         self.assertIn("truncated", output.lower())
+        self.assertEqual(local_server.read_private_file_chunk(private_path, 1, 3), b"bcd")
         symlink_path = self.root / "terminal-output-link"
         symlink_path.symlink_to(private_path)
         with self.assertRaises(OSError):
             local_server.read_private_file(symlink_path, 100)
+        with self.assertRaises(OSError):
+            local_server.read_private_file_chunk(symlink_path, 0, 100)
 
     def test_server_cli_rejects_non_loopback_bind(self) -> None:
         result = subprocess.run([sys.executable, str(ROOT / "server" / "local_server.py"), "--host", "0.0.0.0"], capture_output=True, text=True, check=False)
@@ -255,6 +258,32 @@ class BridgeTestCase(unittest.TestCase):
         self.assertLess(elapsed, 4)
         self.assertIn("safety timeout", session.snapshot()["output"])
         self.assertEqual(output, "")
+
+    def test_system_terminal_streams_private_output_before_command_finishes(self) -> None:
+        operation_path = local_server.operation_dir(self.root)
+        operation_path.mkdir(mode=0o700, parents=True, exist_ok=True)
+        session = local_server.OperationSession("test-streaming-terminal", self.root, "apply-full", {})
+        result: list[tuple[str, int]] = []
+        command = ["sh", "-c", "printf 'phase-one\\n'; sleep 0.8; printf 'phase-two\\n'"]
+        log_path = self.root / "streaming.log"
+        with log_path.open("w", encoding="utf-8") as log:
+            with patch.object(local_server, "terminal_command", side_effect=lambda script: ["/bin/sh", str(script)]):
+                worker = threading.Thread(target=lambda: result.append(local_server.execute_in_system_terminal(self.root, self.backend, command, operation_path, session.session_id, os.environ.copy(), session, log)))
+                worker.start()
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline and "phase-one" not in session.snapshot()["output"]:
+                    time.sleep(0.02)
+                self.assertIn("phase-one", session.snapshot()["output"])
+                self.assertTrue(worker.is_alive(), "output must stream before the command exits")
+                worker.join(timeout=4)
+                self.assertFalse(worker.is_alive())
+        self.assertEqual(result, [("", 0)])
+        streamed = session.snapshot()["output"]
+        self.assertIn("phase-one", streamed)
+        self.assertIn("phase-two", streamed)
+        saved_log = log_path.read_text(encoding="utf-8")
+        self.assertIn("phase-one", saved_log)
+        self.assertIn("phase-two", saved_log)
 
     def test_pty_timeout_kills_detached_setsid_descendant(self) -> None:
         pid_file = self.root / "detached.pid"

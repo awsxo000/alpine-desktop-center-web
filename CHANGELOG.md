@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.29-web — candidata de observabilidade e layout
+
+- Transmite incrementalmente ao navegador o output do terminal do sistema e grava no log privado enquanto o Apply ainda executa; o prompt de senha continua exclusivamente no terminal externo. A leitura incremental mantém `O_NOFOLLOW`, valida ownership/permissões e tem teste que comprova output visível antes do fim do comando.
+- Reorganiza Modules em dois painéis: lista de módulos e detalhe/checks com rolagem interna confinada. Layout responsivo empilha os painéis em telas estreitas e evita redimensionar a página inteira.
+- A auditoria das 11 roles concluiu que nenhuma guarda baseline suficiente para um Undo completo. Esta candidata não oferece rollback automático inferido; operação anterior sem snapshot deve ser recuperada por snapshot da VM, quando existente. Uma futura reversão precisa de snapshot por módulo, verificação de drift, preview e confirmação.
+- Mantém o backend `v1.44-dev` fixado no commit `52712cb7872792c04495d8b63d1a917a35861e31`.
+
+Alpha para teste de integração em VM descartável com snapshot. A saída da execução alpha.28 já iniciada não muda com esta build; o novo streaming vale somente depois de instalar/lançar a alpha.29. Testes automatizados não substituem validação em Alpine real.
+
 ## 0.1.0-alpha.28-web — candidata para retry de canal Nix
 
 - Corrige a falha reproduzida na VM depois de uma atualização Nix interrompida por TLS/data do sistema: o URL do canal podia ficar cadastrado mesmo sem o conteúdo ter sido baixado; a próxima aplicação agora consulta o cache do usuário e repete `nix-channel --update` antes de procurar pacotes como `nixpkgs.steam`.

@@ -7,6 +7,7 @@ The bridge is intentionally local-only, session-bound and release-contained.
 from __future__ import annotations
 
 import argparse
+import codecs
 import dataclasses
 import errno
 import fcntl
@@ -32,6 +33,7 @@ from http import HTTPStatus
 from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
+from typing import TextIO
 from urllib.parse import parse_qs, urlparse
 
 COMMAND_TIMEOUT_SECONDS = 900
@@ -496,6 +498,22 @@ def read_private_file(path: Path, limit: int) -> str:
     return data.decode("utf-8", errors="replace")
 
 
+def read_private_file_chunk(path: Path, offset: int, limit: int) -> bytes:
+    if offset < 0 or limit <= 0:
+        raise ValueError("Temporary operation file offset or read limit is invalid.")
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise OSError("Temporary operation file has unsafe ownership or permissions.")
+        if offset > info.st_size:
+            raise OSError("Temporary operation file changed unexpectedly while streaming.")
+        os.lseek(fd, offset, os.SEEK_SET)
+        return os.read(fd, limit)
+    finally:
+        os.close(fd)
+
+
 def process_descendants(root_pid: int) -> set[int]:
     pending = [root_pid]
     found: set[int] = set()
@@ -535,7 +553,7 @@ def signal_process_tree(root_pid: int, tracked: set[int], sig: int) -> None:
         pass
 
 
-def execute_in_system_terminal(root: Path, backend: Path, command: list[str], operation_dir_path: Path, operation_id: str, env: dict[str, str]) -> tuple[str, int]:
+def execute_in_system_terminal(root: Path, backend: Path, command: list[str], operation_dir_path: Path, operation_id: str, env: dict[str, str], session: OperationSession, log: TextIO) -> tuple[str, int]:
     """Run an allow-listed command in a visible system terminal."""
     output_path = operation_dir_path / f"{operation_id}.terminal-output"
     status_path = operation_dir_path / f"{operation_id}.terminal-status"
@@ -570,13 +588,80 @@ def execute_in_system_terminal(root: Path, backend: Path, command: list[str], op
         return f"Could not open a system terminal for the operation: {exc}", 1
     deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
     terminal_exited_at: float | None = None
+    output_offset = 0
+    decoder = codecs.getincrementaldecoder("utf-8")("replace")
+    output_limit_reached = False
+
+    def emit_output(text: str) -> None:
+        nonlocal output_limit_reached
+        if not text or output_limit_reached:
+            return
+        with session.lock:
+            remaining = max(0, MAX_SESSION_OUTPUT_CHARS - len(session.output))
+            already_truncated = session.output_truncated
+        if already_truncated:
+            output_limit_reached = True
+            return
+        log_text = text
+        if len(text) > remaining:
+            marker = "\n[Session output truncated at the safety limit.]\n"
+            marker_size = min(remaining, len(marker))
+            log_text = text[:remaining - marker_size] + marker[:marker_size]
+            output_limit_reached = True
+        session.append(text)
+        if log_text:
+            log.write(log_text)
+            log.flush()
+        with session.lock:
+            output_limit_reached = output_limit_reached or session.output_truncated
+
+    def stream_output(final: bool = False) -> None:
+        nonlocal output_offset
+        while True:
+            try:
+                chunk = read_private_file_chunk(output_path, output_offset, 65_536)
+            except FileNotFoundError:
+                break
+            if not chunk:
+                break
+            output_offset += len(chunk)
+            text = english_output(decoder.decode(chunk, final=False))
+            emit_output(text)
+        if final:
+            text = english_output(decoder.decode(b"", final=True))
+            emit_output(text)
+
     while time.monotonic() < deadline:
+        try:
+            stream_output()
+        except OSError as exc:
+            message = f"Could not safely stream system-terminal output: {exc}"
+            session.append(f"\n{message}\n")
+            log.write(f"\n{message}\n")
+            log.flush()
+            if terminal.poll() is None:
+                try:
+                    os.killpg(terminal.pid, signal.SIGTERM)
+                    terminal.wait(timeout=PTY_TERMINATION_GRACE_SECONDS)
+                except subprocess.TimeoutExpired:
+                    try:
+                        os.killpg(terminal.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                except ProcessLookupError:
+                    pass
+            cleanup_terminal_artifacts((script_path, output_path, status_path))
+            return "", 1
         if status_path.is_file():
             try:
-                output = read_private_file(output_path, MAX_SESSION_OUTPUT_CHARS)
+                stream_output(final=True)
                 return_code = int(read_private_file(status_path, 64))
+                if terminal.poll() is None:
+                    threading.Thread(target=terminal.wait, daemon=True).start()
+                else:
+                    terminal.wait()
                 cleanup_terminal_artifacts((script_path, output_path, status_path))
-                return output, return_code
+                return "", return_code
             except (OSError, ValueError):
                 pass
         if terminal.poll() is not None:
@@ -588,6 +673,11 @@ def execute_in_system_terminal(root: Path, backend: Path, command: list[str], op
                     os.killpg(terminal.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
+                try:
+                    stream_output(final=True)
+                except OSError:
+                    pass
+                terminal.wait()
                 cleanup_terminal_artifacts((script_path, output_path, status_path))
                 return "The terminal closed before the privileged operation reported a result.", 1
         time.sleep(0.2)
@@ -602,6 +692,10 @@ def execute_in_system_terminal(root: Path, backend: Path, command: list[str], op
                 pass
         except ProcessLookupError:
             pass
+    try:
+        stream_output(final=True)
+    except OSError:
+        pass
     cleanup_terminal_artifacts((script_path, output_path, status_path))
     return "The privileged operation exceeded the 15-minute safety timeout.", 124
 
@@ -816,7 +910,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 log.flush()
                 if session.operation in SYSTEM_TERMINAL_OPERATIONS:
                     command_output, return_code = execute_in_system_terminal(
-                        session.root, backend, command, operation_path, session.session_id, env
+                        session.root, backend, command, operation_path, session.session_id, env, session, log
                     )
                     command_output = english_output(command_output)
                     session.append(command_output)

@@ -1,17 +1,31 @@
-# Alpine Desktop Center Web — alpha.28
+# Alpine Desktop Center Web — alpha.29
 
-A alpha.28 é uma candidata de teste para Alpine 3.24.3/KDE, não uma versão estável. Ela fixa o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
+A alpha.29 é candidata comunitária para teste em Alpine 3.24.3/KDE; não é stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
 
-## Correção incluída
+## Correções desta candidata
 
-A alpha.27 teve uma primeira falha ao executar `nix-channel --update`, causada pelo relógio da VM e pela validade TLS. O Nix gravou a URL do canal antes da falha. Na tentativa posterior, a alpha.27 viu a URL já cadastrada, pulou a atualização e a role Steam terminou com `attribute 'nixpkgs' not found`.
+- A saída do terminal privilegiado é lida incrementalmente e aparece em **Show logs** enquanto a execução está ativa; o log privado também é gravado durante o progresso. Prompts `doas` continuam somente no terminal do sistema.
+- A aba Modules separa lista de módulos e detalhe/checks, confinando rolagens às áreas internas. Em telas estreitas, os painéis se empilham; a rolagem da lista/checks continua limitada.
+- O backend tenta atualizar o canal Nix se a URL está configurada mas o conteúdo local não foi baixado, evitando o erro posterior `attribute 'nixpkgs' not found` observado após uma falha TLS.
 
-A alpha.28 consulta se o conteúdo local do canal existe em `~/.nix-defexpr/channels/<nome>`. Se estiver ausente, ela tenta novamente `nix-channel --update` antes de instalar pacotes. A correção tem teste de regressão no backend. Mantenha o horário correto e a validação TLS habilitada.
+## Execução alpha.28 na VM
 
-## Teste de integração pendente
+A alpha.28 não transmite output durante o comando. O log temporário daquela operação ficava em `.alpine-state/web/0.1.0-alpha.28-web/operations/20261105T185708Z-530f2256.terminal-output`, a partir da raiz da release. O timeout de segurança é 15 minutos e já pode ter sido atingido; o fluxo de timeout limpa esse temporário. Confira o log persistente `.alpine-state/web/0.1.0-alpha.28-web/operations/general/20261105T185708Z-530f2256.log` primeiro. Não repita o Apply sem examinar o resultado. Se não houver pre-Apply snapshot de hipervisor, não tente desfazer por remoção manual de pacotes; faça **Check status**, preserve os logs e avalie o estado real.
 
-Use apenas VM Alpine 3.24.3/KDE descartável com snapshot. Na alpha.28, execute primeiro **Check status** e verifique a condição dos canais Nix. Depois teste a aplicação do módulo que falhou, confirmando que a atualização do canal é tentada se o cache local não existir e que Steam deixa de retornar `attribute 'nixpkgs' not found`.
+## Undo/rollback
 
-Como a alpha.27 já aplicou parte da configuração antes de falhar, não repita aquela versão às cegas nem considere que houve rollback. A alpha.28 também precisa de nova validação de **Apply all modules**, checks individuais PipeWire/WirePlumber, logs gerais e por módulo, terminais Konsole/xterm/XFCE Terminal e tema escuro. Após sucesso ou interrupção, confira que não há regra ampla `doas nopass` nem processo órfão.
+A auditoria das 11 roles (base, Nix, Steam, Nix OpenGL, rede, Bluetooth, áudio, swap, energia, fontes e KDE) concluiu que todas têm somente reversibilidade parcial: nenhuma registra um baseline abrangente ou implementa rollback completo. Todas podem deixar alterações de pacotes/configuração/serviço; rede pode interromper conexão e swap/hibernação pode comprometer boot/retomada. KDE mantém um `.alpine-desktop.orig` em certas condições, mas não integra restauração automatizada.
 
-Antes da distribuição, verificar CI do commit exato e validar o SHA-256 do tarball contra o asset da release. Não é estável: a senha `doas` continua sendo pedida no terminal externo; não digite credenciais na UI nem desative TLS.
+Por segurança, a alpha.29 não oferece “desfazer” automático para aplicações anteriores sem snapshot. Não converter desmarcação de módulo em desinstalação. Implementar Undo requer snapshot pré-Apply por execução, inventários pré/pós, preservação de bytes e metadados, checagem de drift, remoção apenas do que foi comprovadamente introduzido, preview e confirmação. Pacotes compartilhados, dados externos e Nix store não devem ser removidos por inferência; swap e GRUB exigem fluxo especializado.
+
+## Próximas validações
+
+- [ ] Capturar o resultado da execução alpha.28 e registrar o log privado, sem credenciais.
+- [ ] Instalar a alpha.29 em VM descartável criada de snapshot; testar saída live durante `Apply all modules` e `Apply module`.
+- [ ] Testar `Check status`, retry do canal Nix após cache ausente, e estado Steam sem `nixpkgs.steam not found`.
+- [ ] Confirmar layout em 1366×768 e resolução menor; testar rolagem interna da lista/checks sem invasão da página.
+- [ ] Validar tema claro/escuro e terminais Konsole, xterm e XFCE Terminal.
+- [ ] Revisar logs geral/por módulo, interrupção/timeout, processos órfãos e ausência de regras amplas `doas nopass`.
+- [ ] Antes de stable, entregar Undo baseado em snapshots e dry-run/diff por role; testar em VM e documentar.
+
+Não usar em produção. Não digitar credenciais na UI, não desativar TLS e não afirmar rollback de estado que nunca foi registrado.
