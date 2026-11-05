@@ -35,7 +35,8 @@ mkdir -p "$STAGE/frontend/dist" "$STAGE/server" "$STAGE/backend" "$STAGE/.alpine
 cp -R "$REPO_ROOT/dist/." "$STAGE/frontend/dist/"
 cp "$REPO_ROOT/server/local_server.py" "$STAGE/server/"
 cp -R "$BACKEND_TMP/backend/." "$STAGE/backend/"
-cp "$REPO_ROOT/Alpine Desktop Center" "$REPO_ROOT/Alpine Desktop Center.desktop" "$REPO_ROOT/launch-from-desktop.sh" "$REPO_ROOT/alpine-desktop-center.svg" "$STAGE/"
+cp "$REPO_ROOT/Alpine Desktop Center" "$REPO_ROOT/Alpine Desktop Center.desktop" "$REPO_ROOT/launch-from-desktop.sh" "$REPO_ROOT/install-desktop.sh" "$REPO_ROOT/alpine-desktop-center.svg" "$STAGE/"
+chmod 0755 "$STAGE/Alpine Desktop Center" "$STAGE/launch-from-desktop.sh" "$STAGE/install-desktop.sh"
 cp "$REPO_ROOT/README.md" "$REPO_ROOT/TODO.md" "$STAGE/"
 chmod 0755 "$STAGE/Alpine Desktop Center" "$STAGE/launch-from-desktop.sh" "$STAGE/server/local_server.py"
 
