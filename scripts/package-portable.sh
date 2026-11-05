@@ -100,7 +100,7 @@ diagnostic_schema=1
 runtime=python3-local-browser
 EOF
 
-PYTHONPATH="$STAGE/server" python3 - "$STAGE" <<'PY'
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$STAGE/server" python3 -B - "$STAGE" <<'PY'
 import sys
 from pathlib import Path
 import local_server

@@ -81,8 +81,12 @@ jobs:
           release="$extracted/$package"
           grep -Fx "backend=v1.43" "$release/RELEASE-VERSIONS"
           grep -Fx "backend_commit=$BACKEND_COMMIT" "$release/RELEASE-VERSIONS"
+          if find "$release" -type d -name __pycache__ -print -quit | grep -q .; then
+            echo "Unexpected Python bytecode cache in portable release." >&2
+            exit 1
+          fi
           (cd "$release/backend" && sha256sum -c "$release/BACKEND-MANIFEST.sha256")
-          PYTHONPATH="$release/server" python3 - "$release" <<'PY'
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$release/server" python3 -B - "$release" <<'PY'
           import sys
           from pathlib import Path
           import local_server
