@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.0-alpha.24-web — candidata de teste, ainda não publicada
+
+- Removido o endpoint de texto livre para entrada no PTY do browser. Apply exige confirmação e autenticação ocorre em terminal externo; refresh de apps Nix e migração Stable também usam esse caminho. O token é gerado por lançamento, gravado atomicamente em arquivo privado e entregue à UI apenas por cookie `HttpOnly; SameSite=Strict`.
+- O bridge é loopback-only, verifica endereço remoto e Host/Origin estritos, recusa bind fora de `127.0.0.1`, rejeita manifestos inválidos/symlinks e só aceita metadata de diagnóstico schema 1. O launcher e o servidor usam locks para evitar inicializações concorrentes.
+- Apply de módulo exige diagnóstico recente para o módulo, lista de dependências coerente com o catálogo e diagnósticos `complete` recentes para cada dependência, no cliente e no servidor. Warnings deixam de aparecer como sucesso sem ressalvas; resultados JSON, catálogo e estados têm validação runtime.
+- Migração Nix Stable exige relatório oficial, coerente e recente (`update_available`) tanto na UI quanto no bridge; checks expirados, falhos, inválidos e mutações anteriores não autorizam migração. Validate again atualiza health e catálogo após reparo bem-sucedido.
+- A prévia `make simular` bloqueia sem dependências/estado Ansible já preparado e não instala pré-requisitos automaticamente. Continua best-effort: o check mode pode ignorar tarefas e não substitui revisão de efeitos.
+- PTY tem limites de output, timeout, rastreamento de descendentes e hard stop; o bridge bloqueia retries quando detecta PID residual. Logs têm retenção limitada e os temporários do terminal são limpos nos caminhos tratados.
+- O backend incluído é read-only por padrão. O empacotador exige frontend limpo, lockfile congelado, versão consistente, backend Git verificável e SHA imutável do v1.43 (sem override); valida o pacote antes de criar tarball determinístico. O CI também constrói e valida o tarball extraído/manifesto, sem publicar.
+- A suíte do bridge cobre manifestos, cookies, locks, loopback, schema, diagnóstico/dependências, prévia bloqueada, logs, allowlist e timeouts, incluindo descendente detached via `setsid`.
+
+Esta candidata **não é uma versão estável**. O backend v1.43 ainda instala uma regra ampla `doas nopass` que pode persistir após encerramento abrupto; a prévia é incompleta, não há licença escolhida e não houve teste em VM Alpine. Usar somente em VM descartável com snapshot; não aplicar em máquina de produção.
+
 ## 0.1.0-alpha.5
 
 Secured the loopback bridge with a per-launch session token, loopback Host/Origin validation, strict JSON operation requests and JSON API 404 responses. Added server-side operation locking, process-group timeout cleanup, version-namespaced operation logs, module catalog and log listing endpoints. The launcher now waits for authenticated health before opening the app window. The frontend consumes the authenticated health and module catalog instead of presenting fixed validation state as current fact.

@@ -4,13 +4,14 @@ APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 DATA_HOME=${XDG_DATA_HOME:-"$HOME/.local/share"}
 ICON_DIR="$DATA_HOME/icons/hicolor/scalable/apps"
 APP_DIR_DESKTOP="$DATA_HOME/applications"
+APP_EXEC=$(printf '%s' "$APP_DIR/launch-from-desktop.sh" | sed 's/\\/\\\\/g; s/"/\\"/g; s/%/%%/g')
 mkdir -p "$ICON_DIR" "$APP_DIR_DESKTOP"
 cp "$APP_DIR/alpine-desktop-center.svg" "$ICON_DIR/alpine-desktop-center.svg"
 cat > "$APP_DIR_DESKTOP/alpine-desktop-center.desktop" <<EOF
 [Desktop Entry]
 Name=Alpine Desktop Center
 Comment=Open Alpine Desktop Center in its own local application window
-Exec=$APP_DIR/launch-from-desktop.sh
+Exec="$APP_EXEC"
 Terminal=false
 Type=Application
 Categories=Settings;System;

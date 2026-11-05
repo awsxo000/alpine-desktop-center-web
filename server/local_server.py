@@ -9,29 +9,43 @@ from __future__ import annotations
 import argparse
 import dataclasses
 import errno
+import fcntl
 import hashlib
+import ipaddress
 import json
 import mimetypes
 import os
 import pty
 import select
+import re
 import shlex
 import secrets
 import shutil
 import signal
+import stat
 import subprocess
 import threading
 import time
 import uuid
 from datetime import datetime, timezone
 from http import HTTPStatus
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import parse_qs, urlparse
 
+COMMAND_TIMEOUT_SECONDS = 900
+PTY_TERMINATION_GRACE_SECONDS = 2
+PTY_HARD_STOP_GRACE_SECONDS = 2
+MAX_REQUEST_BODY_BYTES = 16_384
+MAX_SESSION_OUTPUT_CHARS = 1_000_000
+MAX_CACHED_SESSIONS = 100
+MAX_PERSISTED_LOGS = 50
+MAX_PERSISTED_LOG_BYTES = 50_000_000
+DIAGNOSTIC_MAX_AGE_SECONDS = 600
 OPERATIONS = {
     "validate-backend", "system-check", "check-all-modules", "diagnose-module",
-    "apply-full", "apply-diagnostics", "refresh-nix-apps",
+    "simulate-full", "apply-full", "apply-diagnostics", "refresh-nix-apps",
     "check-stable-channel", "migrate-stable-channel", "apply-module",
 }
 DIAGNOSTIC_MODULES = ("base", "audio", "energia", "fontes", "kde", "bluetooth", "rede", "nix", "nix_opengl", "steam", "swap")
@@ -41,9 +55,26 @@ MODULE_LABELS = {
     "kde": "KDE Plasma", "bluetooth": "Bluetooth", "rede": "Network",
     "nix": "Nix", "nix_opengl": "Nix OpenGL", "steam": "Steam", "swap": "Swap",
 }
-PRIVILEGED_OPERATIONS = {"apply-full", "apply-diagnostics", "apply-module", "migrate-stable-channel", "refresh-nix-apps"}
+MODULE_ACCENTS = {
+    "base": "cyan", "audio": "amber", "energia": "amber", "fontes": "pink",
+    "kde": "violet", "bluetooth": "blue", "rede": "green", "nix": "blue",
+    "nix_opengl": "cyan", "steam": "pink", "swap": "amber",
+}
+DIAGNOSTIC_STATUSES = {"complete", "partial", "incomplete", "unknown"}
+CHECK_STATUSES = {"ok", "warning", "error", "unknown"}
+DEPENDENCY_STATUSES = {"not_checked", *DIAGNOSTIC_STATUSES}
+PRIVILEGED_OPERATIONS = {
+    "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
+}
+SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "migrate-stable-channel"}
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
+DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
+DIAGNOSTIC_LOCK = threading.Lock()
+STABLE_CHANNEL_CACHE: tuple[dict[str, object], float] | None = None
+STABLE_CHANNEL_LOCK = threading.Lock()
+LINGERING_PROCESS_PIDS: set[int] = set()
+LINGERING_PROCESS_LOCK = threading.Lock()
 
 
 def backend_module(module: object) -> str | None:
@@ -63,7 +94,8 @@ class OperationSession:
     message: str = "Operation is running."
     return_code: int | None = None
     output: str = ""
-    master_fd: int | None = None
+    output_truncated: bool = False
+    results: list[dict[str, object]] = dataclasses.field(default_factory=list)
     thread: threading.Thread | None = None
     lock: threading.Lock = dataclasses.field(default_factory=threading.Lock)
 
@@ -71,7 +103,16 @@ class OperationSession:
         if not text:
             return
         with self.lock:
-            self.output += text
+            if self.output_truncated:
+                return
+            remaining = MAX_SESSION_OUTPUT_CHARS - len(self.output)
+            if len(text) <= remaining:
+                self.output += text
+            else:
+                marker = "\n[Session output truncated at the safety limit.]\n"
+                marker_size = min(remaining, len(marker))
+                self.output += text[:remaining - marker_size] + marker[:marker_size]
+                self.output_truncated = True
 
     def snapshot(self, cursor: int = 0) -> dict[str, object]:
         with self.lock:
@@ -83,46 +124,129 @@ class OperationSession:
                 "return_code": self.return_code,
                 "output": self.output[safe_cursor:],
                 "next_cursor": len(self.output),
+                "results": self.results.copy(),
             }
 
 
 def validate_backend(root: Path) -> tuple[bool, str]:
     backend = root / "backend"
     manifest = root / "BACKEND-MANIFEST.sha256"
-    if not backend.is_dir() or not manifest.is_file():
+    if not backend.is_dir() or backend.is_symlink() or not manifest.is_file() or manifest.is_symlink():
         return False, "Embedded backend or manifest is missing."
     try:
         expected: dict[str, str] = {}
         for line in manifest.read_text(encoding="utf-8").splitlines():
-            digest, separator, relative = line.partition("  ")
-            if separator and len(digest) == 64 and relative:
-                expected[relative] = digest
-        actual = {str(path.relative_to(backend)) for path in backend.rglob("*") if path.is_file()}
+            match = re.fullmatch(r"([0-9a-f]{64})  (.+)", line)
+            if match is None:
+                return False, "Backend manifest contains an invalid line."
+            digest, relative = match.groups()
+            manifest_path = PurePosixPath(relative)
+            if manifest_path.is_absolute() or any(part in {"", ".", ".."} for part in manifest_path.parts):
+                return False, "Backend manifest contains an unsafe path."
+            normalized = manifest_path.as_posix()
+            if normalized in expected:
+                return False, "Backend manifest contains a duplicate path."
+            expected[normalized] = digest
+        if not expected:
+            return False, "Backend manifest is empty."
+        actual: set[str] = set()
+        for path in backend.rglob("*"):
+            if path.is_symlink():
+                return False, "Embedded backend contains a symbolic link."
+            if path.is_file():
+                actual.add(path.relative_to(backend).as_posix())
         if actual != set(expected):
             return False, "Embedded backend files differ from the manifest."
         for relative, expected_digest in expected.items():
             digest = hashlib.sha256((backend / relative).read_bytes()).hexdigest()
             if digest != expected_digest:
                 return False, f"Backend checksum mismatch: {relative}"
-    except OSError as exc:
+    except (OSError, UnicodeError, ValueError) as exc:
         return False, f"Could not validate backend: {exc}"
     return True, "Embedded backend matches the release manifest."
 
 
-def release_version(root: Path) -> str:
+def release_metadata(root: Path) -> dict[str, str]:
+    metadata: dict[str, str] = {}
     try:
         for line in (root / "RELEASE-VERSIONS").read_text(encoding="utf-8").splitlines():
-            if line.startswith("frontend="):
-                return line.partition("=")[2].strip()
+            key, separator, value = line.partition("=")
+            if separator and key:
+                metadata[key.strip()] = value.strip()
     except OSError:
-        pass
-    return "unknown"
+        return metadata
+    return metadata
+
+
+def release_version(root: Path) -> str:
+    return release_metadata(root).get("frontend", "unknown")
 
 
 def operation_dir(root: Path) -> Path:
-    directory = root / ".alpine-state" / "web" / release_version(root) / "operations"
-    directory.mkdir(parents=True, exist_ok=True)
-    return directory
+    version = release_version(root)
+    if not re.fullmatch(r"[A-Za-z0-9._+-]{1,128}", version) or version in {".", ".."}:
+        raise OSError("Frontend release version is invalid for a state directory.")
+    directories = [
+        root / ".alpine-state",
+        root / ".alpine-state" / "web",
+        root / ".alpine-state" / "web" / version,
+        root / ".alpine-state" / "web" / version / "operations",
+    ]
+    for directory in directories:
+        if directory.is_symlink():
+            raise OSError("Release-local state path may not be a symbolic link.")
+        directory.mkdir(mode=0o700, exist_ok=True)
+        directory.chmod(0o700)
+    resolved = directories[-1].resolve()
+    try:
+        resolved.relative_to(root.resolve())
+    except ValueError as exc:
+        raise OSError("Release-local state path escapes the release directory.") from exc
+    return directories[-1]
+
+
+def prune_operation_logs(directory: Path) -> None:
+    files = sorted(directory.glob("*.log"), key=lambda path: path.stat().st_mtime_ns if path.is_file() and not path.is_symlink() else 0, reverse=True)
+    kept = 0
+    total_bytes = 0
+    for path in files:
+        if path.is_symlink():
+            path.unlink(missing_ok=True)
+            continue
+        try:
+            size = path.stat().st_size
+            if kept >= MAX_PERSISTED_LOGS - 1 or total_bytes + size > MAX_PERSISTED_LOG_BYTES:
+                path.unlink(missing_ok=True)
+            else:
+                kept += 1
+                total_bytes += size
+        except OSError:
+            continue
+
+
+def acquire_server_lock(root: Path) -> int:
+    state_dirs = [root / ".alpine-state", root / ".alpine-state" / "web"]
+    for directory in state_dirs:
+        if directory.is_symlink():
+            raise OSError("Server state path may not be a symbolic link.")
+        directory.mkdir(mode=0o700, exist_ok=True)
+        directory.chmod(0o700)
+    try:
+        state_dirs[-1].resolve().relative_to(root.resolve())
+    except ValueError as exc:
+        raise OSError("Server state path escapes the release directory.") from exc
+    lock_path = state_dirs[-1] / "server.lock"
+    fd = os.open(lock_path, os.O_CREAT | os.O_RDWR | getattr(os, "O_NOFOLLOW", 0), 0o600)
+    info = os.fstat(fd)
+    if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_nlink != 1:
+        os.close(fd)
+        raise OSError("Server lock file has unsafe ownership or permissions.")
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        os.close(fd)
+        raise OSError("Another Alpine Desktop Center server is already running for this release.") from exc
+    return fd
 
 
 def command_environment(root: Path) -> dict[str, str]:
@@ -143,20 +267,242 @@ def english_output(text: str) -> str:
     return text
 
 
-def terminal_command(script: Path) -> list[str] | None:
-    """Return a visible terminal invocation for commands that need a TTY."""
-    for name in ("konsole", "xterm", "alacritty", "kitty", "foot", "xfce4-terminal"):
-        executable = shutil.which(name)
-        if not executable:
-            continue
-        if name in {"konsole", "xterm", "alacritty", "xfce4-terminal"}:
-            return [executable, "-e", "sh", str(script)]
-        return [executable, "sh", str(script)]
+def validate_diagnostic_payload(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise ValueError("Diagnostic payload must be an object.")
+    if value.get("schema_version") != 1:
+        raise ValueError("Unsupported diagnostic schema version.")
+    if value.get("module") not in DIAGNOSTIC_MODULES:
+        raise ValueError("Diagnostic payload has an unknown module identifier.")
+    if not isinstance(value.get("checked_at"), str) or not value["checked_at"]:
+        raise ValueError("Diagnostic payload has no check timestamp.")
+    try:
+        checked_at = datetime.fromisoformat(value["checked_at"])
+    except ValueError as exc:
+        raise ValueError("Diagnostic timestamp is invalid.") from exc
+    if checked_at.tzinfo is None:
+        raise ValueError("Diagnostic timestamp must include a timezone.")
+    if value.get("status") not in DIAGNOSTIC_STATUSES:
+        raise ValueError("Diagnostic payload has an unknown module status.")
+    summary = value.get("summary")
+    summary_fields = ("passed", "failed", "warnings", "unknown", "total", "required_total")
+    if not isinstance(summary, dict) or any(type(summary.get(key)) is not int or summary[key] < 0 for key in summary_fields):
+        raise ValueError("Diagnostic summary is missing a non-negative integer field.")
+    if summary["required_total"] > summary["total"] or sum(summary[key] for key in summary_fields[:4]) != summary["total"]:
+        raise ValueError("Diagnostic summary counts are inconsistent.")
+    checks = value.get("checks")
+    if not isinstance(checks, list) or len(checks) != summary["total"]:
+        raise ValueError("Diagnostic checks do not match the summary total.")
+    for check in checks:
+        if not isinstance(check, dict):
+            raise ValueError("Diagnostic check must be an object.")
+        if any(not isinstance(check.get(key), str) for key in ("id", "title", "description", "message")):
+            raise ValueError("Diagnostic check is missing a text field.")
+        if check.get("status") not in CHECK_STATUSES or type(check.get("required")) is not bool:
+            raise ValueError("Diagnostic check has an invalid status or required flag.")
+    dependencies = value.get("dependencies")
+    if not isinstance(dependencies, list):
+        raise ValueError("Diagnostic dependencies must be a list.")
+    dependency_modules: set[str] = set()
+    for dependency in dependencies:
+        if not isinstance(dependency, dict) or dependency.get("module") not in DIAGNOSTIC_MODULES or dependency.get("status") not in DEPENDENCY_STATUSES:
+            raise ValueError("Diagnostic dependency has an invalid module or status.")
+        dependency_module = str(dependency["module"])
+        if dependency_module == value["module"] or dependency_module in dependency_modules:
+            raise ValueError("Diagnostic dependencies must be unique and may not reference the module itself.")
+        dependency_modules.add(dependency_module)
+    return value
+
+
+def parse_stable_channel_report(output: str) -> dict[str, object] | None:
+    start = output.find("{")
+    end = output.rfind("}")
+    if start < 0 or end < start:
+        return None
+    try:
+        value = json.loads(output[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(value, dict):
+        return None
+    if value.get("status") == "unknown" and isinstance(value.get("message"), str) and value["message"]:
+        return {"status": "unknown", "message": value["message"]}
+    status = value.get("status")
+    latest = value.get("latest_version")
+    current = value.get("current_version")
+    if status not in ("current", "update_available") or value.get("source") != "https://status.nixos.org/":
+        return None
+    if not isinstance(latest, str) or not re.fullmatch(r"\d+\.\d+", latest):
+        return None
+    if value.get("latest_channel") != f"https://nixos.org/channels/nixos-{latest}":
+        return None
+    if current is not None and (not isinstance(current, str) or not re.fullmatch(r"\d+\.\d+", current)):
+        return None
+    if status == "current" and current != latest:
+        return None
+    if status == "update_available" and current == latest:
+        return None
+    return {"status": status, "current_version": current, "latest_version": latest, "latest_channel": value["latest_channel"], "source": value["source"]}
+
+
+def stable_channel_migration_blocker() -> str | None:
+    with STABLE_CHANNEL_LOCK:
+        cached = STABLE_CHANNEL_CACHE
+    if not cached:
+        return "Run a successful official Stable channel check before migration."
+    report, checked_at = cached
+    age = time.monotonic() - checked_at
+    if age < 0 or age > DIAGNOSTIC_MAX_AGE_SECONDS:
+        return "The official Stable channel check expired; run it again before migration."
+    if report.get("status") != "update_available":
+        return "The latest official Stable check did not confirm an available update."
     return None
 
 
-def execute_privileged_in_terminal(root: Path, backend: Path, command: list[str], operation_dir_path: Path, operation_id: str, env: dict[str, str]) -> tuple[str, int]:
-    """Run an allow-listed privileged command in a visible terminal."""
+def diagnostic_is_fresh(diagnostic: dict[str, object] | None) -> bool:
+    if not diagnostic or not isinstance(diagnostic.get("checked_at"), str):
+        return False
+    try:
+        checked_at = datetime.fromisoformat(diagnostic["checked_at"])
+    except ValueError:
+        return False
+    if checked_at.tzinfo is None:
+        return False
+    age = (datetime.now().astimezone() - checked_at).total_seconds()
+    return -60 <= age <= DIAGNOSTIC_MAX_AGE_SECONDS
+
+
+def module_apply_blocker(root: Path, module: str) -> str | None:
+    with DIAGNOSTIC_LOCK:
+        module_diagnostic = DIAGNOSTIC_CACHE.get(module)
+        cached_diagnostics = DIAGNOSTIC_CACHE.copy()
+    if not diagnostic_is_fresh(module_diagnostic):
+        return "Run a recent diagnostic for this module before applying it."
+    if module_diagnostic.get("status") == "unknown":
+        return "The module diagnostic status is unknown; rerun it before applying."
+    try:
+        catalog = json.loads((root / "backend" / "modulos.json").read_text(encoding="utf-8"))
+        entry = next(item for item in catalog if isinstance(item, dict) and item.get("key") == module)
+        dependencies = entry.get("dependencies")
+        if not isinstance(dependencies, list) or not all(isinstance(item, str) for item in dependencies):
+            raise ValueError("Module dependency catalog is invalid.")
+    except (OSError, json.JSONDecodeError, StopIteration, TypeError, ValueError):
+        return "The backend dependency catalog could not be validated."
+    reported_dependencies = module_diagnostic.get("dependencies")
+    if not isinstance(reported_dependencies, list):
+        return "The module diagnostic has no valid dependency declaration."
+    reported_ids: list[str] = []
+    for dependency in reported_dependencies:
+        if not isinstance(dependency, dict) or dependency.get("status") != "not_checked":
+            return "The module diagnostic dependency states are inconsistent; rerun the diagnostic."
+        dependency_id = backend_module(dependency.get("module"))
+        if dependency_id is None:
+            return "The module diagnostic declares an unsupported dependency."
+        reported_ids.append(dependency_id)
+    expected_ids: list[str] = []
+    for dependency in dependencies:
+        dependency_id = backend_module(dependency)
+        if dependency_id is None:
+            return f"The backend declares an unsupported dependency for {module}."
+        expected_ids.append(dependency_id)
+    if len(reported_ids) != len(set(reported_ids)) or sorted(reported_ids) != sorted(expected_ids):
+        return "The module diagnostic dependency list does not match the backend catalog."
+    for dependency in dependencies:
+        dependency_id = backend_module(dependency)
+        if dependency_id is None:
+            return f"The backend declares an unsupported dependency for {module}."
+        diagnostic = cached_diagnostics.get(dependency_id)
+        if not diagnostic_is_fresh(diagnostic) or diagnostic.get("status") != "complete":
+            return f"Run a recent complete diagnostic for dependency {dependency_id} before applying {module}."
+    return None
+
+
+def remember_diagnostic(diagnostic: dict[str, object]) -> None:
+    with DIAGNOSTIC_LOCK:
+        DIAGNOSTIC_CACHE[str(diagnostic["module"])] = diagnostic
+        for module, cached in list(DIAGNOSTIC_CACHE.items()):
+            if not diagnostic_is_fresh(cached):
+                DIAGNOSTIC_CACHE.pop(module, None)
+
+
+def terminal_command(script: Path) -> list[str] | None:
+    """Return a visible terminal invocation for commands that need a TTY."""
+    for name in ("konsole", "xterm", "xfce4-terminal"):
+        executable = shutil.which(name)
+        if not executable:
+            continue
+        if name == "konsole":
+            return [executable, "--nofork", "-e", "sh", str(script)]
+        if name == "xfce4-terminal":
+            return [executable, "--disable-server", "--execute", "sh", str(script)]
+        if name == "xterm":
+            return [executable, "-e", "sh", str(script)]
+    return None
+
+
+def cleanup_terminal_artifacts(paths: tuple[Path, ...]) -> None:
+    for path in paths:
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+def read_private_file(path: Path, limit: int) -> str:
+    fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise OSError("Temporary operation file has unsafe ownership or permissions.")
+        data = os.read(fd, limit + 1)
+    finally:
+        os.close(fd)
+    if len(data) > limit:
+        return data[:limit].decode("utf-8", errors="replace") + "\n[Output truncated at the safety limit.]\n"
+    return data.decode("utf-8", errors="replace")
+
+
+def process_descendants(root_pid: int) -> set[int]:
+    pending = [root_pid]
+    found: set[int] = set()
+    while pending:
+        parent = pending.pop()
+        children_path = Path(f"/proc/{parent}/task/{parent}/children")
+        try:
+            children = [int(value) for value in children_path.read_text(encoding="ascii").split()]
+        except (OSError, ValueError):
+            continue
+        for child in children:
+            if child not in found:
+                found.add(child)
+                pending.append(child)
+    return found
+
+
+def process_is_running(pid: int) -> bool:
+    try:
+        fields = Path(f"/proc/{pid}/stat").read_text(encoding="ascii").rsplit(")", 1)[1].split()
+        return bool(fields) and fields[0] != "Z"
+    except (OSError, IndexError):
+        return False
+
+
+def signal_process_tree(root_pid: int, tracked: set[int], sig: int) -> None:
+    for process_id in tracked | process_descendants(root_pid):
+        try:
+            os.kill(process_id, sig)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            continue
+    try:
+        os.killpg(root_pid, sig)
+    except ProcessLookupError:
+        pass
+
+
+def execute_in_system_terminal(root: Path, backend: Path, command: list[str], operation_dir_path: Path, operation_id: str, env: dict[str, str]) -> tuple[str, int]:
+    """Run an allow-listed command in a visible system terminal."""
     output_path = operation_dir_path / f"{operation_id}.terminal-output"
     status_path = operation_dir_path / f"{operation_id}.terminal-status"
     script_path = operation_dir_path / f"{operation_id}.terminal.sh"
@@ -164,7 +510,8 @@ def execute_privileged_in_terminal(root: Path, backend: Path, command: list[str]
     script_lines = [
         "#!/bin/sh",
         "set +e",
-        "printf '%s\\n' 'Alpine Desktop Center privileged operation' 'The command may ask for your doas password in this terminal.' 'The password is handled by doas and is not collected or stored by the application.' ''",
+        "umask 077",
+        "printf '%s\\n' 'Alpine Desktop Center protected operation' 'If authentication is requested, enter credentials only in this system terminal.' 'The browser does not receive terminal input.' ''",
         f"printf '$ %s\\n\\n' {shlex.quote(command_line)}",
         f"cd {shlex.quote(str(backend))} || exit 125",
         f"{command_line} > {shlex.quote(str(output_path))} 2>&1",
@@ -175,27 +522,53 @@ def execute_privileged_in_terminal(root: Path, backend: Path, command: list[str]
         "exit \"$status\"",
         "",
     ]
-    script_path.write_text("\n".join(script_lines), encoding="utf-8")
-    script_path.chmod(0o700)
+    script_fd = os.open(script_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o700)
+    with os.fdopen(script_fd, "w", encoding="utf-8") as script_file:
+        script_file.write("\n".join(script_lines))
     invocation = terminal_command(script_path)
     if invocation is None:
-        return "No supported terminal emulator was found for the doas-authenticated operation.", 127
+        cleanup_terminal_artifacts((script_path, output_path, status_path))
+        return "No supported terminal emulator was found for the operation requiring an external terminal.", 127
     try:
-        terminal = subprocess.Popen(invocation, cwd=backend, env=env, start_new_session=False)
+        terminal = subprocess.Popen(invocation, cwd=backend, env=env, start_new_session=True)
     except OSError as exc:
-        return f"Could not open a terminal for the privileged operation: {exc}", 1
-    deadline = time.monotonic() + 900
+        cleanup_terminal_artifacts((script_path, output_path, status_path))
+        return f"Could not open a system terminal for the operation: {exc}", 1
+    deadline = time.monotonic() + COMMAND_TIMEOUT_SECONDS
+    terminal_exited_at: float | None = None
     while time.monotonic() < deadline:
         if status_path.is_file():
             try:
-                return output_path.read_text(encoding="utf-8", errors="replace"), int(status_path.read_text(encoding="utf-8"))
+                output = read_private_file(output_path, MAX_SESSION_OUTPUT_CHARS)
+                return_code = int(read_private_file(status_path, 64))
+                cleanup_terminal_artifacts((script_path, output_path, status_path))
+                return output, return_code
             except (OSError, ValueError):
                 pass
-        if terminal.poll() is not None and not status_path.exists():
-            return "The terminal closed before the privileged operation reported a result.", 1
+        if terminal.poll() is not None:
+            terminal_exited_at = terminal_exited_at or time.monotonic()
+            if time.monotonic() - terminal_exited_at >= 2 and not status_path.exists():
+                try:
+                    os.killpg(terminal.pid, signal.SIGTERM)
+                    time.sleep(0.2)
+                    os.killpg(terminal.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                cleanup_terminal_artifacts((script_path, output_path, status_path))
+                return "The terminal closed before the privileged operation reported a result.", 1
         time.sleep(0.2)
     if terminal.poll() is None:
-        terminal.terminate()
+        try:
+            os.killpg(terminal.pid, signal.SIGTERM)
+            terminal.wait(timeout=PTY_TERMINATION_GRACE_SECONDS)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(terminal.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+        except ProcessLookupError:
+            pass
+    cleanup_terminal_artifacts((script_path, output_path, status_path))
     return "The privileged operation exceeded the 15-minute safety timeout.", 124
 
 
@@ -212,7 +585,8 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
     simple = {
         "check-stable-channel": (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel"),
         "migrate-stable-channel": (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel"),
-        "refresh-nix-apps": (["make", "atualizar-aplicativos-nix"], "refresh Nix applications"),
+        "refresh-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "refresh Nix applications"),
+        "simulate-full": (["make", "simular"], "preview full configuration in Ansible check mode"),
         "apply-full": (["make", "aplicar"], "apply full configuration"),
         "apply-diagnostics": (["make", "diagnostico"], "apply configuration with diagnostics"),
     }
@@ -227,7 +601,7 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
     raise ValueError(f"Unsupported operation: {operation}")
 
 
-def run_pty_command(session: OperationSession, command: list[str], log: object, env: dict[str, str], backend: Path) -> int:
+def run_pty_command(session: OperationSession, command: list[str], log: object, env: dict[str, str], backend: Path) -> tuple[int, str]:
     """Run a named command in a real PTY and stream output into the session."""
     pid, master_fd = pty.fork()
     if pid == 0:
@@ -236,14 +610,37 @@ def run_pty_command(session: OperationSession, command: list[str], log: object, 
             os.execvpe(command[0], command, env)
         except BaseException:
             os._exit(127)
-    session.master_fd = master_fd
     chunks: list[bytes] = []
+    captured_chars = 0
+    capture_truncated = False
     child_status: int | None = None
     saw_eof = False
+    started_at = time.monotonic()
+    terminate_at: float | None = None
+    kill_sent_at: float | None = None
+    last_tree_scan = 0.0
+    tracked_descendants: set[int] = set()
+    timed_out = False
     try:
         while True:
+            now = time.monotonic()
+            if now - last_tree_scan >= 0.05 and child_status is None:
+                tracked_descendants.update(process_descendants(pid))
+                last_tree_scan = now
+            if not timed_out and now - started_at >= COMMAND_TIMEOUT_SECONDS:
+                timed_out = True
+                terminate_at = now
+                timeout_message = "\nThe backend command exceeded the 15-minute safety timeout; terminating its process group.\n"
+                session.append(timeout_message)
+                log.write(timeout_message)
+                log.flush()
+                signal_process_tree(pid, tracked_descendants, signal.SIGTERM)
+            elif terminate_at is not None and now - terminate_at >= PTY_TERMINATION_GRACE_SECONDS:
+                signal_process_tree(pid, tracked_descendants, signal.SIGKILL)
+                terminate_at = None
+                kill_sent_at = now
             try:
-                readable, _, _ = select.select([master_fd], [], [], 0.2)
+                readable, _, _ = select.select([master_fd], [], [], 0.05)
             except (OSError, ValueError):
                 readable = []
             if master_fd in readable:
@@ -255,11 +652,21 @@ def run_pty_command(session: OperationSession, command: list[str], log: object, 
                     else:
                         raise
                 if chunk:
-                    chunks.append(chunk)
                     text = chunk.decode("utf-8", errors="replace")
-                    session.append(text)
-                    log.write(text)
-                    log.flush()
+                    remaining = max(0, MAX_SESSION_OUTPUT_CHARS - captured_chars)
+                    visible = text[:remaining]
+                    if visible:
+                        chunks.append(visible.encode("utf-8"))
+                        captured_chars += len(visible)
+                        session.append(visible)
+                        log.write(visible)
+                        log.flush()
+                    if len(text) > remaining and not capture_truncated:
+                        marker = "\n[Command output truncated at the safety limit.]\n"
+                        session.append(marker)
+                        log.write(marker)
+                        log.flush()
+                        capture_truncated = True
                 else:
                     saw_eof = True
             try:
@@ -269,39 +676,64 @@ def run_pty_command(session: OperationSession, command: list[str], log: object, 
             except ChildProcessError:
                 if child_status is None:
                     child_status = 0
-            if child_status is not None and (saw_eof or not readable):
+            if kill_sent_at is not None and now - kill_sent_at >= PTY_HARD_STOP_GRACE_SECONDS:
+                tracked_descendants.update(process_descendants(pid))
+                signal_process_tree(pid, tracked_descendants, signal.SIGKILL)
+                survivors = {process_id for process_id in tracked_descendants | {pid} if process_is_running(process_id)}
+                if survivors:
+                    with LINGERING_PROCESS_LOCK:
+                        LINGERING_PROCESS_PIDS.update(survivors)
+                    warning = f"\nCould not confirm termination of detached process(es) {', '.join(map(str, sorted(survivors)))}; new operations are blocked until they exit.\n"
+                    session.append(warning)
+                    log.write(warning)
+                    log.flush()
+                saw_eof = True
+                break
+            if child_status is not None and saw_eof:
                 break
         if child_status is None:
-            _, child_status = os.waitpid(pid, 0)
+            waited, status = os.waitpid(pid, os.WNOHANG)
+            if waited == pid:
+                child_status = status
+            else:
+                with LINGERING_PROCESS_LOCK:
+                    LINGERING_PROCESS_PIDS.add(pid)
     finally:
         try:
             os.close(master_fd)
         except OSError:
             pass
-        session.master_fd = None
-    return os.waitstatus_to_exitcode(child_status or 0)
+    output = b"".join(chunks).decode("utf-8", errors="replace")
+    return (124 if timed_out else os.waitstatus_to_exitcode(child_status or 0)), output
 
 
 def run_session(session: OperationSession, operation_lock: threading.Lock) -> None:
+    global STABLE_CHANNEL_CACHE
     backend = session.root / "backend"
-    operation_path = operation_dir(session.root)
-    log_path = operation_path / f"{session.session_id}.log"
     env = command_environment(session.root)
     try:
+        operation_path = operation_dir(session.root)
+        prune_operation_logs(operation_path)
+        log_path = operation_path / f"{session.session_id}.log"
         valid, message = validate_backend(session.root)
         if not valid:
+            log_path.write_text(f"Backend validation failed: {message}\n", encoding="utf-8")
+            log_path.chmod(0o600)
             session.status = "blocked"
             session.message = message
             session.return_code = 2
             return
         if session.operation == "validate-backend":
             session.append(message + "\n")
+            log_path.write_text(message + "\n", encoding="utf-8")
+            log_path.chmod(0o600)
             session.status = "success"
             session.message = message
             session.return_code = 0
             return
         commands, description = resolve_command(session.operation, session.payload)
         with log_path.open("w", encoding="utf-8") as log:
+            log_path.chmod(0o600)
             header = "\n".join([
                 f"Operation: {description}",
                 f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}",
@@ -314,20 +746,69 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             log.flush()
             return_code = 0
             pending_commands = list(commands)
-            if session.operation in PRIVILEGED_OPERATIONS and shutil.which("make", path=env["PATH"]) is None:
+            state_dir = session.root / ".alpine-state"
+            ansible_collection = state_dir / "collections" / "ansible_collections" / "community" / "general"
+            prerequisites_missing = (
+                shutil.which("make", path=env["PATH"]) is None
+                or shutil.which("ansible-playbook", path=env["PATH"]) is None
+                or shutil.which("ansible-galaxy", path=env["PATH"]) is None
+                or not (state_dir / "vars.yml").is_file()
+                or not ansible_collection.is_dir()
+            )
+            if session.operation == "simulate-full" and prerequisites_missing:
+                session.status = "blocked"
+                session.return_code = 2
+                session.message = "Preview is blocked because backend prerequisites or prepared release-local Ansible state are missing. Prepare them explicitly, then run the preview again."
+                session.append(f"\n{session.message}\n")
+                log.write(f"\n{session.message}\n")
+                log.flush()
+                return
+            if session.operation in PRIVILEGED_OPERATIONS and prerequisites_missing:
                 pending_commands.insert(0, ["sh", "scripts/preparar-ansible.sh"])
-                session.append("\nBackend prerequisites are missing; preparing them inside this application terminal.\n")
+                session.append("\nBackend prerequisites are missing; preparing them in a separate system terminal.\n")
             for command in pending_commands:
+                valid, validation_message = validate_backend(session.root)
+                if not valid:
+                    return_code = 2
+                    session.status = "blocked"
+                    session.message = f"Backend integrity check failed before command: {validation_message}"
+                    session.append(f"\n{session.message}\n")
+                    break
                 command_line = " ".join(shlex.quote(part) for part in command)
                 session.append(f"\n$ {command_line}\n")
                 log.write(f"\n$ {command_line}\n")
                 log.flush()
-                return_code = run_pty_command(session, command, log, env, backend)
+                if session.operation in SYSTEM_TERMINAL_OPERATIONS:
+                    command_output, return_code = execute_in_system_terminal(
+                        session.root, backend, command, operation_path, session.session_id, env
+                    )
+                    command_output = english_output(command_output)
+                    session.append(command_output)
+                    log.write(command_output)
+                    log.flush()
+                else:
+                    return_code, command_output = run_pty_command(session, command, log, env, backend)
+                if session.operation == "check-stable-channel":
+                    report = parse_stable_channel_report(command_output) if return_code == 0 else None
+                    with STABLE_CHANNEL_LOCK:
+                        STABLE_CHANNEL_CACHE = (report, time.monotonic()) if report is not None else None
+                    if return_code == 0 and report is None:
+                        session.append("\nStable status output was not recognized; migration remains blocked.\n")
+                if session.operation in {"system-check", "check-all-modules", "diagnose-module"} and return_code == 0:
+                    try:
+                        diagnostic = validate_diagnostic_payload(json.loads(command_output))
+                        with session.lock:
+                            session.results.append(diagnostic)
+                        remember_diagnostic(diagnostic)
+                    except (json.JSONDecodeError, ValueError) as exc:
+                        return_code = 1
+                        session.append(f"\nDiagnostic output was invalid JSON: {exc}\n")
                 if return_code != 0:
                     break
             session.return_code = return_code
-            session.status = "success" if return_code == 0 else "error"
-            session.message = f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}"
+            if session.status != "blocked":
+                session.status = "success" if return_code == 0 else "error"
+                session.message = f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}"
             session.append(f"\n{session.message}\n")
             log.write(f"\n{session.message}\n")
     except (OSError, ValueError) as exc:
@@ -340,96 +821,62 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
 
 
 def start_operation(root: Path, operation: str, payload: dict[str, object], operation_lock: threading.Lock) -> dict[str, object]:
+    global STABLE_CHANNEL_CACHE
+    with LINGERING_PROCESS_LOCK:
+        active_pids = {pid for pid in LINGERING_PROCESS_PIDS if process_is_running(pid)}
+        LINGERING_PROCESS_PIDS.intersection_update(active_pids)
+        lingering = sorted(LINGERING_PROCESS_PIDS)
+    if lingering:
+        return {"status": "blocked", "operation": operation, "message": f"A timed-out backend process is still running (PID {', '.join(map(str, lingering))}). Inspect it before retrying."}
     if not operation_lock.acquire(blocking=False):
         return {"status": "blocked", "operation": operation, "message": "Another backend operation is already running. Wait for it to finish."}
     valid, message = validate_backend(root)
     if not valid:
         operation_lock.release()
         return {"status": "blocked", "operation": operation, "message": message}
+    if operation != "validate-backend" and release_metadata(root).get("diagnostic_schema") != "1":
+        operation_lock.release()
+        return {"status": "blocked", "operation": operation, "message": "Unsupported or missing diagnostic schema; this release only executes schema version 1."}
     if operation != "validate-backend":
         try:
             resolve_command(operation, payload)
         except ValueError as exc:
             operation_lock.release()
             return {"status": "error", "operation": operation, "message": str(exc)}
+    if operation == "apply-module":
+        module = backend_module(payload.get("module"))
+        blocker = module_apply_blocker(root, module) if module else "A valid module identifier is required for apply-module."
+        if blocker:
+            operation_lock.release()
+            return {"status": "blocked", "operation": operation, "message": blocker}
+    if operation == "migrate-stable-channel":
+        blocker = stable_channel_migration_blocker()
+        if blocker:
+            operation_lock.release()
+            return {"status": "blocked", "operation": operation, "message": blocker}
+    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "migrate-stable-channel"}:
+        with DIAGNOSTIC_LOCK:
+            DIAGNOSTIC_CACHE.clear()
+    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "migrate-stable-channel"} or operation.startswith("apply-"):
+        with STABLE_CHANNEL_LOCK:
+            STABLE_CHANNEL_CACHE = None
     session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
     session = OperationSession(session_id, root, operation, payload)
     with SESSIONS_LOCK:
+        completed = sorted((item for item in SESSIONS.values() if item.status != "running"), key=lambda item: item.session_id)
+        while len(SESSIONS) >= MAX_CACHED_SESSIONS and completed:
+            expired = completed.pop(0)
+            SESSIONS.pop(expired.session_id, None)
         SESSIONS[session_id] = session
     session.thread = threading.Thread(target=run_session, args=(session, operation_lock), daemon=True)
-    session.thread.start()
-    return {"status": "running", "operation": operation, "operation_id": session_id, "message": "Operation started."}
-
-
-def execute_operation(root: Path, operation: str, payload: dict[str, object], lock: threading.Lock) -> dict[str, object]:
-    if not lock.acquire(blocking=False):
-        return {"status": "blocked", "operation": operation, "message": "Another backend operation is already running. Wait for it to finish."}
     try:
-        valid, message = validate_backend(root)
-        if not valid:
-            return {"status": "blocked", "operation": operation, "message": message}
-        if operation == "validate-backend":
-            return {"status": "success", "operation": operation, "message": message, "output": message}
-        try:
-            commands, description = resolve_command(operation, payload)
-        except ValueError as exc:
-            return {"status": "error", "operation": operation, "message": str(exc)}
-
-        operation_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
-        log_path = operation_dir(root) / f"{operation_id}.log"
-        started = time.monotonic()
-        env = command_environment(root)
-        backend = root / "backend"
-        output_parts = [f"Operation: {description}", f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}", f"Backend: {backend}", "Backend integrity: PASS immediately before execution", ""]
-        return_code = 0
-        try:
-            with log_path.open("w", encoding="utf-8") as log:
-                for command in commands:
-                    valid, validation_message = validate_backend(root)
-                    if not valid:
-                        return_code = 2
-                        output_parts.append(f"Backend validation failed immediately before command: {validation_message}")
-                        break
-                    command_line = " ".join(command)
-                    output_parts.append(f"$ {command_line}")
-                    log.write(f"$ {command_line}\n")
-                    log.flush()
-                    if operation in PRIVILEGED_OPERATIONS:
-                        command_output, return_code = execute_privileged_in_terminal(root, backend, command, log_path.parent, operation_id, env)
-                    else:
-                        process = subprocess.Popen(command, cwd=backend, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-                        try:
-                            command_output, _ = process.communicate(timeout=900)
-                        except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGTERM)
-                            try:
-                                command_output, _ = process.communicate(timeout=10)
-                            except subprocess.TimeoutExpired:
-                                os.killpg(process.pid, signal.SIGKILL)
-                                command_output, _ = process.communicate()
-                            return_code = 124
-                            output_parts.append("The backend command exceeded the 15-minute safety timeout and its process group was terminated.")
-                    command_output = english_output(command_output or "")
-                    log.write(command_output)
-                    log.flush()
-                    output_parts.append(command_output.rstrip())
-                    if return_code or (operation not in PRIVILEGED_OPERATIONS and process.returncode != 0):
-                        return_code = return_code or process.returncode
-                        break
-        except FileNotFoundError as exc:
-            return_code = 127
-            output_parts.append(f"Cannot start backend command: {exc}. Install the required backend dependencies first.")
-        except OSError as exc:
-            return_code = 1
-            output_parts.append(f"Could not execute backend command: {exc}")
-
-        output = "\n".join(part for part in output_parts if part is not None)
-        log_path.write_text(output + "\n", encoding="utf-8")
-        elapsed = round(time.monotonic() - started, 2)
-        status = "success" if return_code == 0 else "error"
-        return {"status": status, "operation": operation, "message": f"{description.capitalize()} {'completed successfully.' if return_code == 0 else 'failed.'}", "output": output, "log_id": operation_id, "log_path": str(log_path.relative_to(root)), "return_code": return_code, "elapsed_seconds": elapsed}
-    finally:
-        lock.release()
+        session.thread.start()
+    except RuntimeError as exc:
+        with SESSIONS_LOCK:
+            SESSIONS.pop(session_id, None)
+        operation_lock.release()
+        return {"status": "error", "operation": operation, "message": f"Could not start operation worker: {exc}"}
+    return {"status": "running", "operation": operation, "operation_id": session_id, "message": "Operation started."}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -452,6 +899,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
         self.wfile.write(data)
 
@@ -460,15 +908,46 @@ class Handler(BaseHTTPRequestHandler):
 
     def authorized(self) -> bool:
         parsed = urlparse(self.path)
-        host = self.headers.get("Host", "").split(":", 1)[0].lower()
-        if host not in {"127.0.0.1", "localhost", "[::1]"}:
+        try:
+            client_is_loopback = ipaddress.ip_address(self.client_address[0]).is_loopback
+        except ValueError:
+            client_is_loopback = False
+        if not client_is_loopback:
+            self.reject("The local bridge accepts connections only from a loopback address.")
+            return False
+        try:
+            host_header = urlparse(f"//{self.headers.get('Host', '')}")
+            host = (host_header.hostname or "").lower()
+            host_port = host_header.port
+        except ValueError:
+            host_header = urlparse("")
+            host = ""
+            host_port = None
+        allowed_hosts = {"127.0.0.1", "localhost"}
+        server_port = self.app_server.server_address[1]
+        if host not in allowed_hosts or host_port != server_port or host_header.path or host_header.params or host_header.query or host_header.fragment or host_header.username is not None or host_header.password is not None:
             self.reject("The local bridge accepts requests only through loopback.")
             return False
         origin = self.headers.get("Origin")
-        if origin and not (origin.startswith("http://127.0.0.1:") or origin.startswith("http://localhost:")):
-            self.reject("The request origin is not allowed.")
-            return False
-        token = self.headers.get("X-ADC-Token")
+        if origin:
+            try:
+                origin_url = urlparse(origin)
+                origin_port = origin_url.port
+            except ValueError:
+                origin_url = urlparse("")
+                origin_port = -1
+            if origin_url.scheme != "http" or origin_url.hostname not in allowed_hosts or origin_port != server_port or origin_url.path or origin_url.params or origin_url.query or origin_url.fragment or origin_url.username is not None or origin_url.password is not None:
+                self.reject("The request origin is not allowed.")
+                return False
+        token = self.headers.get("X-ADC-Token", "")
+        if not token:
+            cookies = SimpleCookie()
+            try:
+                cookies.load(self.headers.get("Cookie", ""))
+            except CookieError:
+                cookies = SimpleCookie()
+            session_cookie = cookies.get("ADC-Session")
+            token = session_cookie.value if session_cookie else ""
         if not token or not secrets.compare_digest(token, self.app_server.session_token):
             self.reject("A valid local session token is required.")
             return False
@@ -495,14 +974,22 @@ class Handler(BaseHTTPRequestHandler):
                 return
         if path == "/api/health":
             valid, message = validate_backend(self.root)
-            self.send_json({"bridge": "local", "backend": "validated" if valid else "failed", "message": message, "release_root": str(self.root), "frontend_version": release_version(self.root)}, HTTPStatus.OK if valid else HTTPStatus.SERVICE_UNAVAILABLE)
+            metadata = release_metadata(self.root)
+            self.send_json({"bridge": "local", "backend": "validated" if valid else "failed", "message": message, "release_root": str(self.root), "frontend_version": metadata.get("frontend", "unknown"), "backend_version": metadata.get("backend", "unknown"), "backend_commit": metadata.get("backend_commit", "unknown"), "diagnostic_schema": metadata.get("diagnostic_schema", "unknown")}, HTTPStatus.OK if valid else HTTPStatus.SERVICE_UNAVAILABLE)
             return
         if path == "/api/backend/status":
             valid, message = validate_backend(self.root)
             self.send_json({"valid": valid, "message": message, "frontend_version": release_version(self.root)})
             return
         if path == "/api/modules":
-            self.send_json({"modules": [{"id": module, "name": MODULE_LABELS[module], "state": "Unknown", "detail": "Run a live diagnostic."} for module in DIAGNOSTIC_MODULES]})
+            catalog: dict[str, dict[str, object]] = {}
+            try:
+                raw_catalog = json.loads((self.root / "backend" / "modulos.json").read_text(encoding="utf-8"))
+                if isinstance(raw_catalog, list):
+                    catalog = {str(item["key"]): item for item in raw_catalog if isinstance(item, dict) and "key" in item}
+            except (OSError, json.JSONDecodeError, TypeError):
+                catalog = {}
+            self.send_json({"modules": [{"id": module, "name": MODULE_LABELS[module], "description": str(catalog.get(module, {}).get("description", "")), "state": "Unknown", "detail": "Run a live diagnostic.", "accent": MODULE_ACCENTS[module], "dependencies": catalog.get(module, {}).get("dependencies", [])} for module in DIAGNOSTIC_MODULES]})
             return
         if path == "/api/logs":
             logs = []
@@ -525,6 +1012,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if length < 0:
+                raise ValueError("Content-Length must not be negative.")
+            if length > MAX_REQUEST_BODY_BYTES:
+                self.send_json({"status": "error", "message": "Operation request is too large."}, HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+                return
             raw = self.rfile.read(length) if length else b"{}"
             payload = json.loads(raw.decode("utf-8"))
             if not isinstance(payload, dict):
@@ -533,28 +1025,6 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({"status": "error", "message": f"Invalid operation request: {exc}"}, HTTPStatus.BAD_REQUEST)
             return
         route = path.removeprefix(prefix)
-        if route.endswith("/input"):
-            session_id = route.removesuffix("/input")
-            with SESSIONS_LOCK:
-                session = SESSIONS.get(session_id)
-            if session is None or session.master_fd is None:
-                self.send_json({"status": "error", "message": "No interactive operation is waiting for input."}, HTTPStatus.NOT_FOUND)
-                return
-            value = payload.get("input", "")
-            if not isinstance(value, str) or len(value) > 4096:
-                self.send_json({"status": "error", "message": "Interactive input is invalid."}, HTTPStatus.BAD_REQUEST)
-                return
-            try:
-                pending = value.encode("utf-8")
-                while pending:
-                    written = os.write(session.master_fd, pending)
-                    pending = pending[written:]
-            except OSError as exc:
-                self.send_json({"status": "error", "message": f"Could not send input to the operation: {exc}"}, HTTPStatus.BAD_GATEWAY)
-                return
-            session.append("\n[local] Hidden input delivered to the PTY.\n")
-            self.send_json({"status": "success", "message": "Input sent to the local PTY."})
-            return
         operation = route
         if operation not in OPERATIONS:
             self.send_json({"error": "Operation is not in the named allowlist."}, HTTPStatus.NOT_FOUND)
@@ -580,19 +1050,43 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", mimetypes.guess_type(str(candidate))[0] or "application/octet-stream")
         self.send_header("Content-Length", str(len(data)))
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.send_header("Referrer-Policy", "no-referrer")
+        if candidate.name == "index.html":
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Set-Cookie", f"ADC-Session={self.app_server.session_token}; HttpOnly; SameSite=Strict; Path=/")
+            self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
         self.end_headers()
         self.wfile.write(data)
+
+
+def read_session_token(token_file: Path) -> str:
+    fd = os.open(token_file, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid() or info.st_mode & 0o077 or info.st_nlink != 1:
+            raise OSError("Session token file has unsafe ownership or permissions.")
+        token = os.read(fd, 1024).decode("utf-8").strip()
+    finally:
+        os.close(fd)
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,128}", token):
+        raise ValueError("Session token file is empty or malformed.")
+    return token
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Alpine Desktop Center local browser server")
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", choices=("127.0.0.1",), default="127.0.0.1", help="The bridge is always loopback-only.")
     parser.add_argument("--port", type=int, default=43127)
-    parser.add_argument("--token", default="", help="Per-launch token supplied by the local launcher")
+    parser.add_argument("--token-file", type=Path, help="Read the session token from a private file")
     args = parser.parse_args()
     root = args.root.resolve()
-    token = args.token or secrets.token_urlsafe(32)
+    try:
+        server_lock_fd = acquire_server_lock(root)
+        token = read_session_token(args.token_file) if args.token_file else secrets.token_urlsafe(32)
+    except (OSError, UnicodeError, ValueError) as exc:
+        parser.error(f"Could not acquire local server state: {exc}")
     valid, message = validate_backend(root)
     make_status = shutil.which("make", path=command_environment(root)["PATH"]) or "not found"
     print(f"Backend validation: {'PASS' if valid else 'FAIL'} — {message}", flush=True)
@@ -608,6 +1102,7 @@ def main() -> int:
         return 0
     finally:
         server.server_close()
+        os.close(server_lock_fd)
     return 0
 
 

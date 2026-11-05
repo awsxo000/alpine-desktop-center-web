@@ -1,40 +1,38 @@
-# Alpine Desktop Center Web — delivery outcomes
+# Alpine Desktop Center Web — status da candidata alpha.24
 
-## Browser-first installer flow
+A alpha.24-web é uma candidata de teste isolado, não uma versão estável. O projeto é um configurador pós-instalação: requer Alpine já instalado e ambiente gráfico preparado. Esta candidata embute o backend `v1.43` do repositório separado `awsxo000/alpine`.
 
-- [x] The primary experience is a browser application, not a Qt window.
-- [x] The flow exposes clear steps for Welcome, Backend validation, System checks, Modules, Configuration, Execution and Summary.
-- [x] The interface communicates the current step, progress, blockers and the next safe action.
+## Implementado nesta candidata
 
-## Safe local backend bridge
+- [x] Bridge fechado em operações nomeadas; removida a rota de entrada PTY livre do navegador.
+- [x] Apply pede confirmação; credenciais de `doas` são digitadas em terminal do sistema, nunca no browser. Operações que podem elevar privilégio são classificadas para esse terminal.
+- [x] Token gerado por lançamento, arquivo privado criado atomicamente, cookie de sessão `HttpOnly; SameSite=Strict`; token não está em URL, argv nem JavaScript.
+- [x] Bridge é loopback-only, valida IP remoto e Host/Origin estritos, limita request bodies e bloqueia instância duplicada do servidor/launcher.
+- [x] Manifesto SHA-256 rejeita conteúdo vazio, linhas malformadas, caminhos inseguros, duplicatas, symlinks, ausência, extras ou conteúdo alterado; o backend empacotado perde permissões de escrita por padrão.
+- [x] Health/schema, catálogo, sessão e JSON de diagnóstico têm validação runtime. Operações param se o release metadata não declara schema 1.
+- [x] Apply de módulo exige diagnóstico recente (até 10 min) do módulo, lista de dependências igual ao catálogo e estado `complete` recente em cada dependência, tanto na UI quanto no servidor. Diagnóstico desconhecido não vira sucesso; warnings aparecem como atenção.
+- [x] Migração Stable exige, na UI e no bridge, relatório oficial coerente `update_available` obtido há no máximo 10 min; novo check/mutação invalida o relatório anterior.
+- [x] Prévia `make simular` bloqueia se faltar pré-requisito/estado preparado e não instala dependências automaticamente. Continua best-effort, não plano completo.
+- [x] Timeout de PTY rastreia e tenta matar descendentes, impõe hard stop e bloqueia novos comandos se detectar PID residual. Output e sessões são limitados; logs antigos são podados.
+- [x] Log de validação do backend é criado com permissão privada; arquivos temporários do terminal são limpos em saídas normais, falhas e timeout.
+- [x] Empacotador exige checkout frontend limpo, lockfile congelado, versão consistente, checkout Git verificável e SHA imutável do backend v1.43; valida pacote antes do tarball e rejeita override de SHA.
+- [x] Workflow CI adicionado para typecheck, testes, build, sintaxe shell, Desktop Entry e empacotamento/verificação do tarball da release sem publicar.
+- [x] GitHub Actions do workflow pinadas em SHAs completos; YAML parseado localmente.
 
-- [x] The embedded Ansible backend remains the source of truth and cannot be replaced by an external backend.
-- [x] SHA-256 validation is required before every executable action and repeated immediately before launch.
-- [x] If integrity fails, execution controls are blocked while validation and local history remain available.
-- [x] Only named operations are exposed; the web interface never accepts arbitrary shell text.
-- [x] The loopback API requires a random per-launch session token, accepts only the local Host and same-origin requests, and rejects missing or invalid Content-Type/Origin/Host headers.
-- [x] Unknown `/api/*` routes return JSON 404 responses instead of the frontend fallback.
-- [x] The server prevents concurrent Apply, module Apply, migration and refresh operations, independently of the React state.
-- [x] A timed-out backend command terminates its complete process group rather than only the direct child.
+## Bloqueios antes de uso amplo ou versão estável
 
-## Transparent execution
+- [ ] Corrigir no backend `awsxo000/alpine` o modelo de privilégio: `scripts/executar-com-doas-temporario.sh` instala `permit nopass <usuário>` global em `/etc/doas.d` e só o remove no encerramento normal/por trap; `SIGKILL`, falha elétrica ou crash podem deixar a regra ampla instalada. Não anunciar como estável nem recomendar em máquina de produção enquanto isso não for redesenhado/testado.
+- [ ] Tornar a prévia abrangente: o Ansible check mode pode ignorar tarefas sem suporte e não demonstra todos os efeitos; revisar playbook e tarefas externas antes de tratar a saída como plano seguro.
+- [ ] Testar a candidata numa VM Alpine descartável com snapshot: diagnóstico, prévia, depois um módulo reversível; incluir rede indisponível, lock do apk, fechamento do terminal, crash e recuperação.
+- [ ] Validar Konsole `--nofork`, xterm e xfce4-terminal nas sessões e ambientes oficialmente suportados; implementar cancelamento explícito e testar todos os caminhos de encerramento.
+- [ ] Integrar logs de operações anteriores no painel e persistir histórico estruturado sem segredos; os cartões de resumo atuais contam apenas a sessão.
+- [ ] Confirmar uma execução verde do workflow no GitHub após subir esta candidata.
+- [ ] Adicionar testes automatizados de frontend para parser Stable, expiração de diagnóstico, recuperação Validate e gates de Apply/migração.
+- [ ] Escolher e adicionar licença open source com decisão do mantenedor antes de anunciar o projeto à comunidade como open source.
+- [ ] Avaliar assinatura verificável para artefatos. O manifesto detecta drift local, mas não autentica a origem da release.
+- [ ] Revisar acessibilidade, foco/teclado, leitor de tela, Firefox/Chromium e operação KDE/OpenRC nas plataformas suportadas.
+- [ ] Definir matriz oficial de hardware, desktop, kernel, repositórios e versões Alpine; documentar backup e recuperação.
 
-- [x] Global and module actions execute real backend targets, expose the named operation and captured terminal-style output in the browser.
-- [ ] Waiting states explain doas authentication, network, repositories and apk locks.
-- [ ] The doas password is never collected or stored by the web application.
-- [x] The launcher waits for `/api/health` before opening the dedicated browser window and passes the local session token to the frontend.
+## Critério de saída de alpha
 
-## Modules, Stable Nix and audit history
-
-- [x] Current modules, structured diagnostics and module-specific execution remain available.
-- [x] Nix controls expose only official Stable channels; Unstable is not shown.
-- [ ] The central audit view lists live activity, global actions, module runs and diagnostic history.
-- [ ] Logs and runtime state remain inside the release directory and are namespaced by frontend version.
-- [x] Health, backend status, module catalog and operation history are served from local endpoints and are not represented as fixed success data in the UI.
-
-## Browser delivery
-
-- [x] The web project has a healthy Preview listener and a synchronized route manifest.
-- [x] The first vertical slice is typechecked, buildable and checkpointed in the managed project repository.
-- [x] The local release launcher opens the browser application while preserving independent terminal execution of the backend.
-- [x] The local bridge executes the complete named operation allowlist against the embedded backend with captured output and release-local operation logs.
+Não chamar de estável até que o mecanismo `doas`, a prévia, o teste real em Alpine, cancelamento/recuperação, CI, licença, assinatura/entrega e matriz de plataforma estejam concluídos e revisados.
