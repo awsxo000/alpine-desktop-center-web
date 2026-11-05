@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased — Portuguese support and clearer Stable status
+- Adds a visible top-bar selector between **Português brasileiro** and **English**, with the preference persisted locally in the browser.
+- Translates the application chrome and Welcome screen according to the selected language.
+- Welcome now shows the last Stable-channel verification date/time and the latest Stable version reported by the official source, with a direct **Open log** action for the saved check.
+
 ## 0.1.0-alpha.31-web — System Check, histórico e canal Stable
 
 - **Welcome:** os sinais de integridade do backend e canal Stable agora têm atualização real. O bridge revalida o manifesto e catálogo, e o último resultado Stable é reconstruído do log salvo ao reabrir o app; uma instalação limpa continua em **Not checked**. Respostas iniciais atrasadas não sobrescrevem um check concluído depois.

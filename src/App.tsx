@@ -37,15 +37,12 @@ import {
   XCircle,
 } from 'lucide-react'
 import { getBridgeHealth, getModuleCatalog, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, initialLogs, startNamedOperation } from './api'
+import { copy, formatDate, initialLocale, type Locale } from './i18n'
 import type { BridgeHealth, LogEntry, Module, ModuleDiagnostic, ModuleState, NamedOperation, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
 
-const steps: Array<{ id: StepId; number: string; label: string; note: string }> = [
-  { id: 'welcome', number: '01', label: 'Welcome', note: 'Release overview' },
-  { id: 'validate', number: '02', label: 'Backend', note: 'Integrity lock' },
-  { id: 'checks', number: '03', label: 'System check', note: 'Read-only signals' },
-  { id: 'modules', number: '04', label: 'Modules', note: 'Apply modules' },
-  { id: 'config', number: '05', label: 'Configuration', note: 'Stable choices' },
-  { id: 'summary', number: '06', label: 'Summary', note: 'Review outcome' },
+const steps: Array<{ id: StepId; number: string }> = [
+  { id: 'welcome', number: '01' }, { id: 'validate', number: '02' }, { id: 'checks', number: '03' },
+  { id: 'modules', number: '04' }, { id: 'config', number: '05' }, { id: 'summary', number: '06' },
 ]
 
 const fallbackModules: Module[] = [
@@ -164,12 +161,15 @@ function App() {
   const [logsOpen, setLogsOpen] = useState(false)
   const [logs, setLogs] = useState<LogEntry[]>(initialLogs)
   const [darkMode, setDarkMode] = useState(false)
+  const [locale, setLocale] = useState<Locale>(() => initialLocale())
   const [bridgeConnected, setBridgeConnected] = useState(false)
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth | null>(null)
   const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 
   const selected = useMemo(() => moduleCatalog.find((module) => module.id === selectedModule) ?? moduleCatalog[0] ?? fallbackModules[0], [moduleCatalog, selectedModule])
   const currentSection = steps.find((step) => step.id === activeStep) ?? steps[0]
+  const ui = copy[locale]
+  const currentSectionText = ui.nav[currentSection.id]
   const canExecute = bridgeConnected && bridgeHealth?.backend === 'validated' && bridgeHealth?.diagnostic_schema === '1'
   const stableCheckAge = stableChannelCheck ? Date.now() - stableChannelCheck.checkedAt : Number.POSITIVE_INFINITY
   const canMigrateStable = Boolean(!stableMigrationStale && stableChannelCheck?.status === 'success' && stableChannelCheck.report?.status === 'update_available' && stableCheckAge >= 0 && stableCheckAge <= 10 * 60_000)
@@ -239,6 +239,11 @@ function App() {
     const timer = window.setInterval(() => setFreshnessTick((tick) => tick + 1), 30_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem('alpine-desktop-center-locale', locale)
+    document.documentElement.lang = locale
+  }, [locale])
 
   const addLog = (level: LogEntry['level'], text: string) => {
     const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -466,15 +471,15 @@ function App() {
 
   const systemDiagnostics = Object.values(diagnostics)
   const systemStateLabel = !bridgeConnected ? 'BRIDGE OFFLINE' : canExecute ? 'SYSTEM VALIDATED' : 'INTEGRITY BLOCKED'
-  const stableHomeLabel = activeOperation === 'check-stable-channel' && operation === 'running' ? 'Checking…'
-    : stableChannelCheck?.status === 'error' ? 'Check failed'
-      : stableChannelCheck?.status === 'blocked' ? 'Blocked'
-        : stableChannelCheck?.report?.status === 'current' ? 'Up to date'
-          : stableChannelCheck?.report?.status === 'update_available' ? 'Update available'
-            : stableChannelCheck ? 'Status unknown' : 'Not checked'
-  const stableHomeDetail = stableChannelCheck?.logPath
-    ? `Last check ${new Date(stableChannelCheck.checkedAt).toLocaleString()} · ${stableChannelCheck.logPath}`
-    : stableChannelCheck ? stableChannelCheck.output : 'No saved Stable channel check yet.'
+  const stableHomeLabel = activeOperation === 'check-stable-channel' && operation === 'running' ? (locale === 'pt-BR' ? 'Verificando…' : 'Checking…')
+    : stableChannelCheck?.status === 'error' ? ui.welcome.stableCheckFailed
+      : stableChannelCheck?.status === 'blocked' ? ui.welcome.stableBlocked
+        : stableChannelCheck?.report?.status === 'current' ? ui.welcome.stableUpToDate
+          : stableChannelCheck?.report?.status === 'update_available' ? ui.welcome.stableUpdateAvailable
+            : stableChannelCheck ? ui.welcome.stableUnknown : ui.welcome.stableNotChecked
+  const stableHomeDetail = stableChannelCheck
+    ? `${ui.welcome.lastVerification}: ${formatDate(stableChannelCheck.checkedAt, locale)} · ${ui.welcome.latestStable}: ${stableChannelCheck.report?.latest_version ?? '—'}`
+    : ui.welcome.noStableCheck
   const stableLogEntry = stableChannelCheck?.logId ? operationHistory.find((entry) => entry.id === stableChannelCheck.logId) : undefined
 
   return (
@@ -484,38 +489,39 @@ function App() {
           <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
           <div><p className="eyebrow">ALPINE LINUX</p><h1>Desktop Center</h1></div>
         </div>
-        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>Independent operations</strong></div>
-        <nav className="stepper" aria-label="Workspace sections">
-          <p className="nav-caption">WORKSPACE SECTIONS</p>
+        <div className="release-chip"><span className="pulse-dot" /> {ui.chrome.localWorkspace} <strong>{ui.chrome.independentOperations}</strong></div>
+        <nav className="stepper" aria-label={ui.chrome.workspaceSections}>
+          <p className="nav-caption">{ui.chrome.workspaceSections}</p>
           {steps.map((step) => {
             const isActive = step.id === activeStep
             return <button className={`step-item ${isActive ? 'active' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} aria-current={isActive ? 'page' : undefined}>
-              <span className="step-number">{step.number}</span><span className="step-copy"><strong>{step.label}</strong><small>{step.note}</small></span>{isActive && <ChevronRight size={15} className="step-arrow" />}
+              <span className="step-number">{step.number}</span><span className="step-copy"><strong>{ui.nav[step.id].label}</strong><small>{ui.nav[step.id].note}</small></span>{isActive && <ChevronRight size={15} className="step-arrow" />}
             </button>
           })}
         </nav>
         <div className="sidebar-foot">
-          <div className="mini-status"><ShieldCheck size={16} /><span><strong>Integrity lock</strong><small>{canExecute ? 'Backend and schema verified' : 'Not verified'}</small></span><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /></div>
-          <div className="mini-status"><ServerCog size={16} /><span><strong>Backend {bridgeHealth?.backend_version ?? 'unknown'}</strong><small>Release source</small></span></div>
+          <div className="mini-status"><ShieldCheck size={16} /><span><strong>{ui.chrome.integrityLock}</strong><small>{canExecute ? ui.chrome.backendVerified : ui.chrome.notVerified}</small></span><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /></div>
+          <div className="mini-status"><ServerCog size={16} /><span><strong>{ui.chrome.backend} {bridgeHealth?.backend_version ?? ui.chrome.unknown}</strong><small>{ui.chrome.releaseSource}</small></span></div>
         </div>
       </aside>
 
       <main className="main-content">
         <header className="topbar">
-          <div className="crumb"><span>ALPINE WORKSPACE</span><ChevronRight size={14} /><strong>{currentSection.label}</strong></div>
+          <div className="crumb"><span>{ui.chrome.alpineWorkspace}</span><ChevronRight size={14} /><strong>{currentSectionText.label}</strong></div>
           <div className="top-actions">
-            <span className="connection-pill"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {bridgeConnected ? (canExecute ? 'Local bridge validated' : 'Bridge reachable · integrity/schema blocked') : 'Local bridge offline'}</span>
-            <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label="Toggle theme" title="Toggle theme">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
+            <span className="connection-pill"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {bridgeConnected ? (canExecute ? ui.chrome.localBridgeValidated : ui.chrome.bridgeBlocked) : ui.chrome.bridgeOffline}</span>
+            <label className="language-picker"><span className="sr-only">{ui.language}</span><select value={locale} onChange={(event) => setLocale(event.target.value as Locale)} aria-label={ui.language}><option value="pt-BR">{ui.languagePt}</option><option value="en-US">{ui.languageEn}</option></select></label>
+            <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label={ui.chrome.toggleTheme} title={ui.chrome.toggleTheme}>{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
           </div>
         </header>
 
         <section className="page-heading">
           <div>
-            <p className="eyebrow accent-text">WORKSPACE SECTION {currentSection.number}</p>
-            <h2>{activeStep === 'welcome' ? 'See the system. Decide the change.' : currentSection.label}</h2>
-            <p className="lede">One clear workspace for inspection, decisions and safe changes. Nothing is hidden behind a generic success state.</p>
+            <p className="eyebrow accent-text">{ui.chrome.workspaceSection} {currentSection.number}</p>
+            <h2>{activeStep === 'welcome' ? ui.welcome.heading : currentSectionText.label}</h2>
+            <p className="lede">{ui.welcome.lede}</p>
           </div>
-          <div className="heading-meta"><span className="meta-label">FRONTEND</span><strong>{bridgeHealth?.frontend_version ?? 'unknown'}</strong><span className="meta-divider" /><span className="meta-label">BACKEND</span><strong>{bridgeHealth?.backend_version ?? 'unknown'}</strong></div>
+          <div className="heading-meta"><span className="meta-label">{ui.chrome.frontend}</span><strong>{bridgeHealth?.frontend_version ?? ui.chrome.unknown}</strong><span className="meta-divider" /><span className="meta-label">{ui.chrome.backend}</span><strong>{bridgeHealth?.backend_version ?? ui.chrome.unknown}</strong></div>
         </section>
 
         <div className="content-grid">
@@ -524,18 +530,18 @@ function App() {
               <div className="hero-card">
                 <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
                 <div className="hero-content">
-                  <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> SYSTEM WORKSPACE <span className="line" /></div>
-                  <h3>Make the next step<br /><em>obvious and accountable.</em></h3>
-                  <p>Inspect the current system, choose a bounded action, and keep its evidence with you from start to finish. These sections are independent; there is no required path to follow.</p>
-                  <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>Inspect the release <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>Browse modules</button></div>
+                  <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> {ui.welcome.systemWorkspace} <span className="line" /></div>
+                  <h3>{ui.welcome.heroTitle}<br /><em>{ui.welcome.heroTitleAccent}</em></h3>
+                  <p>{ui.welcome.heroDescription}</p>
+                  <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>{ui.welcome.inspectRelease} <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>{ui.welcome.browseModules}</button></div>
                 </div>
                 <div className="hero-visual"><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="visual-label"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {systemStateLabel}</div></div>
               </div>
-              <div className="section-row"><div><p className="section-kicker">CURRENT SNAPSHOT</p><h3>System signals</h3></div><button className="text-button" onClick={() => setActiveStep('checks')}>Open system check <ArrowRight size={15} /></button></div>
+              <div className="section-row"><div><p className="section-kicker">{ui.welcome.currentSnapshot}</p><h3>{ui.welcome.systemSignals}</h3></div><button className="text-button" onClick={() => setActiveStep('checks')}>{ui.welcome.openSystemCheck} <ArrowRight size={15} /></button></div>
               <div className="health-grid">
-                <HealthCard icon={<FolderLock size={18} />} label="Backend integrity" value={canExecute ? 'Validated' : bridgeConnected ? 'Blocked' : backendCheckedAt ? 'Unavailable' : 'Unknown'} detail={backendCheckedAt ? `Checked ${new Date(backendCheckedAt).toLocaleString()} · ${bridgeMessage}` : bridgeMessage} tone={canExecute ? 'green' : 'blue'} action={<button className="health-card-action" onClick={() => void refreshBackendStatus()} disabled={backendRefreshing || operation === 'running'} aria-label="Refresh backend integrity" title="Recheck backend files and SHA-256 integrity">{backendRefreshing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}</button>} />
-                <HealthCard icon={<HardDrive size={18} />} label="Release state" value={bridgeHealth?.frontend_version ?? 'Unknown'} detail={`Backend ${bridgeHealth?.backend_version ?? 'unknown'} · saved logs stay in this release`} tone="blue" />
-                <HealthCard icon={<Network size={18} />} label="Stable channel" value={stableHomeLabel} detail={stableHomeDetail} tone="violet" action={<div className="health-card-actions"><button className="health-card-action" onClick={() => void runOperation('check-stable-channel', 'Check official Stable Nix channel', {}, 'welcome')} disabled={!canExecute || operation === 'running'} aria-label="Check official Stable channel" title="Check official Stable channel; save result to the release log">{activeOperation === 'check-stable-channel' && operation === 'running' ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}</button>{stableLogEntry && <button className="health-card-log-link" onClick={() => void openSavedLog(stableLogEntry)}><FileClock size={13} /> Log</button>}</div>} />
+                <HealthCard icon={<FolderLock size={18} />} label={ui.welcome.backendIntegrity} value={canExecute ? ui.welcome.validated : bridgeConnected ? ui.welcome.blocked : backendCheckedAt ? ui.welcome.unavailable : ui.chrome.unknown} detail={backendCheckedAt ? `${ui.welcome.lastVerification}: ${formatDate(backendCheckedAt, locale)} · ${bridgeMessage}` : bridgeMessage} tone={canExecute ? 'green' : 'blue'} action={<button className="health-card-action" onClick={() => void refreshBackendStatus()} disabled={backendRefreshing || operation === 'running'} aria-label={ui.welcome.refreshBackend} title={ui.welcome.refreshBackend}>{backendRefreshing ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}</button>} />
+                <HealthCard icon={<HardDrive size={18} />} label={ui.welcome.releaseState} value={bridgeHealth?.frontend_version ?? ui.chrome.unknown} detail={`${ui.chrome.backend} ${bridgeHealth?.backend_version ?? ui.chrome.unknown} · ${ui.welcome.savedLogs}`} tone="blue" />
+                <HealthCard icon={<Network size={18} />} label={ui.welcome.stableChannel} value={stableHomeLabel} detail={stableHomeDetail} tone="violet" action={<div className="health-card-actions"><button className="health-card-action" onClick={() => void runOperation('check-stable-channel', ui.welcome.checkStable, {}, 'welcome')} disabled={!canExecute || operation === 'running'} aria-label={ui.welcome.checkStable} title={ui.welcome.checkStable}>{activeOperation === 'check-stable-channel' && operation === 'running' ? <LoaderCircle className="spin" size={15} /> : <RefreshCw size={15} />}</button>{stableLogEntry && <button className="health-card-log-link" onClick={() => void openSavedLog(stableLogEntry)}><FileClock size={13} /> {ui.welcome.openLog}</button>}</div>} />
               </div>
             </>}
 

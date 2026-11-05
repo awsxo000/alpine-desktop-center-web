@@ -22,6 +22,8 @@ While a terminal operation is active, its command output is streamed into **Show
 
 The app shows each operation's saved log path. Full runs, all-module checks and the official Stable channel check go to `operations/general/<session>.log`; a module-only check or apply goes to `operations/modules/<module>/<session>.log`. System Check and Summary can read the last 50 saved operation summaries and open an individual log by generated operation ID; the bridge never accepts an arbitrary file path from the browser. A fresh release starts with no operation logs, so the Stable status is initially **Not checked**. After a check, Welcome restores the last Stable result from its general-operation log. The `.log` files are private to the local user and kept under the release-version state directory. See the Portuguese [System Check and log guide](docs/verificacao-e-logs.md) for the exact path structure and behavior.
 
+The interface includes a visible language selector in the top bar for **Português brasileiro** and **English**. The choice is saved locally in the browser and is restored on the next launch. The Welcome screen presents the date/time of the last Stable-channel verification, the latest Stable version reported by the official source, the current status (up to date or update available), and an **Open log** action when a saved check log exists.
+
 The current system-terminal integration supports Konsole, xterm and XFCE Terminal. On a
 desktop without one of these, operations requiring that terminal are blocked with an error;
 read-only diagnostics can still use the browser window.

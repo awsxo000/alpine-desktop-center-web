@@ -151,3 +151,9 @@ button:focus-visible { outline: 2px solid #77d9ff; outline-offset: 3px; }
 .confirm-acknowledgement { display: flex; align-items: flex-start; gap: 10px; margin: 18px 0; color: var(--text); font-size: 12px; line-height: 1.5; }
 .confirm-acknowledgement input { width: 16px; height: 16px; margin: 1px 0 0; accent-color: var(--cyan); flex: 0 0 auto; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+.language-picker { display: inline-flex; align-items: center; }
+.language-picker select { min-height: 30px; padding: 0 24px 0 9px; color: var(--muted); border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: 9px; font-weight: 700; cursor: pointer; }
+.language-picker select:hover, .language-picker select:focus-visible { color: var(--cyan); border-color: rgba(114, 217, 255, .35); outline: 2px solid rgba(114, 217, 255, .2); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 760px) { .language-picker select { min-height: 28px; font-size: 8px; } }
