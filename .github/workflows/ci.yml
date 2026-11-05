@@ -61,7 +61,7 @@ jobs:
 
       - name: Package and verify pinned release artifact
         env:
-          BACKEND_COMMIT: 881558709d94539acc81bd06ef556ba3562dc07d
+          BACKEND_COMMIT: 52712cb7872792c04495d8b63d1a917a35861e31
           BACKEND_VERSION: v1.44-dev
           BUILD_ROOT: ${{ runner.temp }}/portable-build
           BACKEND_SOURCE: ${{ runner.temp }}/alpine-backend

@@ -1,25 +1,28 @@
-# Alpine Desktop Center Web — alpha.27
+# Alpine Desktop Center Web — alpha.28
 
-A alpha.27 é uma candidata de teste para Alpine 3.24.3/KDE, não uma versão estável. Ela fixa o backend `v1.44-dev` no commit `881558709d94539acc81bd06ef556ba3562dc07d`. A alpha.24 foi retirada; não republicar sua tag nem seu artefato.
+A alpha.28 é uma candidata de teste para Alpine 3.24.3/KDE, não uma versão estável. Ela fixa o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
 
-## Implementado
+## Correção recém-incluída
 
-- [x] Corrigir o erro de Apply observado na VM: o wrapper autorizado já chama `ansible-playbook`, então os quatro alvos do Make agora passam diretamente `playbooks/site.yml`; a regressão valida os quatro comandos de `make -n`.
-- [x] Manter a autorização `doas` interativa em terminal do sistema; nenhum `nopass` amplo ou senha no browser.
-- [x] Exibir, para cada módulo selecionado, o status e a mensagem de cada componente diagnosticado. Um componente ausente aparece como erro/aviso explícito; Apply pode reparar lacunas quando pré-requisitos e dependências permitem.
-- [x] Expor **Apply all modules** em Modules e Configuration, preservando a confirmação explícita.
-- [x] Gravar logs privados em `.alpine-state/web/<frontend-version>/operations/general/` para operações gerais e `modules/<module>/` para check/apply individual; mostrar o caminho na interface e listar logs aninhados pela API.
-- [x] Corrigir contraste e hierarquia do modo claro com CSS carregado depois do tema compacto; elevar texto auxiliar para 11–12 px e diferenciar botão bloqueado; cursor normal durante operação, com atividade indicada pelo spinner/cartão.
-- [x] Validação local de frontend: typecheck, build e 36 testes do bridge passaram antes do commit desta candidata.
+- [x] Após falha de `nix-channel --update`, verificar se o conteúdo do canal existe em `~/.nix-defexpr/channels/<nome>`; se o cache estiver ausente, repetir o download mesmo que o URL já esteja registrado.
+- [x] Adicionar regressão backend para esse caminho de recuperação.
+- [x] Manter autenticação `doas` no terminal do sistema, sem senha no browser nem regra ampla `nopass`.
+- [x] A alpha.27 corrigiu o argumento duplicado do wrapper, expõe checks por componente, Apply all, logs por módulo/operação e contraste melhor no tema claro.
 
-## Pendências de integração
+## Validação
 
-- [ ] Confirmar CI verde do frontend para o commit final e validar o tarball alpha.27 anexado à pre-release.
-- [ ] Testar no KDE do Alpine 3.24.3, em VM descartável com snapshot, a autenticação no terminal do sistema e aplicar um módulo (por exemplo Audio); confirmar que o erro `the playbook: ansible-playbook could not be found` não retorna.
-- [ ] Rodar Check status em Audio e conferir no painel os checks PipeWire/WirePlumber e suas mensagens quando algum componente estiver ausente.
-- [ ] Aplicar todos os módulos somente em snapshot e verificar o log geral; aplicar isoladamente um módulo e verificar `operations/modules/<id>/` e o caminho exibido.
-- [ ] Conferir visualmente tipografia/contraste no modo claro e o estado do botão bloqueado, além de Konsole, xterm e XFCE Terminal.
-- [ ] Verificar após sucesso e interrupção que nenhuma regra ampla `doas nopass`, processo órfão ou arquivo temporário permanece; conferir `su` e propriedade dos logs.
-- [ ] Revisar cancelamento/recuperação e o dry-run Ansible, que continua best-effort e não prova ausência de efeitos para tarefas sem suporte a check mode.
+- [x] Regressão backend, shell syntax, ordering/condition da task e `git diff --check` passaram localmente.
+- [x] Typecheck, build e 36 testes do frontend passaram localmente em alpha.28.
+- [x] CI do backend `52712cb` passou.
+- [ ] Aguardar CI do frontend alpha.28.
+- [ ] Gerar duas vezes o tarball alpha.28, comparar SHA e conferir manifest/versões.
 
-**Limite desta candidata:** a senha continua sendo pedida pelo `doas` no terminal externo. Não trocar por execução sem senha. Um fluxo totalmente dentro da UI exigiria desenho e revisão próprios de um helper privilegiado fixo com ação Polkit estreita; instalar apenas o agente KDE não converte `doas` em diálogo gráfico. A publicação alpha não significa que a integração de VM foi aprovada.
+## Teste em VM
+
+- [ ] Não repetir Apply total na alpha.27: a execução anterior terminou parcialmente na role Steam. A configuração prévia já pode ter alterações.
+- [ ] Na alpha.28, em snapshot descartável, primeiro executar **Check status** e validar o canal Nix; depois observar se a role repete `nix-channel --update` se o conteúdo estiver ausente.
+- [ ] Repetir Apply módulo/geral só depois de revisar os checks e a saída do canal. Confirmar que a busca `nixpkgs.steam` funciona e que não retorna `attribute 'nixpkgs' not found`.
+- [ ] Retestar áudio e estado PipeWire/WirePlumber, log individual em `operations/modules/<id>/`, log geral em `operations/general/`, terminais Konsole/xterm/XFCE e modo escuro quando o usuário puder.
+- [ ] Após sucesso/interrupção, confirmar ausência dos dois drop-ins antigos e de processos órfãos.
+
+**Segurança:** ainda é alpha. Usar exclusivamente VM descartável com snapshot. A senha `doas` continua no terminal externo. Não desabilitar verificação TLS nem contornar erro de certificado.

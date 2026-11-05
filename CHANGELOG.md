@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.28-web — candidata para retry de canal Nix
+
+- Corrige a falha reproduzida na VM depois de uma atualização Nix interrompida por TLS/data do sistema: o URL do canal podia ficar cadastrado mesmo sem o conteúdo ter sido baixado; a próxima aplicação agora consulta o cache do usuário e repete `nix-channel --update` antes de procurar pacotes como `nixpkgs.steam`.
+- Acrescenta teste de regressão garantindo o retry quando o cache local do canal não existe.
+- Fixa o backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`.
+
+Alpha destinada a novo teste numa VM descartável com snapshot. A alpha.27 falhou na role Steam após o primeiro update do canal Nix ter falhado com certificado TLS ainda não válido. O relógio da VM foi corrigido pelo usuário; ainda falta validar o retry no Alpine real. Não repetir Apply total na alpha.27 se o sistema manteve alterações parciais; usar Check status e a alpha.28 após CI verde.
+
 ## 0.1.0-alpha.27-web — candidata para teste de VM
 
 - Corrige o erro de Apply observado na VM: o Makefile não passa mais `ansible-playbook` como argumento extra ao wrapper autorizado. O teste de regressão agora verifica a linha de comando de `make -n` nos quatro alvos privilegiados.
