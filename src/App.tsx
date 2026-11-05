@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import {
   Activity,
   ArrowRight,
+  Bluetooth,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -11,20 +12,27 @@ import {
   ClipboardCheck,
   FileClock,
   FolderLock,
+  Gamepad2,
   HardDrive,
   Layers3,
   LoaderCircle,
   LockKeyhole,
   Moon,
   Network,
+  Package,
   Play,
   RefreshCw,
   ServerCog,
   Settings2,
   ShieldCheck,
+  Snowflake,
+  Sparkles,
   Sun,
   TerminalSquare,
+  Type,
+  Volume2,
   Wrench,
+  Zap,
   XCircle,
 } from 'lucide-react'
 import { getBridgeHealth, getModuleCatalog, getOperationUpdate, initialLogs, startNamedOperation } from './api'
@@ -76,6 +84,20 @@ type PendingOperation = {
 const labelsByModule: Record<string, string> = {
   base: 'Base', audio: 'Audio', rede: 'Network', energia: 'Energy', fontes: 'Fonts',
   kde: 'KDE Plasma', bluetooth: 'Bluetooth', nix: 'Nix', nix_opengl: 'Nix OpenGL', steam: 'Steam', swap: 'Swap',
+}
+
+const moduleIcons: Record<Module['id'], ReactNode> = {
+  base: <Package size={17} strokeWidth={1.8} />,
+  audio: <Volume2 size={17} strokeWidth={1.8} />,
+  energia: <Zap size={17} strokeWidth={1.8} />,
+  fontes: <Type size={17} strokeWidth={1.8} />,
+  kde: <Settings2 size={17} strokeWidth={1.8} />,
+  bluetooth: <Bluetooth size={17} strokeWidth={1.8} />,
+  rede: <Network size={17} strokeWidth={1.8} />,
+  nix: <Snowflake size={17} strokeWidth={1.8} />,
+  nix_opengl: <Sparkles size={17} strokeWidth={1.8} />,
+  steam: <Gamepad2 size={17} strokeWidth={1.8} />,
+  swap: <HardDrive size={17} strokeWidth={1.8} />,
 }
 
 function isDiagnosticFresh(diagnostic?: ModuleDiagnostic): boolean {
@@ -433,8 +455,8 @@ function App() {
               <div className="operation-line"><div className={`operation-icon ${operation}`}><OperationIcon state={operation} size={20} /></div><div><strong>{operation === 'idle' ? 'No operation running' : operation === 'running' ? 'Operation in progress' : operation === 'blocked' ? 'Operation blocked' : operation === 'error' ? 'Operation failed' : 'Operation complete'}</strong><p>{bridgeMessage}</p></div></div>
               <div className="guard-list"><Guard icon={<LockKeyhole size={14} />} label="Named commands only" /><Guard icon={<ShieldCheck size={14} />} label="Integrity checked before commands" /><Guard icon={<TerminalSquare size={14} />} label="Credentials stay in system terminal" /></div>
             </div>
-            <div className="audit-card"><div className="inspector-heading"><div><p className="section-kicker">SESSION AUDIT</p><h3>Activity stream</h3></div><button className="icon-button subtle" title="Refresh current operation" aria-label="Refresh current operation" onClick={() => void refreshActivity()} disabled={!operationId}><RefreshCw size={15} /></button></div><div className="stream-list">{logs.slice(-5).reverse().map((log, index) => <div className="stream-item" key={`${log.time}-${index}`}><span className={`stream-dot ${log.level}`} /><div><div className="stream-meta"><span>{log.time}</span><span className={`log-level ${log.level}`}>{log.level}</span></div><p>{log.text}</p></div></div>)}</div><button className="audit-link" onClick={() => setLogsOpen(true)}>Show logs <FileClock size={15} /></button></div>
-            <div className="help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Operations show their named command, state and captured output. Privileged authentication opens in a system terminal.</p></div></div>
+            <div className="audit-card"><div className="inspector-heading"><div><p className="section-kicker">SESSION AUDIT</p><h3>Activity stream</h3></div><button className="icon-button subtle" title="Refresh current operation" aria-label="Refresh current operation" onClick={() => void refreshActivity()} disabled={!operationId}><RefreshCw size={15} /></button></div><div className="stream-list" aria-label="Recent session events">{logs.slice(-100).reverse().map((log, index) => <div className="stream-item" key={`${log.time}-${index}`}><span className={`stream-dot ${log.level}`} /><div><div className="stream-meta"><span>{log.time}</span><span className={`log-level ${log.level}`}>{log.level}</span></div><p>{log.text}</p></div></div>)}</div><button className="audit-link" onClick={() => setLogsOpen(true)}>Show logs <FileClock size={15} /></button></div>
+            {activeStep !== 'modules' && <div className="help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Operations show their named command, state and captured output. Privileged authentication opens in a system terminal.</p></div></div>}
           </aside>
         </div>
         {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} logs={logs} persistentLogPath={activeLogPath} onClose={() => setLogsOpen(false)} />}
@@ -488,11 +510,28 @@ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, se
   return <div className="panel-card modules-panel">
     <PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose a module operation." detail="Check the installed components first. Missing items are listed below; Apply module can restore them after dependencies are complete." />
     <div className="modules-workspace">
-      <nav className="module-list" aria-label="Modules">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'} aria-pressed={selectedModule === module.id}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</nav>
+      <nav className="module-list" aria-label="Modules">
+        {modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'} aria-pressed={selectedModule === module.id} aria-label={`${module.name}, status ${module.state}`} title={`${module.name} · ${module.state}`}>
+          <span className={`module-avatar ${module.accent}`} aria-hidden="true">{moduleIcons[module.id]}</span>
+          <span className="module-copy"><strong>{module.name}</strong></span>
+          <span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`} aria-hidden="true"><span className="status-led" /></span>
+          <ChevronRight size={16} aria-hidden="true" />
+        </button>)}
+      </nav>
       <div className="module-detail-pane">
       {operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module-block">
       <div className="selected-module">
-        <div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}</p><p className="muted-note">{checkSummary}</p>{dependencies.length > 0 && <p className="module-dependencies">Dependencies: {dependencies.join(', ')}.</p>}{!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}</div>
+        <div className="selected-module-copy">
+          <div className="selected-module-heading">
+            <span className={`module-avatar selected-module-icon ${selected.accent}`} aria-hidden="true">{moduleIcons[selected.id]}</span>
+            <div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4></div>
+            <span className={`module-detail-state ${selected.state.toLowerCase().replace(' ', '-')}`}>{selected.state}</span>
+          </div>
+          <p className="selected-module-description">{selected.description}</p>
+          <p className="muted-note">{checkSummary}</p>
+          {dependencies.length > 0 && <p className="module-dependencies">Dependencies: {dependencies.join(', ')}.</p>}
+          {!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}
+        </div>
         <div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />} disabled={!canExecute}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />} disabled={!canApply}>Apply module</OperationButton><OperationButton onClick={onApplyAll} operation={operation} icon={<Layers3 size={15} />} disabled={!canExecute}>Apply all modules</OperationButton></div>
       </div>
       {selectedDiagnostic && <section className="diagnostic-check-list" aria-label={`${selected.name} component checks`}>
@@ -504,9 +543,13 @@ function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, se
         </li>)}</ul>
       </section>}
       </div>}
+      <ModuleHelpCard />
       </div>
     </div>
   </div>
+}
+function ModuleHelpCard() {
+  return <div className="help-card module-help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Run a fresh check before applying. Changes open in the system terminal; this alpha does not provide automatic undo.</p></div></div>
 }
 function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { module: Module; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
   const fullApply = activeOperation === 'apply-full' || activeOperation === 'apply-diagnostics'

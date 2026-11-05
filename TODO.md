@@ -1,31 +1,31 @@
-# Alpine Desktop Center Web — alpha.29
+# Alpine Desktop Center Web — alpha.30
 
-A alpha.29 é candidata comunitária para teste em Alpine 3.24.3/KDE; não é stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
+A alpha.30 é uma candidata comunitária para teste em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada.
 
-## Correções desta candidata
+## Ajustes desta candidata
 
-- A saída do terminal privilegiado é lida incrementalmente e aparece em **Show logs** enquanto a execução está ativa; o log privado também é gravado durante o progresso. Prompts `doas` continuam somente no terminal do sistema.
-- A aba Modules separa lista de módulos e detalhe/checks, confinando rolagens às áreas internas. Em telas estreitas, os painéis se empilham; a rolagem da lista/checks continua limitada.
-- O backend tenta atualizar o canal Nix se a URL está configurada mas o conteúdo local não foi baixado, evitando o erro posterior `attribute 'nixpkgs' not found` observado após uma falha TLS.
+- **Session Audit:** até 100 eventos recentes ficam numa lista com altura máxima e rolagem interna; mensagens longas quebram linha, sem empurrar ou sobrepor cartões adjacentes. **Show logs** continua abrindo o histórico completo.
+- **Modules:** lista compacta por nome, ícone Lucide específico à função e indicador de estado acessível; descrições ficam no detalhe selecionado. O cartão Selected Module ocupa a altura disponível, apresenta estado, descrição, dependências, bloqueios e ações alinhadas na base; a orientação “Need to understand a step?” fica logo abaixo.
+- **Hover/foco:** hover diferenciado para botões de ação e de módulo, com cores distintas no tema claro/escuro; controles desabilitados não recebem estilo de hover interativo.
+- Preserva streaming da saída do terminal e confinamento de rolagem em lista/checks. O fluxo de senha doas continua no terminal externo.
 
 ## Execução alpha.28 na VM
 
-A alpha.28 não transmite output durante o comando. O log temporário daquela operação ficava em `.alpine-state/web/0.1.0-alpha.28-web/operations/20261105T185708Z-530f2256.terminal-output`, a partir da raiz da release. O timeout de segurança é 15 minutos e já pode ter sido atingido; o fluxo de timeout limpa esse temporário. Confira o log persistente `.alpine-state/web/0.1.0-alpha.28-web/operations/general/20261105T185708Z-530f2256.log` primeiro. Não repita o Apply sem examinar o resultado. Se não houver pre-Apply snapshot de hipervisor, não tente desfazer por remoção manual de pacotes; faça **Check status**, preserve os logs e avalie o estado real.
+A alpha.28 não transmitia output durante o comando. O arquivo temporário da operação (`.alpine-state/web/0.1.0-alpha.28-web/operations/20261105T185708Z-530f2256.terminal-output`) pode ter sido limpo pelo timeout de segurança de 15 minutos. Confira primeiro o log persistente `.alpine-state/web/0.1.0-alpha.28-web/operations/general/20261105T185708Z-530f2256.log`. Não repita Apply sem examinar o resultado. Se não houver snapshot pré-Apply do hipervisor, não tente desfazer por remoção manual de pacotes; faça **Check status**, preserve os logs e avalie o estado real.
 
 ## Undo/rollback
 
-A auditoria das 11 roles (base, Nix, Steam, Nix OpenGL, rede, Bluetooth, áudio, swap, energia, fontes e KDE) concluiu que todas têm somente reversibilidade parcial: nenhuma registra um baseline abrangente ou implementa rollback completo. Todas podem deixar alterações de pacotes/configuração/serviço; rede pode interromper conexão e swap/hibernação pode comprometer boot/retomada. KDE mantém um `.alpine-desktop.orig` em certas condições, mas não integra restauração automatizada.
+A auditoria das 11 roles (base, Nix, Steam, Nix OpenGL, rede, Bluetooth, áudio, swap, energia, fontes e KDE) concluiu que todas têm somente reversibilidade parcial: nenhuma registra baseline abrangente ou implementa rollback completo. Todas podem deixar alterações de pacotes/configuração/serviço; rede pode interromper conexão e swap/hibernação pode comprometer boot/retomada. KDE mantém `.alpine-desktop.orig` em certas condições, mas não integra restauração automatizada.
 
-Por segurança, a alpha.29 não oferece “desfazer” automático para aplicações anteriores sem snapshot. Não converter desmarcação de módulo em desinstalação. Implementar Undo requer snapshot pré-Apply por execução, inventários pré/pós, preservação de bytes e metadados, checagem de drift, remoção apenas do que foi comprovadamente introduzido, preview e confirmação. Pacotes compartilhados, dados externos e Nix store não devem ser removidos por inferência; swap e GRUB exigem fluxo especializado.
+Por segurança, a alpha.30 não oferece “desfazer” automático para aplicações anteriores sem snapshot. Não converter desmarcação de módulo em desinstalação. Implementar Undo requer snapshot pré-Apply por execução, inventários pré/pós, preservação de bytes/metadados, checagem de drift, remoção apenas do que foi comprovadamente introduzido, preview e confirmação. Pacotes compartilhados, dados externos e Nix store não devem ser removidos por inferência; swap e GRUB exigem fluxo especializado.
 
 ## Próximas validações
 
-- [ ] Capturar o resultado da execução alpha.28 e registrar o log privado, sem credenciais.
-- [ ] Instalar a alpha.29 em VM descartável criada de snapshot; testar saída live durante `Apply all modules` e `Apply module`.
-- [ ] Testar `Check status`, retry do canal Nix após cache ausente, e estado Steam sem `nixpkgs.steam not found`.
-- [ ] Confirmar layout em 1366×768 e resolução menor; testar rolagem interna da lista/checks sem invasão da página.
-- [ ] Validar tema claro/escuro e terminais Konsole, xterm e XFCE Terminal.
-- [ ] Revisar logs geral/por módulo, interrupção/timeout, processos órfãos e ausência de regras amplas `doas nopass`.
-- [ ] Antes de stable, entregar Undo baseado em snapshots e dry-run/diff por role; testar em VM e documentar.
+- [ ] Instalar alpha.30 em VM descartável criada de snapshot; testar streaming durante `Apply all modules` e `Apply module`.
+- [ ] Testar `Check status`, retry do canal Nix quando cache ausente e estado Steam sem `nixpkgs.steam not found`.
+- [ ] Confirmar Session Audit com mensagens numerosas/longas, rolagem interna e nenhum conteúdo por cima dos cartões vizinhos.
+- [ ] Confirmar layout em 1366×768 e resolução menor; verificar nomes/ícones, painel selecionado, estados hover/foco claro/escuro e rolagens internas.
+- [ ] Validar terminais Konsole, xterm e XFCE Terminal, interrupção/timeout, processos órfãos, logs geral/por módulo e ausência de regras amplas `doas nopass`.
+- [ ] Antes de stable, entregar Undo baseado em snapshots e dry-run/diff por role; validar em VM e documentar.
 
 Não usar em produção. Não digitar credenciais na UI, não desativar TLS e não afirmar rollback de estado que nunca foi registrado.

@@ -141,3 +141,246 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+
+/* Detail and activity panes stay inside their own viewport boundaries. */
+.modules-panel .module-detail-pane {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modules-panel .selected-module-block {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.modules-panel .selected-module {
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 14px;
+  padding: 18px;
+}
+
+.modules-panel .selected-module-copy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modules-panel .selected-module-heading {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.modules-panel .selected-module-heading > div {
+  min-width: 0;
+}
+
+.modules-panel .selected-module-heading .section-kicker {
+  margin: 0 0 3px;
+}
+
+.modules-panel .selected-module-heading h4 {
+  margin: 0;
+}
+
+.modules-panel .selected-module-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.modules-panel .module-detail-state {
+  margin-left: auto;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.modules-panel .module-detail-state.ready {
+  color: #147248;
+  border-color: rgba(36, 148, 94, .28);
+  background: rgba(58, 191, 125, .09);
+}
+
+.modules-panel .module-detail-state.needs-attention,
+.modules-panel .module-detail-state.not-detected {
+  color: #8a5608;
+  border-color: rgba(196, 135, 38, .3);
+  background: rgba(255, 196, 93, .1);
+}
+
+.modules-panel .selected-module-description,
+.modules-panel .selected-module-copy > .muted-note,
+.modules-panel .selected-module-copy > .module-dependencies {
+  margin: 0;
+  line-height: 1.55;
+}
+
+.modules-panel .module-help-card {
+  margin-top: auto;
+  padding: 14px 16px;
+  border-color: rgba(69, 154, 192, .2);
+  background: linear-gradient(110deg, var(--surface-2), var(--surface));
+}
+
+/* A readable, bounded activity stream: long sessions scroll here, not through adjacent cards. */
+.inspector-column .audit-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.audit-card .stream-list {
+  min-height: 0;
+  max-height: clamp(150px, 28vh, 230px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--faint) transparent;
+  padding: 12px 5px 12px 0;
+}
+
+.audit-card .stream-item,
+.audit-card .stream-item > div {
+  min-width: 0;
+}
+
+.audit-card .stream-item > div {
+  flex: 1 1 auto;
+}
+
+.audit-card .stream-item p {
+  overflow-wrap: anywhere;
+}
+
+.audit-card .audit-link {
+  flex: 0 0 auto;
+}
+
+/* Hover/focus should read as a light surface change, never as a dark selection flash. */
+.modules-panel .module-row {
+  min-height: 48px;
+  gap: 10px;
+  padding: 8px 10px;
+  border-color: transparent;
+}
+
+.modules-panel .module-row:hover:not(:disabled) {
+  border-color: rgba(75, 139, 193, .28);
+  background: var(--surface-2);
+}
+
+.modules-panel .module-row.selected,
+.modules-panel .module-row.selected:hover:not(:disabled) {
+  border-color: rgba(49, 142, 193, .38);
+  background: rgba(79, 174, 216, .12);
+}
+
+.modules-panel .module-row:focus-visible {
+  outline: 2px solid var(--cyan-deep);
+  outline-offset: 2px;
+}
+
+.app-shell .modules-panel .primary-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(20, 88, 150, .2);
+}
+
+.app-shell.light .modules-panel .primary-button:hover:not(:disabled) {
+  color: #fff;
+  border-color: #123c9c;
+  background: linear-gradient(135deg, #2457b5, #123c9c);
+  box-shadow: 0 7px 18px rgba(18, 60, 156, .24);
+}
+
+.app-shell.dark .modules-panel .primary-button:hover:not(:disabled) {
+  color: #061522;
+  border-color: #84e0f8;
+  background: linear-gradient(135deg, #c5f5ff, #73d5f5);
+}
+
+.app-shell.light .modules-panel .secondary-button:hover:not(:disabled),
+.app-shell.light .modules-panel .ghost-button:hover:not(:disabled) {
+  color: #123c9c;
+  border-color: #829bc4;
+  background: #e7eef9;
+  box-shadow: 0 3px 10px rgba(25, 61, 111, .1);
+}
+
+.app-shell.dark .modules-panel .secondary-button:hover:not(:disabled),
+.app-shell.dark .modules-panel .ghost-button:hover:not(:disabled) {
+  color: #eff8ff;
+  border-color: #527493;
+  background: #19344c;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, .22);
+}
+
+@media (max-width: 760px) {
+  .modules-panel .module-detail-pane {
+    overflow: visible;
+  }
+
+  .modules-panel .module-help-card {
+    margin-top: 0;
+  }
+
+  .audit-card .stream-list {
+    max-height: min(32vh, 240px);
+  }
+}
+
+
+.audit-card .stream-item p {
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.app-shell.dark .modules-panel .module-detail-state.ready {
+  color: #8be0ad;
+  border-color: rgba(117, 221, 157, .32);
+  background: rgba(54, 153, 94, .16);
+}
+
+.app-shell.dark .modules-panel .module-detail-state.needs-attention,
+.app-shell.dark .modules-panel .module-detail-state.not-detected {
+  color: #ffd58c;
+  border-color: rgba(255, 201, 107, .34);
+  background: rgba(173, 113, 18, .18);
+}
+
+
+@media (min-width: 761px) {
+  .modules-panel .selected-module-block {
+    flex: 1 1 auto;
+  }
+
+  .modules-panel .selected-module {
+    flex: 1 1 auto;
+  }
+
+  .modules-panel .module-actions {
+    margin-top: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .modules-panel .selected-module-block,
+  .modules-panel .selected-module {
+    flex: 0 0 auto;
+  }
+}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.30-web — polimento visual de Modules e Session Audit
+
+- A área **Session Audit** agora mostra até 100 eventos recentes num viewport com rolagem própria; mensagens longas quebram linha e não ocupam o lugar de cartões vizinhos. A ação **Show logs** continua oferecendo o histórico completo.
+- Compacta o catálogo visual para ícone Lucide específico e nome de módulo, mantendo status como indicador acessível. O detalhe selecionado aproveita melhor a altura, organiza estado/descrição/bloqueios e alinha as ações; a orientação “Need to understand a step?” aparece logo abaixo do detalhe.
+- Ajusta o hover de Check status, Apply e seleção de módulos, com cores explícitas e distintas para tema claro/escuro; controles desabilitados não fingem interação.
+- Mantém o backend `v1.44-dev` fixado no commit `52712cb7872792c04495d8b63d1a917a35861e31`; não altera o modelo de autorização/rollback.
+
+Verificada visualmente em preview sandbox no tema claro e escuro. A preview estava sem o bridge Alpine ligado; isso não valida execução nem substitui teste em VM. Continua alpha: testar layout, eventos longos e estado hover/foco no Alpine real antes de considerar estabilidade.
+
 ## 0.1.0-alpha.29-web — candidata de observabilidade e layout
 
 - Transmite incrementalmente ao navegador o output do terminal do sistema e grava no log privado enquanto o Apply ainda executa; o prompt de senha continua exclusivamente no terminal externo. A leitura incremental mantém `O_NOFOLLOW`, valida ownership/permissões e tem teste que comprova output visível antes do fim do comando.
