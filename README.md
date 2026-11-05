@@ -6,9 +6,9 @@ This project is the browser-first migration of Alpine Desktop Center. The web in
 
 The current backend is a post-install configurator, not an operating-system installer: Alpine must already be installed with `setup-alpine` and the graphical desktop prepared with `setup-desktop`. The backend currently targets Alpine Linux 3.24.3 Stable; supported hardware and desktop combinations still require validation on real Alpine installations.
 
-> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The local alpha.26 candidate embeds the fixed backend branch at a pinned commit and no longer creates that rule, but it has not yet been tested on a real Alpine VM. Use alpha.26 only in a disposable VM with a snapshot; do not use either candidate on a production system.
+> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The local alpha.27 candidate embeds the fixed backend branch at a pinned commit and no longer creates that rule, but it has not yet been tested on a real Alpine VM. Use alpha.27 only in a disposable VM with a snapshot; do not use either candidate on a production system.
 
-The local bridge executes named operations against the alpha.26 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and each operation records its output under `.alpine-state/web/operations/`.
+The local bridge executes named operations against the alpha.27 candidate backend (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix application refresh, full Apply, diagnostic Apply and module Apply. No arbitrary shell input is accepted by the client, and operations are logged under `.alpine-state/web/<frontend-version>/operations/general/` or `modules/<module>/` for an individual module.
 
 The visual direction uses the user's [Rokko institutional site](https://rokko-institucional.pages.dev/) as its color reference: `#f4f6fa` surfaces, `#123c9c` blue actions, `#071225` ink and `#1d9b62` success states. Agama/openSUSE is used only as a structural reference for clarity and clean information density, not as the visual identity.
 
@@ -17,6 +17,8 @@ The target release keeps the embedded backend, the SHA-256 integrity lock, versi
 ## Portable browser mode
 
 The release is designed to run without external hosting. Extract the package and run `install-desktop.sh` once to register Alpine Desktop Center in the user application menu. Then launch **Alpine Desktop Center** from that menu. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens the dedicated local browser window. The browser talks only to that local process; logs and state remain inside the release directory. Privileged operations open a separate system terminal; enter any doas password or confirmation only there. The browser does not receive terminal input.
+
+The app shows each operation's saved log path. Full and aggregate runs go to `operations/general/<session>.log`; a module-only check or apply goes to `operations/modules/<module>/<session>.log`. The `.log` files are private to the local user and kept under the release-version state directory.
 
 The current system-terminal integration supports Konsole, xterm and XFCE Terminal. On a
 desktop without one of these, operations requiring that terminal are blocked with an error;
@@ -30,6 +32,8 @@ If backend prerequisites such as `make` or Ansible are missing, the application
 prepares them in that system terminal before running a privileged operation.
 Read-only diagnostics stay in the app window and never request a password.
 
+The current `doas` flow intentionally keeps administrator authentication in the system terminal; it does not bypass the password or create a broad `nopass` rule. Installing a KDE Polkit agent alone does not turn `doas` prompts into graphical dialogs. A terminal-free authorization flow would require a fixed, root-owned helper and a narrowly scoped Polkit action; that integration is not part of alpha.27.
+
 The Configuration section offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a
 best-effort preview, not a guarantee: Ansible tasks without check-mode support
@@ -40,9 +44,7 @@ still requires a separate explicit confirmation before Apply.
 
 **Apply module** is disabled until that module has a recent valid live
 diagnostic (not `unknown`) and every declared dependency has a recent `complete` diagnostic.
-The module diagnostic's dependency declaration must also match the live catalog.
-The backend and UI enforce this gate; an `unknown` module status is not treated
-as success. A check older than 10 minutes expires and must be rerun.
+The selected module's component checks (for example, PipeWire and WirePlumber) are displayed with their status and message, so missing packages or configuration are visible; Apply module can repair those gaps once prerequisites are ready. The module diagnostic's dependency declaration must also match the live catalog. The backend and UI enforce this gate; an `unknown` module status is not treated as success. A check older than 10 minutes expires and must be rerun. **Apply all modules** is available from both Modules and Configuration and still requires the explicit confirmation gate.
 
 Stable migration is enabled only after a successful check of the official Nix
 Stable source reports `update_available`. Both UI and bridge require the result
@@ -78,14 +80,14 @@ separate repositories, matching the original Qt project. The portable release
 builder combines this frontend with a pinned release of
 [`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
 `BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
-`RELEASE-VERSIONS`. The alpha.26 test package uses backend candidate `v1.44-dev`
+`RELEASE-VERSIONS`. The alpha.27 test package uses backend candidate `v1.44-dev`
 from branch `fix/one-shot-doas-authorization`, pinned to commit
-`e07a1221c310a19a8c5450217476c8e3da105b8d`. This is a development candidate,
+`881558709d94539acc81bd06ef556ba3562dc07d`. This is a development candidate,
 not an official backend release; the packager rejects a different SHA for this
 pin. The old v1.43 pin is retained only for historical reproducibility.
 
 ```sh
-sh scripts/package-portable.sh 0.1.0-alpha.26-web v1.44-dev
+sh scripts/package-portable.sh 0.1.0-alpha.27-web v1.44-dev
 ```
 
 The resulting archive contains `frontend/`, `server/` and `backend/` in one
@@ -94,7 +96,7 @@ cloning the official tag, set `BACKEND_SOURCE`:
 
 ```sh
 BACKEND_SOURCE=/path/to/alpine \
-  sh scripts/package-portable.sh 0.1.0-alpha.26-web v1.44-dev
+  sh scripts/package-portable.sh 0.1.0-alpha.27-web v1.44-dev
 ```
 
 The backend must remain beside the launcher in the extracted release. The

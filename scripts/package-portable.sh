@@ -34,7 +34,7 @@ if [ "$BACKEND_VERSION" = "v1.43" ]; then
   BACKEND_COMMIT_EXPECTED=$PINNED_V143_COMMIT
   BACKEND_REF=v1.43
 elif [ "$BACKEND_VERSION" = "v1.44-dev" ]; then
-  PINNED_V144_DEV_COMMIT=e07a1221c310a19a8c5450217476c8e3da105b8d
+  PINNED_V144_DEV_COMMIT=881558709d94539acc81bd06ef556ba3562dc07d
   if [ -n "$BACKEND_COMMIT_EXPECTED" ] && [ "$BACKEND_COMMIT_EXPECTED" != "$PINNED_V144_DEV_COMMIT" ]; then
     echo "Backend v1.44-dev is pinned to $PINNED_V144_DEV_COMMIT; a different override is not allowed." >&2
     exit 1

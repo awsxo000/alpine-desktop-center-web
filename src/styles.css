@@ -90,7 +90,7 @@ button:focus-visible { outline: 2px solid #77d9ff; outline-offset: 3px; }
 .primary-button { border: 1px solid rgba(114, 217, 255, .28); padding: 11px 15px; color: #061522; background: linear-gradient(135deg, #a0ecff, #4ec5ee); box-shadow: 0 6px 20px rgba(42, 183, 238, .15); }
 .primary-button:hover { transform: translateY(-1px); box-shadow: 0 9px 25px rgba(42, 183, 238, .23); }
 .primary-button:disabled { cursor: not-allowed; opacity: .66; transform: none; }
-.primary-button:disabled.is-running { cursor: progress; }
+.primary-button:disabled.is-running { cursor: default; }
 .secondary-button { padding: 10px 15px; color: var(--text); border: 1px solid var(--line); background: var(--surface-2); }
 .secondary-button:hover, .ghost-button:hover { border-color: rgba(114, 217, 255, .35); color: var(--cyan); }
 .ghost-button { padding: 10px 0; border: 0; color: #b4c8da; background: transparent; }

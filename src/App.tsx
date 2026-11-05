@@ -133,6 +133,7 @@ function App() {
   const [operation, setOperation] = useState<OperationState>('idle')
   const [activeOperation, setActiveOperation] = useState<NamedOperation | null>(null)
   const [operationId, setOperationId] = useState<string | null>(null)
+  const [activeLogPath, setActiveLogPath] = useState<string | null>(null)
   const [operationRecords, setOperationRecords] = useState<OperationRecord[]>([])
   const [stableChannelCheck, setStableChannelCheck] = useState<StableChannelCheck | null>(null)
   const [pendingOperation, setPendingOperation] = useState<PendingOperation | null>(null)
@@ -218,6 +219,7 @@ function App() {
     setOperation('running')
     setActiveOperation(namedOperation)
     setOperationId(null)
+    setActiveLogPath(null)
     if (targetStep) setActiveStep(targetStep)
     addLog('info', `Starting named operation: ${label}`)
     setBridgeMessage('Opening the protected local operation channel…')
@@ -250,6 +252,7 @@ function App() {
           capturedOutput += update.output
           update.output.split('\n').filter(Boolean).forEach((line) => addLog('info', line))
         }
+        if (update.log_path) setActiveLogPath(update.log_path)
         cursor = update.next_cursor
         if (update.results?.length) {
           setDiagnostics((current) => {
@@ -347,6 +350,7 @@ function App() {
     if (!operationId) return
     try {
       const update = await getOperationUpdate(operationId, 0)
+      if (update.log_path) setActiveLogPath(update.log_path)
       const refreshed = update.output.split('\n').filter(Boolean).map((text) => ({ time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), level: 'info' as const, text }))
       setLogs(refreshed.length ? refreshed : initialLogs)
       addLog(update.status === 'running' ? 'info' : update.status === 'success' ? 'success' : 'warning', `Current operation status: ${update.status}.`)
@@ -418,8 +422,8 @@ function App() {
 
             {activeStep === 'validate' && <ValidationPanel onRun={() => void runOperation('validate-backend', 'Validate embedded backend')} operation={operation} connected={canExecute} message={bridgeMessage} backendVersion={bridgeHealth?.backend_version ?? 'unknown'} frontendVersion={bridgeHealth?.frontend_version ?? 'unknown'} releasePath={bridgeHealth?.release_root ?? 'unknown'} />}
             {activeStep === 'checks' && <ChecksPanel onRun={() => void runOperation('system-check', 'Run read-only system checks')} operation={operation} diagnostics={systemDiagnostics} canExecute={canExecute} />}
-            {activeStep === 'modules' && <ModulesPanel modules={(moduleCatalog.length ? moduleCatalog : fallbackModules).map((module) => moduleStates[module.id] ? { ...module, state: moduleStates[module.id] } : module)} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} selectedDiagnostic={selectedDiagnostic} applyBlockReason={applyBlockReason} onCheck={() => void runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => requestOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} canExecute={canExecute} canApply={canApplySelected} />}
-            {activeStep === 'config' && <ConfigPanel onRun={() => void runOperation('check-stable-channel', 'Check official Stable Nix channel', {}, 'config')} onPreview={() => requestOperation('simulate-full', 'Preview full configuration', {}, 'config')} onApplyFull={() => requestOperation('apply-full', 'Apply full configuration', {}, 'config')} onRefreshNixApps={() => requestOperation('refresh-nix-apps', 'Refresh Nix applications', {}, 'config')} onMigrateStable={() => requestOperation('migrate-stable-channel', 'Migrate official Stable Nix channel', {}, 'config')} operation={operation} canExecute={canExecute} stableChannelCheck={stableChannelCheck} canMigrateStable={canMigrateStable} />}
+            {activeStep === 'modules' && <ModulesPanel modules={(moduleCatalog.length ? moduleCatalog : fallbackModules).map((module) => moduleStates[module.id] ? { ...module, state: moduleStates[module.id] } : module)} selectedModule={selectedModule} setSelectedModule={setSelectedModule} selected={selected} selectedDiagnostic={selectedDiagnostic} applyBlockReason={applyBlockReason} onCheck={() => void runOperation('diagnose-module', `Check ${selected.name} module`, { module: selected.id }, 'modules')} onApply={() => requestOperation('apply-module', `Apply ${selected.name} module`, { module: selected.id }, 'modules')} onApplyAll={() => requestOperation('apply-full', 'Apply all modules', {}, 'modules')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} canExecute={canExecute} canApply={canApplySelected} />}
+            {activeStep === 'config' && <ConfigPanel onRun={() => void runOperation('check-stable-channel', 'Check official Stable Nix channel', {}, 'config')} onPreview={() => requestOperation('simulate-full', 'Preview full configuration', {}, 'config')} onApplyFull={() => requestOperation('apply-full', 'Apply all modules', {}, 'config')} onRefreshNixApps={() => requestOperation('refresh-nix-apps', 'Refresh Nix applications', {}, 'config')} onMigrateStable={() => requestOperation('migrate-stable-channel', 'Migrate official Stable Nix channel', {}, 'config')} operation={operation} canExecute={canExecute} stableChannelCheck={stableChannelCheck} canMigrateStable={canMigrateStable} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} records={operationRecords} onRestart={() => setActiveStep('welcome')} />}
           </section>
 
@@ -433,7 +437,7 @@ function App() {
             <div className="help-card"><div className="help-icon"><Wrench size={17} /></div><div><strong>Need to understand a step?</strong><p>Operations show their named command, state and captured output. Privileged authentication opens in a system terminal.</p></div></div>
           </aside>
         </div>
-        {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} logs={logs} onClose={() => setLogsOpen(false)} />}
+        {logsOpen && <LogsModal operation={operation} activeOperation={activeOperation} logs={logs} persistentLogPath={activeLogPath} onClose={() => setLogsOpen(false)} />}
         {pendingOperation && <ConfirmationModal pending={pendingOperation} module={moduleCatalog.find((item) => item.id === pendingOperation.parameters.module)} onConfirm={confirmPendingOperation} onCancel={() => setPendingOperation(null)} />}
       </main>
     </div>
@@ -476,29 +480,39 @@ function ChecksPanel({ onRun, operation, diagnostics, canExecute }: { onRun: () 
   return <div className="panel-card"><PanelHeader icon={<ClipboardCheck size={22} />} eyebrow="READ-ONLY INSPECTION" title="See the system before changing it." detail="Results appear only after a live diagnostic. These checks do not apply configuration." /><div className="check-table">{shownRows.map((check) => <div className="check-row" key={check.label}><span className={`check-status ${check.state}`}>{check.state === 'pass' ? <Check size={14} /> : check.state === 'warn' ? <CircleAlert size={14} /> : <CircleDashed size={14} />}</span><div><strong>{check.label}</strong><small>{check.value}</small></div><ChevronRight size={16} /></div>)}</div><div className="panel-actions"><OperationButton onClick={onRun} operation={operation} disabled={!canExecute}>Run system check</OperationButton><span className="muted-note"><LockKeyhole size={13} /> Read-only operation</span></div></div>
 }
 
-function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, selectedDiagnostic, applyBlockReason, onCheck, onApply, operation, activeOperation, onShowLogs, canExecute, canApply }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; selectedDiagnostic?: ModuleDiagnostic; applyBlockReason: string; onCheck: () => void; onApply: () => void; operation: OperationState; activeOperation: NamedOperation | null; onShowLogs: () => void; canExecute: boolean; canApply: boolean }) {
+function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, selectedDiagnostic, applyBlockReason, onCheck, onApply, onApplyAll, operation, activeOperation, onShowLogs, canExecute, canApply }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; selectedDiagnostic?: ModuleDiagnostic; applyBlockReason: string; onCheck: () => void; onApply: () => void; onApplyAll: () => void; operation: OperationState; activeOperation: NamedOperation | null; onShowLogs: () => void; canExecute: boolean; canApply: boolean }) {
   const dependencies = selected.dependencies?.map((id) => labelsByModule[id] ?? id) ?? []
   const checkSummary = selectedDiagnostic
-    ? `Diagnostic: ${selectedDiagnostic.status} · ${selectedDiagnostic.summary.warnings} optional warnings · checked ${new Date(selectedDiagnostic.checked_at).toLocaleString()}`
+    ? `Diagnostic: ${selectedDiagnostic.status} · ${selectedDiagnostic.summary.passed}/${selectedDiagnostic.summary.total} checks passed · ${selectedDiagnostic.summary.warnings} warnings · checked ${new Date(selectedDiagnostic.checked_at).toLocaleString()}`
     : 'Run Check status before applying this module.'
   return <div className="panel-card">
-    <PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose a module operation." detail="The module state is based on a live diagnostic. Check prerequisites before applying a role." />
+    <PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose a module operation." detail="Check the installed components first. Missing items are listed below; Apply module can restore them after dependencies are complete." />
     <div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)} disabled={operation === 'running'}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div>
-    {operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module">
-      <div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}</p><p className="muted-note">{checkSummary}</p>{dependencies.length > 0 && <p>Dependencies: {dependencies.join(', ')}.</p>}{!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}</div>
-      <div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />} disabled={!canExecute}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />} disabled={!canApply}>Apply module</OperationButton></div>
+    {operation === 'running' ? <ModuleOperationLoading module={selected} activeOperation={activeOperation} onShowLogs={onShowLogs} /> : <div className="selected-module-block">
+      <div className="selected-module">
+        <div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}</p><p className="muted-note">{checkSummary}</p>{dependencies.length > 0 && <p className="module-dependencies">Dependencies: {dependencies.join(', ')}.</p>}{!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}</div>
+        <div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />} disabled={!canExecute}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />} disabled={!canApply}>Apply module</OperationButton><OperationButton onClick={onApplyAll} operation={operation} icon={<Layers3 size={15} />} disabled={!canExecute}>Apply all modules</OperationButton></div>
+      </div>
+      {selectedDiagnostic && <section className="diagnostic-check-list" aria-label={`${selected.name} component checks`}>
+        <div className="diagnostic-check-heading"><strong>Component checks</strong><span>{selectedDiagnostic.summary.failed} missing or failed · {selectedDiagnostic.summary.warnings} warnings</span></div>
+        <ul>{selectedDiagnostic.checks.map((check) => <li className={`diagnostic-check ${check.status}`} key={check.id}>
+          <span className={`diagnostic-check-state ${check.status}`}>{check.status === 'ok' ? 'PASS' : check.status === 'error' ? 'MISSING' : check.status === 'warning' ? 'WARN' : 'UNKNOWN'}</span>
+          <div><strong>{check.title}</strong><p>{check.message}</p></div>
+          <span className="diagnostic-check-kind">{check.required ? 'Required' : 'Optional'}</span>
+        </li>)}</ul>
+      </section>}
     </div>}
   </div>
 }
-
 function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { module: Module; activeOperation: NamedOperation | null; onShowLogs: () => void }) {
-  const requiresSystemTerminal = activeOperation === 'apply-module'
+  const fullApply = activeOperation === 'apply-full' || activeOperation === 'apply-diagnostics'
+  const requiresSystemTerminal = fullApply || activeOperation === 'apply-module'
+  const title = activeOperation === 'diagnose-module' ? `Checking ${module.name}` : fullApply ? 'Applying all modules' : `Applying ${module.name}`
   const waitingMessage = requiresSystemTerminal
-    ? 'The page waits for the separate system terminal to finish. Check whether it is behind this window; open Show logs if it seems stuck, and do not retry the operation.'
+    ? 'The page waits for the system terminal to finish. Check whether it is behind this window; open Show logs if it seems stuck, and do not retry the operation.'
     : 'The read-only diagnostic is running. Open Show logs if it takes longer than expected.'
-  return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{activeOperation === 'diagnose-module' ? `Checking ${module.name}` : `Applying ${module.name}`}</h4><p>{waitingMessage}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Authentication happens outside the browser.</strong> If doas asks for a password, enter it only in the separate system terminal.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
+  return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">OPERATION IN PROGRESS</p><h4>{title}</h4><p>{waitingMessage}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span><strong>Authentication happens outside the browser.</strong> If doas asks for a password, enter it only in the separate system terminal.</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> Show logs</button></div>
 }
-
 function ConfigPanel({ onRun, onPreview, onApplyFull, onRefreshNixApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { onRun: () => void; onPreview: () => void; onApplyFull: () => void; onRefreshNixApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
   const reportStatus = stableChannelCheck?.report?.status
   const channelLabel = stableChannelCheck?.status === 'blocked' ? 'Check blocked'
@@ -514,14 +528,14 @@ function ConfigPanel({ onRun, onPreview, onApplyFull, onRefreshNixApps, onMigrat
     <PanelHeader icon={<Settings2 size={22} />} eyebrow="STABLE CONFIGURATION" title="Keep the stable path predictable." detail="The web workflow exposes only official Stable Nix channels. Unstable options are intentionally absent." />
     <div className="channel-card"><div className="channel-mark">N</div><div><span className="channel-label">CURRENT CHANNEL</span><strong>{channelLabel}</strong><p>{channelOutput || 'Run the check to query the installed official Stable channel.'}</p></div><span className={`state-badge ${channelBadge}`}>{channelLabel}</span></div>
     <div className="config-options"><div className="config-option active"><span className="radio-dot" /><div><strong>Official Stable</strong><small>Use the curated channel selected by the project.</small></div><Check size={15} /></div><div className="config-option disabled"><span className="radio-dot" /><div><strong>Unstable</strong><small>Not exposed by Alpine Desktop Center.</small></div><LockKeyhole size={15} /></div></div>
-    <div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>Check Stable channel</OperationButton><button className="secondary-button" onClick={onPreview} disabled={operation === 'running' || !canExecute}><Activity size={15} /> Preview configuration</button><OperationButton onClick={onApplyFull} operation={operation} icon={<Wrench size={15} />} disabled={!canExecute}>Apply full configuration</OperationButton></div>
+    <div className="panel-actions"><OperationButton onClick={onRun} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>Check Stable channel</OperationButton><button className="secondary-button" onClick={onPreview} disabled={operation === 'running' || !canExecute}><Activity size={15} /> Preview configuration</button><OperationButton onClick={onApplyFull} operation={operation} icon={<Wrench size={15} />} disabled={!canExecute}>Apply all modules</OperationButton></div>
     <div className="panel-actions"><OperationButton onClick={onRefreshNixApps} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>Refresh Nix applications</OperationButton><OperationButton onClick={onMigrateStable} operation={operation} icon={<Wrench size={15} />} disabled={!canExecute || !canMigrateStable}>Migrate to latest Stable</OperationButton><span className="muted-note"><LockKeyhole size={13} /> Migration requires a successful check no older than 10 minutes that reports an update.</span></div>
   </div>
 }
 
-function LogsModal({ operation, activeOperation, logs, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; logs: LogEntry[]; onClose: () => void }) {
+function LogsModal({ operation, activeOperation, logs, persistentLogPath, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; logs: LogEntry[]; persistentLogPath: string | null; onClose: () => void }) {
   const systemTerminal = activeOperation === 'simulate-full' || activeOperation === 'apply-full' || activeOperation === 'apply-diagnostics' || activeOperation === 'apply-module' || activeOperation === 'refresh-nix-apps' || activeOperation === 'migrate-stable-channel'
-  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'blocked' ? 'Operation blocked' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div>{systemTerminal && <div className="manual-attention"><TerminalSquare size={16} /><span>This operation runs in a separate system terminal. If authentication is requested, enter credentials only there. Do not enter credentials in the browser.</span></div>}<div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · current session</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div></div>
+  return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label="Operation logs"><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">OPERATION LOGS</p><h3>Backend output</h3></div><button className="icon-button" onClick={onClose} aria-label="Close logs"><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">CURRENT STATE</span><strong>{operation === 'running' ? 'Running operation' : operation === 'error' ? 'Operation failed' : operation === 'blocked' ? 'Operation blocked' : operation === 'success' ? 'Operation finished' : 'Waiting for an operation'}</strong><p>Named command: <code>{activeOperation ?? 'none'}</code></p></div></div>{systemTerminal && <div className="manual-attention"><TerminalSquare size={16} /><span>This operation runs in a separate system terminal. If authentication is requested, enter credentials only there. Do not enter credentials in the browser.</span></div>}{persistentLogPath && <p className="persistent-log-path"><strong>Saved log:</strong> <code>{persistentLogPath}</code></p>}<div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>activity.log · current session</small></div><div className="terminal-body">{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{log.level.toUpperCase()}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> Waiting for local operation output…</div>}</div></div></div></div>
 }
 
 function ConfirmationModal({ pending, module, onConfirm, onCancel }: { pending: PendingOperation; module?: Module; onConfirm: () => void; onCancel: () => void }) {
@@ -530,7 +544,7 @@ function ConfirmationModal({ pending, module, onConfirm, onCancel }: { pending: 
   const preview = pending.operation === 'simulate-full'
   const migrateStable = pending.operation === 'migrate-stable-channel'
   const refreshNixApps = pending.operation === 'refresh-nix-apps'
-  const title = preview ? 'Run a full configuration preview?' : fullApply ? 'Apply the full desktop configuration?' : migrateStable ? 'Migrate to the latest official Stable Nix channel?' : refreshNixApps ? 'Refresh Nix applications?' : `Apply ${module?.name ?? pending.parameters.module ?? 'selected module'}?`
+  const title = preview ? 'Run a full configuration preview?' : fullApply ? 'Apply all modules?' : migrateStable ? 'Migrate to the latest official Stable Nix channel?' : refreshNixApps ? 'Refresh Nix applications?' : `Apply ${module?.name ?? pending.parameters.module ?? 'selected module'}?`
   const description = preview
     ? 'This runs Ansible in check mode with diff only when make, Ansible and prepared release-local state already exist; it does not install prerequisites. Check mode is best-effort: command and shell tasks without check-mode support may be skipped.'
     : fullApply

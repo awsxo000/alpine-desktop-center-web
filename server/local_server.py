@@ -96,6 +96,7 @@ class OperationSession:
     output: str = ""
     output_truncated: bool = False
     results: list[dict[str, object]] = dataclasses.field(default_factory=list)
+    log_path: str | None = None
     thread: threading.Thread | None = None
     lock: threading.Lock = dataclasses.field(default_factory=threading.Lock)
 
@@ -125,6 +126,7 @@ class OperationSession:
                 "output": self.output[safe_cursor:],
                 "next_cursor": len(self.output),
                 "results": self.results.copy(),
+                "log_path": self.log_path,
             }
 
 
@@ -205,23 +207,55 @@ def operation_dir(root: Path) -> Path:
     return directories[-1]
 
 
+def operation_log_path(root: Path, operation: str, payload: dict[str, object], session_id: str) -> Path:
+    if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", session_id):
+        raise OSError("Operation session identifier is invalid for a log path.")
+    base = operation_dir(root)
+    parts = ("general",)
+    if operation in {"diagnose-module", "apply-module"}:
+        module = backend_module(payload.get("module"))
+        if module is not None:
+            parts = ("modules", module)
+    current = base
+    for part in parts:
+        current = current / part
+        if current.is_symlink():
+            raise OSError("Operation log directories may not be symbolic links.")
+        current.mkdir(mode=0o700, exist_ok=True)
+        current.chmod(0o700)
+        if not current.is_dir():
+            raise OSError("Operation log path is not a directory.")
+        try:
+            current.resolve().relative_to(base.resolve())
+        except ValueError as exc:
+            raise OSError("Operation log path escapes the release state directory.") from exc
+    return current / f"{session_id}.log"
+
+
 def prune_operation_logs(directory: Path) -> None:
-    files = sorted(directory.glob("*.log"), key=lambda path: path.stat().st_mtime_ns if path.is_file() and not path.is_symlink() else 0, reverse=True)
-    kept = 0
-    total_bytes = 0
-    for path in files:
+    files: list[tuple[int, Path, int]] = []
+    for path in directory.rglob("*.log"):
         if path.is_symlink():
             path.unlink(missing_ok=True)
             continue
         try:
-            size = path.stat().st_size
-            if kept >= MAX_PERSISTED_LOGS - 1 or total_bytes + size > MAX_PERSISTED_LOG_BYTES:
-                path.unlink(missing_ok=True)
-            else:
-                kept += 1
-                total_bytes += size
+            info = path.lstat()
         except OSError:
             continue
+        if stat.S_ISREG(info.st_mode):
+            files.append((info.st_mtime_ns, path, info.st_size))
+    files.sort(key=lambda item: item[0], reverse=True)
+    kept = 0
+    total_bytes = 0
+    for _, path, size in files:
+        if kept >= MAX_PERSISTED_LOGS - 1 or total_bytes + size > MAX_PERSISTED_LOG_BYTES:
+            try:
+                path.unlink(missing_ok=True)
+            except OSError:
+                continue
+        else:
+            kept += 1
+            total_bytes += size
 
 
 def acquire_server_lock(root: Path) -> int:
@@ -714,10 +748,11 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
     try:
         operation_path = operation_dir(session.root)
         prune_operation_logs(operation_path)
-        log_path = operation_path / f"{session.session_id}.log"
+        log_path = operation_log_path(session.root, session.operation, session.payload, session.session_id)
+        session.log_path = log_path.relative_to(session.root).as_posix()
         valid, message = validate_backend(session.root)
         if not valid:
-            log_path.write_text(f"Backend validation failed: {message}\n", encoding="utf-8")
+            log_path.write_text(f"Persistent log: {session.log_path}\nBackend validation failed: {message}\n", encoding="utf-8")
             log_path.chmod(0o600)
             session.status = "blocked"
             session.message = message
@@ -725,7 +760,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             return
         if session.operation == "validate-backend":
             session.append(message + "\n")
-            log_path.write_text(message + "\n", encoding="utf-8")
+            log_path.write_text(f"Persistent log: {session.log_path}\n{message}\n", encoding="utf-8")
             log_path.chmod(0o600)
             session.status = "success"
             session.message = message
@@ -739,6 +774,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 f"Started: {datetime.now().astimezone().isoformat(timespec='seconds')}",
                 f"Backend: {backend}",
                 "Backend integrity: PASS immediately before execution",
+                f"Persistent log: {session.log_path}",
                 "",
             ])
             session.append(header)
@@ -816,6 +852,16 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
         session.status = "error"
         session.message = str(exc)
         session.append(f"\n{exc}\n")
+        if session.log_path:
+            try:
+                failed_log = session.root / session.log_path
+                failed_log.resolve().relative_to(session.root.resolve())
+                if not failed_log.is_symlink():
+                    with failed_log.open("a", encoding="utf-8") as log:
+                        failed_log.chmod(0o600)
+                        log.write(f"\nOperation error: {exc}\n")
+            except (OSError, ValueError):
+                pass
     finally:
         operation_lock.release()
 
@@ -993,8 +1039,20 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/logs":
             logs = []
-            for log_path in sorted(operation_dir(self.root).glob("*.log"), reverse=True)[:50]:
-                logs.append({"id": log_path.stem, "path": str(log_path.relative_to(self.root)), "modified": log_path.stat().st_mtime})
+            base = operation_dir(self.root)
+            candidates = []
+            for log_path in base.rglob("*.log"):
+                if log_path.is_symlink():
+                    continue
+                try:
+                    info = log_path.lstat()
+                    log_path.resolve().relative_to(base.resolve())
+                except (OSError, ValueError):
+                    continue
+                if stat.S_ISREG(info.st_mode):
+                    candidates.append((info.st_mtime, log_path))
+            for modified, log_path in sorted(candidates, key=lambda item: item[0], reverse=True)[:50]:
+                logs.append({"id": log_path.stem, "path": log_path.relative_to(self.root).as_posix(), "modified": modified})
             self.send_json({"logs": logs})
             return
         if path.startswith("/api/"):

@@ -312,10 +312,29 @@ class BridgeTestCase(unittest.TestCase):
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
         local_server.run_session(session, lock)
-        log_path = local_server.operation_dir(self.root) / "test-validate.log"
+        log_path = local_server.operation_dir(self.root) / "general" / "test-validate.log"
         self.assertEqual(session.status, "success")
+        self.assertEqual(session.snapshot()["log_path"], log_path.relative_to(self.root).as_posix())
         self.assertIn("matches the release manifest", log_path.read_text(encoding="utf-8"))
         self.assertEqual(log_path.stat().st_mode & 0o777, 0o600)
+
+    def test_module_and_general_logs_are_partitioned_safely(self) -> None:
+        module_log = local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "audio-session")
+        general_log = local_server.operation_log_path(self.root, "apply-full", {}, "general-session")
+        self.assertTrue(module_log.as_posix().endswith("/modules/audio/audio-session.log"))
+        self.assertTrue(general_log.as_posix().endswith("/general/general-session.log"))
+        self.assertEqual(module_log.parent.stat().st_mode & 0o777, 0o700)
+        with self.assertRaises(OSError):
+            local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "../outside")
+
+    def test_early_operation_error_is_written_to_its_persistent_log(self) -> None:
+        session = local_server.OperationSession("test-invalid", self.root, "invalid-operation", {})
+        lock = threading.Lock()
+        self.assertTrue(lock.acquire(blocking=False))
+        local_server.run_session(session, lock)
+        log_path = self.root / str(session.snapshot()["log_path"])
+        self.assertEqual(session.status, "error")
+        self.assertIn("Unsupported operation", log_path.read_text(encoding="utf-8"))
 
     def test_diagnostic_json_is_exposed_in_operation_snapshot(self) -> None:
         diagnostic_script = self.backend / "scripts" / "diagnostico-modulo.py"
@@ -366,6 +385,22 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(audio["description"], "PipeWire services")
         self.assertEqual(audio["dependencies"], ["base"])
         self.assertEqual(audio["state"], "Unknown")
+
+    def test_logs_endpoint_lists_nested_module_logs_without_following_symlinks(self) -> None:
+        _, base_url, host = self.start_http_server()
+        log_path = local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "api-audio")
+        log_path.write_text("private output\n", encoding="utf-8")
+        log_path.chmod(0o600)
+        outside_log = self.root / "outside.log"
+        outside_log.write_text("outside private output\n", encoding="utf-8")
+        symlink_log = log_path.parent / "linked.log"
+        symlink_log.symlink_to(outside_log)
+        request = Request(f"{base_url}/api/logs", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"})
+        with urlopen(request, timeout=3) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        paths = {item["path"] for item in payload["logs"]}
+        self.assertIn(".alpine-state/web/unknown/operations/modules/audio/api-audio.log", paths)
+        self.assertNotIn(".alpine-state/web/unknown/operations/modules/audio/linked.log", paths)
 
     def test_browser_session_cookie_is_httponly_and_authenticates_without_header(self) -> None:
         _, base_url, host = self.start_http_server()

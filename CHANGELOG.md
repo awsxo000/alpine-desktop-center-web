@@ -1,8 +1,19 @@
 # Changelog
 
+## 0.1.0-alpha.27-web — candidata para teste de VM
+
+- Corrige o erro de Apply observado na VM: o Makefile não passa mais `ansible-playbook` como argumento extra ao wrapper autorizado. O teste de regressão agora verifica a linha de comando de `make -n` nos quatro alvos privilegiados.
+- Na tela de módulo, mostra os checks individuais, o status e a mensagem de cada componente, incluindo erros/avisos de pacotes ou configurações ausentes. **Apply all modules** fica disponível tanto em Modules quanto em Configuration e mantém confirmação explícita.
+- Cada operação mantém log privado em `operations/general/` ou, para check/apply de um módulo, em `operations/modules/<module>/`; a interface mostra o caminho persistido.
+- Corrige a cascata do modo claro carregando a folha de acessibilidade depois do tema compacto: textos auxiliares passam a ter no mínimo 11–12 px, tons de primeiro plano mais escuros e estados desabilitados legíveis.
+- Mantém `doas` autenticado no terminal do sistema. A senha não foi removida nem enviada ao browser; não foi introduzida regra `nopass`. Uma integração gráfica sem terminal exigiria helper root-owned e ação Polkit restrita, ainda não implementados.
+- Atualiza o pin de `v1.44-dev` para o commit `881558709d94539acc81bd06ef556ba3562dc07d`.
+
+Alpha para validação em Alpine 3.24.3/KDE numa VM descartável com snapshot; ainda não é estável. Testes automatizados locais e CI não substituem a nova prova de integração na VM.
+
 ## 0.1.0-alpha.26-web — build local de UX, não publicada
 
-- Corrige o ponteiro de espera enganoso: ações desabilitadas por requisitos mostram `not-allowed`; `progress` fica reservado às operações realmente em execução.
+- Corrige o ponteiro de espera enganoso: ações bloqueadas mostram `not-allowed`; durante uma operação, o cursor permanece normal e o spinner/cartão indicam atividade.
 - O Apply desabilitado no tema claro usa fundo neutro e texto legível; as variáveis de texto secundário foram corrigidas no CSS base, que antes sobrepunha os valores de contraste.
 - A tela de operação de módulo agora orienta a verificar o terminal separado e abrir **Show logs** se a execução parecer parada, sem repetir a operação.
 - Mantém o backend `v1.44-dev` fixado no commit de segurança `e07a1221c310a19a8c5450217476c8e3da105b8d`.

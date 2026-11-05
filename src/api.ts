@@ -93,12 +93,13 @@ export type OperationUpdate = {
   output: string
   next_cursor: number
   results?: ModuleDiagnostic[]
+  log_path?: string | null
 }
 
 export async function getOperationUpdate(sessionId: string, cursor = 0): Promise<OperationUpdate> {
   const response = await localApi(`/api/operations/${encodeURIComponent(sessionId)}?cursor=${cursor}`)
   const value = await response.json().catch(() => null) as unknown
-  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.results !== undefined && !Array.isArray(value.results))) {
+  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.log_path !== undefined && value.log_path !== null && typeof value.log_path !== 'string') || (value.results !== undefined && !Array.isArray(value.results))) {
     throw new Error(isRecord(value) && typeof value.message === 'string' ? value.message : 'Could not read the operation session.')
   }
   const results = value.results === undefined ? undefined : value.results.map(parseDiagnostic)
