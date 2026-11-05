@@ -11,6 +11,7 @@ import hashlib
 import json
 import mimetypes
 import os
+import shlex
 import secrets
 import shutil
 import signal
@@ -103,6 +104,63 @@ def english_output(text: str) -> str:
     return text
 
 
+def terminal_command(script: Path) -> list[str] | None:
+    """Return a visible terminal invocation for commands that need a TTY."""
+    for name in ("konsole", "xterm", "alacritty", "kitty", "foot", "xfce4-terminal"):
+        executable = shutil.which(name)
+        if not executable:
+            continue
+        if name in {"konsole", "xterm", "alacritty", "xfce4-terminal"}:
+            return [executable, "-e", "sh", str(script)]
+        return [executable, "sh", str(script)]
+    return None
+
+
+def execute_privileged_in_terminal(root: Path, backend: Path, command: list[str], operation_dir_path: Path, operation_id: str, env: dict[str, str]) -> tuple[str, int]:
+    """Run an allow-listed privileged command in a visible terminal."""
+    output_path = operation_dir_path / f"{operation_id}.terminal-output"
+    status_path = operation_dir_path / f"{operation_id}.terminal-status"
+    script_path = operation_dir_path / f"{operation_id}.terminal.sh"
+    command_line = " ".join(shlex.quote(part) for part in command)
+    script_lines = [
+        "#!/bin/sh",
+        "set +e",
+        "printf '%s\\n' 'Alpine Desktop Center privileged operation' 'The command may ask for your doas password in this terminal.' 'The password is handled by doas and is not collected or stored by the application.' ''",
+        f"printf '$ %s\\n\\n' {shlex.quote(command_line)}",
+        f"cd {shlex.quote(str(backend))} || exit 125",
+        f"{command_line} > {shlex.quote(str(output_path))} 2>&1",
+        "status=$?",
+        f"cat {shlex.quote(str(output_path))}",
+        f'''printf '%s' "$status" > {shlex.quote(str(status_path))}''',
+        "printf '\\n\\nOperation finished with exit code %s. Press Enter to close this terminal...' \"$status\"",
+        "read -r _",
+        "exit \"$status\"",
+        "",
+    ]
+    script_path.write_text("\n".join(script_lines), encoding="utf-8")
+    script_path.chmod(0o700)
+    invocation = terminal_command(script_path)
+    if invocation is None:
+        return "No supported terminal emulator was found for the doas-authenticated operation.", 127
+    try:
+        terminal = subprocess.Popen(invocation, cwd=backend, env=env, start_new_session=False)
+    except OSError as exc:
+        return f"Could not open a terminal for the privileged operation: {exc}", 1
+    deadline = time.monotonic() + 900
+    while time.monotonic() < deadline:
+        if status_path.is_file():
+            try:
+                return output_path.read_text(encoding="utf-8", errors="replace"), int(status_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+        if terminal.poll() is not None and not status_path.exists():
+            return "The terminal closed before the privileged operation reported a result.", 1
+        time.sleep(0.2)
+    if terminal.poll() is None:
+        terminal.terminate()
+    return "The privileged operation exceeded the 15-minute safety timeout.", 124
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         return ([diagnostic_command(module) for module in ("base", "audio", "rede", "energia")], "read-only system checks")
@@ -164,32 +222,26 @@ def execute_operation(root: Path, operation: str, payload: dict[str, object], lo
                     output_parts.append(f"$ {command_line}")
                     log.write(f"$ {command_line}\n")
                     log.flush()
-                    stdin = None
-                    if operation in PRIVILEGED_OPERATIONS and Path("/dev/tty").exists():
+                    if operation in PRIVILEGED_OPERATIONS:
+                        command_output, return_code = execute_privileged_in_terminal(root, backend, command, log_path.parent, operation_id, env)
+                    else:
+                        process = subprocess.Popen(command, cwd=backend, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
                         try:
-                            stdin = Path("/dev/tty").open("r", encoding="utf-8")
-                        except OSError:
-                            stdin = subprocess.DEVNULL
-                    process = subprocess.Popen(command, cwd=backend, env=env, stdin=stdin, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-                    try:
-                        command_output, _ = process.communicate(timeout=900)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGTERM)
-                        try:
-                            command_output, _ = process.communicate(timeout=10)
+                            command_output, _ = process.communicate(timeout=900)
                         except subprocess.TimeoutExpired:
-                            os.killpg(process.pid, signal.SIGKILL)
-                            command_output, _ = process.communicate()
-                        return_code = 124
-                        output_parts.append("The backend command exceeded the 15-minute safety timeout and its process group was terminated.")
-                    finally:
-                        if hasattr(stdin, "close"):
-                            stdin.close()
+                            os.killpg(process.pid, signal.SIGTERM)
+                            try:
+                                command_output, _ = process.communicate(timeout=10)
+                            except subprocess.TimeoutExpired:
+                                os.killpg(process.pid, signal.SIGKILL)
+                                command_output, _ = process.communicate()
+                            return_code = 124
+                            output_parts.append("The backend command exceeded the 15-minute safety timeout and its process group was terminated.")
                     command_output = english_output(command_output or "")
                     log.write(command_output)
                     log.flush()
                     output_parts.append(command_output.rstrip())
-                    if return_code or process.returncode != 0:
+                    if return_code or (operation not in PRIVILEGED_OPERATIONS and process.returncode != 0):
                         return_code = return_code or process.returncode
                         break
         except FileNotFoundError as exc:
