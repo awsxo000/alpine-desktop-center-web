@@ -1,38 +1,24 @@
-# Alpine Desktop Center Web — status da candidata alpha.24
+# Alpine Desktop Center Web — candidata local alpha.25
 
-A alpha.24-web é uma candidata de teste isolado, não uma versão estável. O projeto é um configurador pós-instalação: requer Alpine já instalado e ambiente gráfico preparado. Esta candidata embute o backend `v1.43` do repositório separado `awsxo000/alpine`.
+A alpha.25 é uma candidata de teste, não uma versão estável nem uma release pública. Ela incorpora o backend do branch `fix/one-shot-doas-authorization`, commit `e07a1221c310a19a8c5450217476c8e3da105b8d`, sob o rótulo explícito `v1.44-dev`. A alpha.24, que usava backend v1.43, foi retirada: a release está em rascunho e sua tag pública foi removida.
 
-## Implementado nesta candidata
+## Implementado
 
-- [x] Bridge fechado em operações nomeadas; removida a rota de entrada PTY livre do navegador.
-- [x] Apply pede confirmação; credenciais de `doas` são digitadas em terminal do sistema, nunca no browser. Operações que podem elevar privilégio são classificadas para esse terminal.
-- [x] Token gerado por lançamento, arquivo privado criado atomicamente, cookie de sessão `HttpOnly; SameSite=Strict`; token não está em URL, argv nem JavaScript.
-- [x] Bridge é loopback-only, valida IP remoto e Host/Origin estritos, limita request bodies e bloqueia instância duplicada do servidor/launcher.
-- [x] Manifesto SHA-256 rejeita conteúdo vazio, linhas malformadas, caminhos inseguros, duplicatas, symlinks, ausência, extras ou conteúdo alterado; o backend empacotado perde permissões de escrita por padrão.
-- [x] Health/schema, catálogo, sessão e JSON de diagnóstico têm validação runtime. Operações param se o release metadata não declara schema 1.
-- [x] Apply de módulo exige diagnóstico recente (até 10 min) do módulo, lista de dependências igual ao catálogo e estado `complete` recente em cada dependência, tanto na UI quanto no servidor. Diagnóstico desconhecido não vira sucesso; warnings aparecem como atenção.
-- [x] Migração Stable exige, na UI e no bridge, relatório oficial coerente `update_available` obtido há no máximo 10 min; novo check/mutação invalida o relatório anterior.
-- [x] Prévia `make simular` bloqueia se faltar pré-requisito/estado preparado e não instala dependências automaticamente. Continua best-effort, não plano completo.
-- [x] Timeout de PTY rastreia e tenta matar descendentes, impõe hard stop e bloqueia novos comandos se detectar PID residual. Output e sessões são limitados; logs antigos são podados.
-- [x] Log de validação do backend é criado com permissão privada; arquivos temporários do terminal são limpos em saídas normais, falhas e timeout.
-- [x] Empacotador exige checkout frontend limpo, lockfile congelado, versão consistente, checkout Git verificável e SHA imutável do backend v1.43; valida pacote antes do tarball e rejeita override de SHA.
-- [x] Workflow CI adicionado para typecheck, testes, build, sintaxe shell, Desktop Entry e empacotamento repetido/verificação de SHA idêntico do tarball sem publicar.
-- [x] GitHub Actions do workflow pinadas em SHAs completos; YAML parseado localmente.
+- [x] Bridge do frontend com allowlist de operações, autenticação somente em terminal externo, cookie `HttpOnly`, restrição a loopback e validação de sessão/backend.
+- [x] Gates de diagnóstico/dependência, migração Nix Stable, validação de schema e manifesto SHA-256.
+- [x] No backend: remover o wrapper que criava uma regra ampla `doas nopass`; fazer uma única transição `doas -u root` no terminal e usar `su` para as transições internas do Ansible.
+- [x] Na primeira operação privilegiada, remover os dois drop-ins amplos conhecidos de versões antigas antes de executar Ansible; falhar fechado se a remoção não for possível.
+- [x] Adicionar teste de regressão e CI do backend. A CI do backend passou no commit `e07a122` (sintaxe shell e verificação do modelo de privilégio).
+- [x] Fixar o backend candidato pelo SHA no empacotador/CI do frontend e incluir `LICENSE` no pacote portátil.
+- [x] Escolher e adicionar MIT aos repositórios frontend e backend.
 
-## Bloqueios antes de uso amplo ou versão estável
+## Bloqueios antes de publicar
 
-- [ ] Corrigir no backend `awsxo000/alpine` o modelo de privilégio: `scripts/executar-com-doas-temporario.sh` instala `permit nopass <usuário>` global em `/etc/doas.d` e só o remove no encerramento normal/por trap; `SIGKILL`, falha elétrica ou crash podem deixar a regra ampla instalada. Não anunciar como estável nem recomendar em máquina de produção enquanto isso não for redesenhado/testado.
-- [ ] Tornar a prévia abrangente: o Ansible check mode pode ignorar tarefas sem suporte e não demonstra todos os efeitos; revisar playbook e tarefas externas antes de tratar a saída como plano seguro.
-- [ ] Testar a candidata numa VM Alpine descartável com snapshot: diagnóstico, prévia, depois um módulo reversível; incluir rede indisponível, lock do apk, fechamento do terminal, crash e recuperação.
-- [ ] Validar Konsole `--nofork`, xterm e xfce4-terminal nas sessões e ambientes oficialmente suportados; implementar cancelamento explícito e testar todos os caminhos de encerramento.
-- [ ] Integrar logs de operações anteriores no painel e persistir histórico estruturado sem segredos; os cartões de resumo atuais contam apenas a sessão.
-- [ ] Confirmar uma execução verde do workflow no GitHub após subir esta candidata.
-- [ ] Adicionar testes automatizados de frontend para parser Stable, expiração de diagnóstico, recuperação Validate e gates de Apply/migração.
-- [ ] Escolher e adicionar licença open source com decisão do mantenedor antes de anunciar o projeto à comunidade como open source.
-- [ ] Avaliar assinatura verificável para artefatos. O manifesto detecta drift local, mas não autentica a origem da release.
-- [ ] Revisar acessibilidade, foco/teclado, leitor de tela, Firefox/Chromium e operação KDE/OpenRC nas plataformas suportadas.
-- [ ] Definir matriz oficial de hardware, desktop, kernel, repositórios e versões Alpine; documentar backup e recuperação.
+- [ ] Testar o artefato alpha.25 numa VM Alpine 3.24.3 descartável com snapshot: terminal visível, prompt `doas` fora do browser, operação Ansible, transição `su` para o usuário desktop e confirmação de que nenhum drop-in `nopass` permanece.
+- [ ] Interromper uma operação na VM (inclusive encerramento abrupto) e verificar que não ficam regras de autorização temporária, serviços ou processos órfãos; validar a remoção das duas regras legadas conhecidas.
+- [ ] Validar Konsole, xterm e XFCE Terminal; confirmar recuperação quando o terminal fecha ou `apk`/rede está bloqueado.
+- [ ] Rodar e obter CI verde do frontend após a troca de pin e do pacote alpha.25.
+- [ ] Rever prévia Ansible: continua best-effort e não prova ausência de efeitos para tarefas sem suporte a check mode.
+- [ ] Completar documentação de contribuição, matriz de plataformas e procedimentos de recuperação; revisar acessibilidade e cancelamento.
 
-## Critério de saída de alpha
-
-Não chamar de estável até que o mecanismo `doas`, a prévia, o teste real em Alpine, cancelamento/recuperação, CI, licença, assinatura/entrega e matriz de plataforma estejam concluídos e revisados.
+**Critério de saída:** não publicar nem chamar de estável antes de validar o artefato alpha.25 em VM real e concluir os checks de integração. Usar somente VM descartável com snapshot; nunca testar Apply em uma instalação com dados importantes.

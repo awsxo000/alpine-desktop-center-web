@@ -1,6 +1,15 @@
 # Changelog
 
-## 0.1.0-alpha.24-web — candidata de teste, ainda não publicada
+## 0.1.0-alpha.25-web — candidata local para teste, não publicada
+
+- Substitui o backend v1.43 pelo branch de correção `v1.44-dev`, fixado no commit `e07a1221c310a19a8c5450217476c8e3da105b8d`.
+- O executor privilegiado faz uma única transição `doas -u root` no terminal visível, não cria regra `nopass`, remove as duas regras amplas conhecidas de versões anteriores antes de chamar Ansible e aborta se a limpeza falhar. O Ansible usa `su` para as transições internas.
+- Adiciona teste de regressão e CI do backend para sintaxe shell e para impedir a reintrodução do modelo `nopass`; o CI do frontend valida pin, manifesto e dois builds determinísticos.
+- A licença MIT foi adicionada aos repositórios frontend e backend e é incluída no tarball portátil.
+
+A correção de código e os testes automatizados **não substituem** validação numa VM Alpine real. A alpha.24 permanece retirada: seu artefato incorporava o backend v1.43 e sua tag pública foi removida. A alpha.25 é somente para VM descartável com snapshot; o fluxo de `doas`, a troca `su`, falhas/cancelamentos e os terminais suportados ainda precisam ser testados antes de qualquer publicação pública.
+
+## 0.1.0-alpha.24-web — candidata de teste, retirada
 
 - Removido o endpoint de texto livre para entrada no PTY do browser. Apply exige confirmação e autenticação ocorre em terminal externo; refresh de apps Nix e migração Stable também usam esse caminho. O token é gerado por lançamento, gravado atomicamente em arquivo privado e entregue à UI apenas por cookie `HttpOnly; SameSite=Strict`.
 - O bridge é loopback-only, verifica endereço remoto e Host/Origin estritos, recusa bind fora de `127.0.0.1`, rejeita manifestos inválidos/symlinks e só aceita metadata de diagnóstico schema 1. O launcher e o servidor usam locks para evitar inicializações concorrentes.
@@ -8,10 +17,10 @@
 - Migração Nix Stable exige relatório oficial, coerente e recente (`update_available`) tanto na UI quanto no bridge; checks expirados, falhos, inválidos e mutações anteriores não autorizam migração. Validate again atualiza health e catálogo após reparo bem-sucedido.
 - A prévia `make simular` bloqueia sem dependências/estado Ansible já preparado e não instala pré-requisitos automaticamente. Continua best-effort: o check mode pode ignorar tarefas e não substitui revisão de efeitos.
 - PTY tem limites de output, timeout, rastreamento de descendentes e hard stop; o bridge bloqueia retries quando detecta PID residual. Logs têm retenção limitada e os temporários do terminal são limpos nos caminhos tratados.
-- O backend incluído é read-only por padrão. O empacotador exige frontend limpo, lockfile congelado, versão consistente, backend Git verificável e SHA imutável do v1.43 (sem override); valida o pacote antes de criar tarball determinístico. O CI também constrói e valida o tarball extraído/manifesto, sem publicar, usando Actions pinadas por SHA e compatíveis com Node 24.
+- O backend incluído era read-only por padrão. O empacotador exigia frontend limpo, lockfile congelado, versão consistente, backend Git verificável e SHA imutável do v1.43 (sem override); validava o pacote antes de criar tarball determinístico.
 - A suíte do bridge cobre manifestos, cookies, locks, loopback, schema, diagnóstico/dependências, prévia bloqueada, logs, allowlist e timeouts, incluindo descendente detached via `setsid`.
 
-Esta candidata **não é uma versão estável**. O backend v1.43 ainda instala uma regra ampla `doas nopass` que pode persistir após encerramento abrupto; a prévia é incompleta, não há licença escolhida e não houve teste em VM Alpine. Usar somente em VM descartável com snapshot; não aplicar em máquina de produção.
+Esta candidata foi retirada porque o backend v1.43 ainda instalava uma regra ampla `doas nopass` que podia persistir após encerramento abrupto. Não usar em máquina de produção.
 
 ## 0.1.0-alpha.5
 

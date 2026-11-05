@@ -61,26 +61,28 @@ jobs:
 
       - name: Package and verify pinned release artifact
         env:
-          BACKEND_COMMIT: 9efb8a8320958a1b9b79becf65b049814599af56
+          BACKEND_COMMIT: e07a1221c310a19a8c5450217476c8e3da105b8d
+          BACKEND_VERSION: v1.44-dev
           BUILD_ROOT: ${{ runner.temp }}/portable-build
           BACKEND_SOURCE: ${{ runner.temp }}/alpine-backend
         run: |
-          git clone --quiet --depth 1 --branch v1.43 https://github.com/awsxo000/alpine.git "$BACKEND_SOURCE"
+          git clone --quiet --depth 1 --branch fix/one-shot-doas-authorization https://github.com/awsxo000/alpine.git "$BACKEND_SOURCE"
           test "$(git -C "$BACKEND_SOURCE" rev-parse HEAD)" = "$BACKEND_COMMIT"
           package_version=$(node -p "require('./package.json').version")
           package="Alpine-Desktop-Center-Web-v$package_version"
           archive="$BUILD_ROOT/$package.tar.gz"
-          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh
+          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh "$package_version" "$BACKEND_VERSION"
           first_hash=$(sha256sum "$archive" | cut -d ' ' -f1)
-          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh
+          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh "$package_version" "$BACKEND_VERSION"
           second_hash=$(sha256sum "$archive" | cut -d ' ' -f1)
           test "$first_hash" = "$second_hash"
           extracted="$RUNNER_TEMP/extracted-release"
           mkdir -p "$extracted"
           tar -xzf "$archive" -C "$extracted"
           release="$extracted/$package"
-          grep -Fx "backend=v1.43" "$release/RELEASE-VERSIONS"
+          grep -Fx "backend=$BACKEND_VERSION" "$release/RELEASE-VERSIONS"
           grep -Fx "backend_commit=$BACKEND_COMMIT" "$release/RELEASE-VERSIONS"
+          test -s "$release/LICENSE"
           if find "$release" -type d -name __pycache__ -print -quit | grep -q .; then
             echo "Unexpected Python bytecode cache in portable release." >&2
             exit 1
@@ -94,7 +96,7 @@ jobs:
           print(message)
           raise SystemExit(0 if valid else 1)
           PY
-          if BACKEND_SOURCE="$BACKEND_SOURCE" BACKEND_COMMIT_EXPECTED=0000000000000000000000000000000000000000 BUILD_ROOT="$BUILD_ROOT/rejected-override" ./scripts/package-portable.sh; then
-            echo "The v1.43 backend pin accepted an unexpected SHA override." >&2
+          if BACKEND_SOURCE="$BACKEND_SOURCE" BACKEND_COMMIT_EXPECTED=0000000000000000000000000000000000000000 BUILD_ROOT="$BUILD_ROOT/rejected-override" ./scripts/package-portable.sh "$package_version" "$BACKEND_VERSION"; then
+            echo "The v1.44-dev backend pin accepted an unexpected SHA override." >&2
             exit 1
           fi

@@ -4,7 +4,8 @@ set -eu
 REPO_ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 PACKAGE_VERSION=$(cd "$REPO_ROOT" && node -p "require('./package.json').version")
 FRONTEND_VERSION=${1:-$PACKAGE_VERSION}
-BACKEND_VERSION=${2:-v1.43}
+BACKEND_VERSION=${2:-v1.44-dev}
+BACKEND_REF=$BACKEND_VERSION
 BACKEND_REPO=${BACKEND_REPO:-https://github.com/awsxo000/alpine.git}
 BACKEND_SOURCE=${BACKEND_SOURCE:-}
 BACKEND_MANIFEST=${BACKEND_MANIFEST:-}
@@ -31,6 +32,15 @@ if [ "$BACKEND_VERSION" = "v1.43" ]; then
     exit 1
   fi
   BACKEND_COMMIT_EXPECTED=$PINNED_V143_COMMIT
+  BACKEND_REF=v1.43
+elif [ "$BACKEND_VERSION" = "v1.44-dev" ]; then
+  PINNED_V144_DEV_COMMIT=e07a1221c310a19a8c5450217476c8e3da105b8d
+  if [ -n "$BACKEND_COMMIT_EXPECTED" ] && [ "$BACKEND_COMMIT_EXPECTED" != "$PINNED_V144_DEV_COMMIT" ]; then
+    echo "Backend v1.44-dev is pinned to $PINNED_V144_DEV_COMMIT; a different override is not allowed." >&2
+    exit 1
+  fi
+  BACKEND_COMMIT_EXPECTED=$PINNED_V144_DEV_COMMIT
+  BACKEND_REF=fix/one-shot-doas-authorization
 fi
 case "$BACKEND_COMMIT_EXPECTED" in
   *[!0-9a-f]*|'')
@@ -54,7 +64,7 @@ if [ -n "$BACKEND_SOURCE" ]; then
   cp -R "$BACKEND_SOURCE/." "$BACKEND_TMP/backend/"
 else
   echo "Cloning backend $BACKEND_VERSION from $BACKEND_REPO..."
-  git clone --quiet --depth 1 --branch "$BACKEND_VERSION" "$BACKEND_REPO" "$BACKEND_TMP/backend"
+  git clone --quiet --depth 1 --branch "$BACKEND_REF" "$BACKEND_REPO" "$BACKEND_TMP/backend"
 fi
 
 if ! BACKEND_COMMIT=$(git -C "$BACKEND_TMP/backend" rev-parse HEAD 2>/dev/null); then
@@ -83,7 +93,7 @@ find "$STAGE/backend" -type f -exec chmod a-w {} +
 find "$STAGE/backend" -type d -exec chmod a-w {} +
 cp "$REPO_ROOT/Alpine Desktop Center" "$REPO_ROOT/Alpine Desktop Center.desktop" "$REPO_ROOT/launch-from-desktop.sh" "$REPO_ROOT/install-desktop.sh" "$REPO_ROOT/alpine-desktop-center.svg" "$STAGE/"
 chmod 0755 "$STAGE/Alpine Desktop Center" "$STAGE/launch-from-desktop.sh" "$STAGE/install-desktop.sh" "$STAGE/server/local_server.py"
-cp "$REPO_ROOT/README.md" "$REPO_ROOT/CHANGELOG.md" "$REPO_ROOT/TODO.md" "$STAGE/"
+cp "$REPO_ROOT/README.md" "$REPO_ROOT/CHANGELOG.md" "$REPO_ROOT/TODO.md" "$REPO_ROOT/LICENSE" "$STAGE/"
 
 if [ -n "$BACKEND_MANIFEST" ] && [ -f "$BACKEND_MANIFEST" ]; then
   cp "$BACKEND_MANIFEST" "$STAGE/BACKEND-MANIFEST.sha256"
