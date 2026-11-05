@@ -132,8 +132,7 @@ def execute_privileged_in_terminal(root: Path, backend: Path, command: list[str]
         "status=$?",
         f"cat {shlex.quote(str(output_path))}",
         f'''printf '%s' "$status" > {shlex.quote(str(status_path))}''',
-        "printf '\\n\\nOperation finished with exit code %s. Press Enter to close this terminal...' \"$status\"",
-        "read -r _",
+        "if [ \"$status\" -ne 0 ]; then printf '\\n\\nOperation failed with exit code %s. Press Enter to close this terminal...' \"$status\"; read -r _; fi",
         "exit \"$status\"",
         "",
     ]

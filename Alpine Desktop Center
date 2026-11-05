@@ -12,7 +12,7 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
     printf '%s\n' 'Python 3 is required. Install it, then run Alpine Desktop Center again.' >&2
     exit 1
   fi
-  exec "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center needs Python 3 before it can start.' 'The backend installer will prepare Python, Ansible, make and doas.' 'The password, if requested by doas, is typed only in this terminal and is not stored by the application.'; sh instalar.sh; status=\$?; printf '\\nSetup finished with exit code %s. Press Enter to close...' \"\$status\"; read -r _; exit \"\$status\""
+  exec "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center needs Python 3 before it can start.' 'The backend installer will prepare Python, Ansible, make and doas.' 'The password, if requested by doas, is typed only in this terminal and is not stored by the application.'; sh instalar.sh; status=\$?; if [ \"\$status\" -ne 0 ]; then printf '\\nSetup failed with exit code %s. Press Enter to close...' \"\$status\"; read -r _; fi; exit \"\$status\""
 fi
 
 needs_setup=0
@@ -30,7 +30,7 @@ if [ "$needs_setup" -eq 1 ]; then
     exit 1
   fi
   printf '%s\n' "Missing backend dependencies:$missing_dependencies" 'Opening a terminal to prepare the Alpine Desktop Center backend.'
-  "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center dependency setup' 'The installer will explain each step and may install make, Python 3, Ansible, doas and the required Ansible collection.' 'The installer does not collect or store your password.' 'After setup, close this terminal to continue opening the application.'; printf '\\n'; sh instalar.sh; status=\$?; printf '\\nSetup finished with exit code %s. Press Enter to continue...' \"\$status\"; read -r _; exit \"\$status\""
+  "$TERMINAL" -e sh -c "cd '$APP_DIR/backend' && printf '%s\\n' 'Alpine Desktop Center dependency setup' 'The installer will explain each step and may install make, Python 3, Ansible, doas and the required Ansible collection.' 'The installer does not collect or store your password.' 'This terminal closes automatically after a successful setup.'; printf '\\n'; sh instalar.sh; status=\$?; if [ \"\$status\" -ne 0 ]; then printf '\\nSetup failed with exit code %s. Press Enter to continue...' \"\$status\"; read -r _; fi; exit \"\$status\""
   if [ "$?" -ne 0 ]; then
     printf '%s\n' 'Dependency setup failed. Check the terminal output and run Alpine Desktop Center again.' >&2
     exit 1

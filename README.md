@@ -20,7 +20,14 @@ backend installer. The terminal explains what it is preparing, shows the
 installer output and is the only place where a privilege password may be
 requested. The web application does not collect or store that password. The
 browser window opens only after the dependency setup and local bridge are
-ready.
+ready. After a successful setup or privileged operation, the auxiliary
+terminal closes automatically; it remains open after an error so its details
+can be inspected.
+
+Use `Alpine Desktop Center.desktop` from the desktop environment or application
+menu to get the single app-style browser window with `Terminal=false`. When
+launching from an existing shell, that shell remains open by design because it
+belongs to the user's terminal, not to Alpine Desktop Center.
 
 ## Development
 
