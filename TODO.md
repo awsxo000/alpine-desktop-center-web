@@ -1,6 +1,6 @@
-# Alpine Desktop Center Web — alpha.31
+# Alpine Desktop Center Web — alpha.32
 
-A alpha.31 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Os testes automatizados e a prévia sandbox não substituem aplicação real em VM.
+A alpha.32 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Os testes automatizados e a prévia sandbox não substituem aplicação real em VM.
 
 ## Mudanças desta candidata
 
@@ -18,7 +18,7 @@ A alpha.28 falhou na role Steam porque `nixpkgs.steam` não estava disponível d
 
 ## Próximas validações na VM
 
-- [ ] Baixar e extrair a alpha.31 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
+- [ ] Baixar e extrair a alpha.32 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
 - [ ] Em instalação limpa, confirmar **Stable channel — Not checked**; acionar o refresh, conferir resultado e caminho no log geral, fechar/reabrir o app e confirmar persistência.
 - [ ] Acionar atualização de integridade do backend e confirmar resposta ao vivo, catálogo e estado validado. Não alterar nem apagar arquivos da release durante este teste.
 - [ ] Executar check de um módulo e check de todos; conferir componentes PASS/MISSING/WARN, status por módulo, log geral, caminho e abertura do log em System Check e Summary.
