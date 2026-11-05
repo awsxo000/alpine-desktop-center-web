@@ -71,7 +71,10 @@ pnpm --dir "$REPO_ROOT" install --frozen-lockfile
 pnpm --dir "$REPO_ROOT" check
 pnpm --dir "$REPO_ROOT" test
 pnpm --dir "$REPO_ROOT" build
-rm -rf "$STAGE"
+if [ -e "$STAGE" ] || [ -L "$STAGE" ]; then
+  find "$STAGE" -type d -exec chmod u+w {} +
+  rm -rf "$STAGE"
+fi
 mkdir -p "$STAGE/frontend/dist" "$STAGE/server" "$STAGE/backend" "$STAGE/.alpine-state"
 cp -R "$REPO_ROOT/dist/." "$STAGE/frontend/dist/"
 cp "$REPO_ROOT/server/local_server.py" "$STAGE/server/"

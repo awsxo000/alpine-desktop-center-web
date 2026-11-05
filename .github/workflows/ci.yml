@@ -67,10 +67,14 @@ jobs:
         run: |
           git clone --quiet --depth 1 --branch v1.43 https://github.com/awsxo000/alpine.git "$BACKEND_SOURCE"
           test "$(git -C "$BACKEND_SOURCE" rev-parse HEAD)" = "$BACKEND_COMMIT"
-          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh
           package_version=$(node -p "require('./package.json').version")
           package="Alpine-Desktop-Center-Web-v$package_version"
           archive="$BUILD_ROOT/$package.tar.gz"
+          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh
+          first_hash=$(sha256sum "$archive" | cut -d ' ' -f1)
+          BACKEND_COMMIT_EXPECTED="$BACKEND_COMMIT" ./scripts/package-portable.sh
+          second_hash=$(sha256sum "$archive" | cut -d ' ' -f1)
+          test "$first_hash" = "$second_hash"
           extracted="$RUNNER_TEMP/extracted-release"
           mkdir -p "$extracted"
           tar -xzf "$archive" -C "$extracted"

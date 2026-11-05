@@ -16,7 +16,7 @@ A alpha.24-web é uma candidata de teste isolado, não uma versão estável. O p
 - [x] Timeout de PTY rastreia e tenta matar descendentes, impõe hard stop e bloqueia novos comandos se detectar PID residual. Output e sessões são limitados; logs antigos são podados.
 - [x] Log de validação do backend é criado com permissão privada; arquivos temporários do terminal são limpos em saídas normais, falhas e timeout.
 - [x] Empacotador exige checkout frontend limpo, lockfile congelado, versão consistente, checkout Git verificável e SHA imutável do backend v1.43; valida pacote antes do tarball e rejeita override de SHA.
-- [x] Workflow CI adicionado para typecheck, testes, build, sintaxe shell, Desktop Entry e empacotamento/verificação do tarball da release sem publicar.
+- [x] Workflow CI adicionado para typecheck, testes, build, sintaxe shell, Desktop Entry e empacotamento repetido/verificação de SHA idêntico do tarball sem publicar.
 - [x] GitHub Actions do workflow pinadas em SHAs completos; YAML parseado localmente.
 
 ## Bloqueios antes de uso amplo ou versão estável
