@@ -49,8 +49,6 @@ const modules: Module[] = [
   { id: 'steam', name: 'Steam', description: 'Gaming stack and Nix application path.', state: 'Unknown', detail: 'Run a live diagnostic.', accent: 'pink' },
 ]
 
-const stepIndex = (id: StepId) => steps.findIndex((step) => step.id === id)
-
 function App() {
   const [activeStep, setActiveStep] = useState<StepId>('welcome')
   const [moduleCatalog, setModuleCatalog] = useState<Module[]>([])
@@ -62,7 +60,7 @@ function App() {
   const [bridgeMessage, setBridgeMessage] = useState('Checking the local browser bridge…')
 
   const selected = useMemo(() => moduleCatalog.find((module) => module.id === selectedModule) ?? moduleCatalog[0] ?? modules[0], [moduleCatalog, selectedModule])
-  const currentIndex = stepIndex(activeStep)
+  const currentSection = steps.find((step) => step.id === activeStep) ?? steps[0]
 
   useEffect(() => {
     Promise.all([getBridgeHealth(), getModuleCatalog()])
@@ -104,14 +102,6 @@ function App() {
     }
   }
 
-  const goNext = () => {
-    const next = steps[Math.min(currentIndex + 1, steps.length - 1)]
-    if (next) {
-      setOperation('idle')
-      setActiveStep(next.id)
-    }
-  }
-
   return (
     <div className={darkMode ? 'app-shell dark' : 'app-shell light'}>
       <aside className="sidebar">
@@ -123,16 +113,15 @@ function App() {
           </div>
         </div>
 
-        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>alpha.5</strong></div>
+        <div className="release-chip"><span className="pulse-dot" /> Local system workspace <strong>Independent operations</strong></div>
 
-        <nav className="stepper" aria-label="Installer steps">
+        <nav className="stepper" aria-label="Workspace sections">
           <p className="nav-caption">WORKSPACE SECTIONS</p>
-          {steps.map((step, index) => {
+          {steps.map((step) => {
             const isActive = step.id === activeStep
-            const isPast = index < currentIndex
             return (
-              <button className={`step-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} aria-current={isActive ? 'step' : undefined}>
-                <span className="step-number">{isPast ? <Check size={14} strokeWidth={3} /> : step.number}</span>
+              <button className={`step-item ${isActive ? 'active' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} aria-current={isActive ? 'page' : undefined}>
+                <span className="step-number">{step.number}</span>
                 <span className="step-copy"><strong>{step.label}</strong><small>{step.note}</small></span>
                 {isActive && <ChevronRight size={15} className="step-arrow" />}
               </button>
@@ -148,7 +137,7 @@ function App() {
 
       <main className="main-content">
         <header className="topbar">
-          <div className="crumb"><span>ALPINE WORKSPACE</span><ChevronRight size={14} /><strong>{steps[currentIndex]?.label}</strong></div>
+          <div className="crumb"><span>ALPINE WORKSPACE</span><ChevronRight size={14} /><strong>{currentSection.label}</strong></div>
           <div className="top-actions">
             <span className="connection-pill"><span className={`status-led ${bridgeConnected ? 'green' : 'amber'}`} /> {bridgeConnected ? 'Local bridge connected' : 'Preview bridge pending'}</span>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label="Toggle theme" title="Toggle theme">{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
@@ -157,8 +146,8 @@ function App() {
 
         <section className="page-heading">
           <div>
-            <p className="eyebrow accent-text">STEP {steps[currentIndex]?.number} / {steps.length}</p>
-            <h2>{activeStep === 'welcome' ? 'See the system. Decide the change.' : steps[currentIndex]?.label}</h2>
+            <p className="eyebrow accent-text">WORKSPACE SECTION {currentSection.number}</p>
+            <h2>{activeStep === 'welcome' ? 'See the system. Decide the change.' : currentSection.label}</h2>
             <p className="lede">One clear workspace for inspection, decisions and safe changes. Nothing is hidden behind a generic success state.</p>
           </div>
           <div className="heading-meta"><span className="meta-label">FRONTEND</span><strong>{backendStatus.frontendVersion}</strong><span className="meta-divider" /><span className="meta-label">BACKEND</span><strong>{backendStatus.version}</strong></div>
@@ -172,7 +161,7 @@ function App() {
                 <div className="hero-content">
                   <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> SYSTEM WORKSPACE <span className="line" /></div>
                   <h3>Make the next step<br /><em>obvious and accountable.</em></h3>
-                  <p>Inspect the current system, choose a bounded action, and keep its evidence with you from start to finish.</p>
+                  <p>Inspect the current system, choose a bounded action, and keep its evidence with you from start to finish. These sections are independent; there is no required path to follow.</p>
                   <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>Inspect the release <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>Browse modules</button></div>
                 </div>
                 <div className="hero-visual"><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="visual-label"><span className="status-led green" /> SYSTEM READY</div></div>
@@ -188,7 +177,6 @@ function App() {
             {activeStep === 'execute' && <ExecutionPanel operation={operation} logs={logs} onRun={() => runOperation('apply-full', 'Apply full configuration')} />}
             {activeStep === 'summary' && <SummaryPanel operation={operation} onRestart={() => setActiveStep('welcome')} />}
 
-            {activeStep !== 'welcome' && activeStep !== 'execute' && activeStep !== 'summary' && <div className="flow-footer"><button className="secondary-button" onClick={() => setActiveStep(steps[Math.max(currentIndex - 1, 0)].id)}>Back</button><button className="primary-button" onClick={goNext}>Continue <ArrowRight size={16} /></button></div>}
           </section>
 
           <aside className="inspector-column">
@@ -239,7 +227,7 @@ function ChecksPanel({ onRun, operation }: { onRun: () => void; operation: Opera
 }
 
  function ModulesPanel({ modules, selectedModule, setSelectedModule, selected, onCheck, onApply, operation }: { modules: Module[]; selectedModule: string; setSelectedModule: (id: string) => void; selected: Module; onCheck: () => void; onApply: () => void; operation: OperationState }) {
-  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose what you want to inspect." detail="Modules map directly to the backend roles. Check a module without changing it, or apply only the selected module." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div><div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. Check status is read-only; Apply module runs only this backend tag.</p></div><div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />}>Apply module</OperationButton></div></div></div>
+  return <div className="panel-card"><PanelHeader icon={<Layers3 size={22} />} eyebrow="ROLE CATALOG" title="Choose an independent module operation." detail="Modules map directly to backend roles. Inspect or apply one module without completing the other sections or installing modules one by one." /><div className="module-list">{modules.map((module) => <button className={`module-row ${selectedModule === module.id ? 'selected' : ''}`} key={module.id} onClick={() => setSelectedModule(module.id)}><span className={`module-avatar ${module.accent}`}>{module.name.slice(0, 2).toUpperCase()}</span><span className="module-copy"><strong>{module.name}</strong><small>{module.description}</small></span><span className={`module-state ${module.state.toLowerCase().replace(' ', '-')}`}><span className="status-led" />{module.state}</span><ChevronRight size={16} /></button>)}</div><div className="selected-module"><div><p className="section-kicker">SELECTED MODULE</p><h4>{selected.name}</h4><p>{selected.detail}. Check status is read-only; Apply module runs only this backend tag.</p></div><div className="module-actions"><OperationButton onClick={onCheck} operation={operation} icon={<Activity size={15} />}>Check status</OperationButton><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />}>Apply module</OperationButton></div></div></div>
 }
 
 function ConfigPanel({ onRun, operation }: { onRun: () => void; operation: OperationState }) {
