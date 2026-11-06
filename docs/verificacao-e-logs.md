@@ -1,22 +1,26 @@
 # Verificações do sistema e histórico de logs
 
-Este guia descreve a organização da pré-release `0.1.0-alpha.33-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
+Este guia descreve a organização da pré-release `0.1.0-alpha.34-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
 
-## Welcome: integridade e canal Stable
+## Início: integridade e canal Stable
 
-O bloco **System signals** começa sem um resultado salvo do canal: a instalação limpa mostra **Not checked**. Não há log de check Stable incluído no pacote publicado. Ao acionar o ícone de atualização de **Stable channel**, a aplicação consulta o estado oficial do canal Stable, grava a saída da verificação e mantém o último resultado na tela Welcome após reiniciar a interface.
+A página **Início** começa sem resultado salvo do canal: uma instalação limpa mostra **Não verificado**. Não há log Stable incluído no pacote. Ao atualizar o **Canal Stable**, a aplicação consulta a fonte oficial, salva a saída e mantém o último resultado depois de reiniciar.
 
-O botão de atualização de **Backend integrity** faz uma leitura real do bridge local: verifica novamente os arquivos embutidos pelo manifesto SHA-256 e atualiza o catálogo de módulos. Se o backend tiver sido alterado ou algum arquivo estiver faltando, a resposta passa a indicar falha/bloqueio, em vez de conservar o estado antigo como se ainda estivesse validado. Essa verificação é somente de leitura.
+A ação **Verificar novamente** na página **Verificar** valida os arquivos embutidos pelo manifesto SHA-256 e atualiza o catálogo de módulos. Se algum arquivo estiver alterado ou ausente, a resposta indica falha ou bloqueio em vez de manter um estado validado desatualizado. Essa verificação é somente para leitura.
 
-## System Check e Modules
+## Verificar e Aplicar
 
-**System Check** concentra os diagnósticos, sem aplicar mudanças. É possível conferir um módulo por vez ou executar a checagem de todos os módulos. Os resultados incluem status, horário, componentes aprovados/faltantes e avisos/erros. O painel também mostra as operações recentes salvas e permite abrir o log de cada uma.
+**Verificar** concentra diagnósticos sem aplicar mudanças. É possível verificar um módulo por vez ou todos. Os resultados incluem status, horário, componentes aprovados/faltantes e avisos/erros. A página mostra o histórico recente e permite abrir os logs associados.
 
-**Modules** fica dedicado à aplicação: selecionar um módulo e usar **Apply module**, ou aplicar a configuração completa com **Apply all modules**. O botão de aplicação individual continua bloqueado até haver diagnóstico recente e dependências completas; para refazer um check, use System Check. A aba Configuration não oferece mais opção de canal Unstable nem o controle Apply all modules.
+**Aplicar** é dedicado às mudanças: aplicar um módulo ou a configuração completa, além de pré-visualizar a configuração quando os pré-requisitos locais já existem. A aplicação individual permanece bloqueada até haver diagnóstico válido recente e dependências completas. A ação completa e a prévia exigem confirmação explícita.
 
-## Summary
+## Nix
 
-**Summary** é um relatório funcional, não apenas uma tela de contadores. Mostra contagens desta sessão, quantidade de logs persistidos, operações recentes, status e caminhos, com ação para abrir a saída salva. Também oferece atalhos para System Check e aplicação de módulos e permite atualizar o histórico.
+**Nix** agrupa as ações do canal oficial Stable — verificar o canal, atualizar os aplicativos Nix do perfil do usuário e migrar para a versão Stable mais recente. A migração exige uma verificação oficial recente nesta instância que indique uma atualização disponível; o histórico salvo, sozinho, não autoriza a ação.
+
+## Histórico
+
+**Histórico** reúne contagens da sessão, quantidade de logs persistidos, operações recentes, estados e caminhos. Também permite atualizar os dados, abrir a saída salva e navegar diretamente para Verificar ou Aplicar.
 
 ## Onde os logs ficam
 
@@ -34,7 +38,7 @@ Uma checagem ou aplicação isolada de módulo usa:
 .alpine-state/web/<versao-frontend>/operations/modules/<id-do-modulo>/<id-da-operacao>.log
 ```
 
-Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.33-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.33-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
+Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.34-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.34-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
 
 Os arquivos `.log` são privados ao usuário local (permissões restritas). A interface pede ao bridge somente o identificador gerado da operação; o servidor local não aceita um caminho de arquivo arbitrário vindo do navegador. A rota continua limitada ao bridge local e à sessão autorizada.
 

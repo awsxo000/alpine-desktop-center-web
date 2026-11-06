@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.34-web — cinco destinos e localização ampla
+- Reorganiza a navegação em **Início, Verificar, Aplicar, Nix e Histórico**: diagnósticos ficam separados da aplicação; canal Stable e manutenção de apps Nix dividem um destino; sessão e logs persistentes passam a uma fonte canônica.
+- Amplia a tradução PT-BR para títulos, instruções e estados técnicos; o seletor conciso permanece **BR/US**.
+- Reduz redundâncias visuais: remove o chip lateral repetitivo, transforma o resumo inicial em duas etapas claras e aproveita a largura do desktop com colunas balanceadas e rolagem global dispensável.
+- Corrige o título de validação para descrever integridade do backend da versão sem afirmar um bloqueio ativo quando a ponte está desconectada; a falha agora é visualmente distinta do estado de sucesso.
+- Validação: `pnpm check`, 42 testes (`pnpm test`), `pnpm build` e `git diff --check`; inspeção Chromium em 1440×900 e 1920×1080, cinco destinos, troca BR/US, sem erros JS nem rolagem global nos estados verificados. Não houve teste operacional em Alpine real; usar VM descartável com snapshot.
+- Mantém o backend `v1.44-dev` pinado ao commit `52712cb7872792c04495d8b63d1a917a35861e31`; nenhuma operação privilegiada ou regra `doas` foi alterada.
+
 ## 0.1.0-alpha.33-web — tela cheia, onboarding e polimento visual
 - Chromium, Chromium Browser e Google Chrome passam a abrir em fullscreen app mode; Firefox mantém seu modo kiosk.
 - O seletor de idioma no cabeçalho exibe somente **BR** e **US**, com nomes completos preservados para acessibilidade e preferência local persistente.

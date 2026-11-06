@@ -483,3 +483,17 @@
   color: #b7d3ff;
   background: rgba(155, 186, 255, .14);
 }
+
+/* The five-destination workspace keeps history as a page, not a permanent second column. */
+.main-content { max-width: none; }
+.content-grid.single-column { grid-template-columns: minmax(0, 1fr); }
+.content-grid.single-column .primary-column { width: 100%; max-width: 1480px; margin-inline: auto; }
+.health-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.execution-report-panel .summary-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.light .validation-banner.invalid { color: #8d2935; border-color: #e2b2b8; background: #fbeaec; }
+.light .validation-banner.invalid strong { color: #6f1e29; }
+.light .validation-banner.invalid p { color: #6c4650; }
+.light .state-badge.blocked { color: #80520c; background: #fff3d9; }
+
+/* The compact brand no longer needs a status chip below it. */
+.sidebar .stepper { margin-top: 20px; }

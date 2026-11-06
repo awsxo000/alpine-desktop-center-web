@@ -11,7 +11,7 @@ Fortalecer a versão web local sem alterar a ideia original: o usuário baixa a 
 3. **Estado real**: endpoints locais para health, módulos e histórico de operações; a interface não trata integridade nem módulos fixos como fatos atuais.
 4. **Launcher confiável**: aguarda `/api/health` antes de abrir a janela dedicada e entrega o token por cookie local; Chromium/Chrome abrem em fullscreen app mode e Firefox permanece em kiosk.
 5. **Transparência**: operação, logs, integridade e módulos alimentam a interface; ações destrutivas exigem confirmação explícita.
-6. **Apresentação alpha.33**: Welcome explica com clareza o objetivo pós-instalação, a seleção de idioma fica compacta BR/US, os painéis aproveitam a viewport e mantêm rolagem interna em telas curtas, e as ações principais usam hover/foco discretos e acessíveis.
+6. **Apresentação alpha.34**: a navegação consolida-se em cinco destinos — Início, Verificar, Aplicar, Nix e Histórico — com Nix reunindo canal Stable e manutenção de aplicativos e Histórico reunindo atividade da sessão e logs locais persistentes. PT-BR cobre os detalhes técnicos e mensagens estáticas, o seletor exibe BR/US, o desktop usa largura com densidade sem espaços redundantes e botões preservam hover/foco discretos e acessíveis.
 
 ## Arquitetura
 
@@ -20,7 +20,7 @@ Fortalecer a versão web local sem alterar a ideia original: o usuário baixa a 
 - `src/api.ts`: cliente HTTP local com sessão e contratos de estado.
 - `src/types.ts`: tipos de backend, módulos, logs e operações.
 - `src/i18n.ts`: cópias de português brasileiro e inglês dos Estados Unidos.
-- `src/App.tsx`: apresentação, tela inicial, navegação independente de módulos e consumo do estado real.
+- `src/App.tsx`: apresentação desktop, fluxo de cinco destinos, navegação livre, confirmação de ações e consumo do estado real.
 - `src/workspace-enhancements.css`: densidade e rolagem responsiva, seletor de idioma, marca, acessibilidade de ações e estados de interação.
 - `.alpine-state/web/<frontend-version>/`: logs e estado operacional versionados por release.
 

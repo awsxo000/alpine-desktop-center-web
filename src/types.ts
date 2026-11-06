@@ -1,4 +1,4 @@
-export type StepId = 'welcome' | 'validate' | 'checks' | 'modules' | 'config' | 'summary'
+export type StepId = 'welcome' | 'verify' | 'apply' | 'nix' | 'history'
 
 export type OperationState = 'idle' | 'running' | 'waiting' | 'success' | 'error' | 'blocked'
 
@@ -80,7 +80,7 @@ export type OperationLogSummary = {
   id: string
   path: string
   modified: number
-  operation: string
+  operation: NamedOperation
   module: ModuleId | null
   label: string
   status: OperationLogStatus
