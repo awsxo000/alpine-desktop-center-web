@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Alpine Desktop Center
-Comment=Open Alpine Desktop Center in its own local application window
+Comment=Open Alpine Desktop Center in its own full-screen local app window
 Exec=/bin/sh -c "exec \"$(dirname \"$1\")/launch-from-desktop.sh\" \"$1\"" dummy %k
 Terminal=false
 Type=Application

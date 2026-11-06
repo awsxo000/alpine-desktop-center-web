@@ -154,7 +154,7 @@ open_app_window() {
     if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
     BEFORE_IDS=$(window_ids)
     chromium --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
-      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+      --start-fullscreen --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
     set_window_identity "$BEFORE_IDS" &
     sleep 0.5
     return 0
@@ -163,7 +163,7 @@ open_app_window() {
     if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
     BEFORE_IDS=$(window_ids)
     chromium-browser --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
-      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+      --start-fullscreen --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
     set_window_identity "$BEFORE_IDS" &
     sleep 0.5
     return 0
@@ -172,7 +172,7 @@ open_app_window() {
     if ps -eo args 2>/dev/null | grep -F -- "--user-data-dir=$BROWSER_PROFILE" | grep -v grep >/dev/null 2>&1; then return 0; fi
     BEFORE_IDS=$(window_ids)
     google-chrome --app="$URL" --user-data-dir="$BROWSER_PROFILE" --class=AlpineDesktopCenter \
-      --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
+      --start-fullscreen --no-first-run --no-default-browser-check --disable-sync --disable-extensions >/dev/null 2>&1 &
     set_window_identity "$BEFORE_IDS" &
     sleep 0.5
     return 0

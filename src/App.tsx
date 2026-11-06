@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import logoMark from '../alpine-desktop-center.svg'
 import {
   Activity,
   ArrowLeft,
@@ -470,7 +471,6 @@ function App() {
   }
 
   const systemDiagnostics = Object.values(diagnostics)
-  const systemStateLabel = !bridgeConnected ? 'BRIDGE OFFLINE' : canExecute ? 'SYSTEM VALIDATED' : 'INTEGRITY BLOCKED'
   const stableHomeLabel = activeOperation === 'check-stable-channel' && operation === 'running' ? (locale === 'pt-BR' ? 'Verificando…' : 'Checking…')
     : stableChannelCheck?.status === 'error' ? ui.welcome.stableCheckFailed
       : stableChannelCheck?.status === 'blocked' ? ui.welcome.stableBlocked
@@ -486,7 +486,7 @@ function App() {
     <div className={darkMode ? 'app-shell dark' : 'app-shell light'}>
       <aside className="sidebar">
         <div className="brand-lockup">
-          <div className="brand-mark" aria-hidden="true"><span /><span /><span /></div>
+          <img className="brand-mark" src={logoMark} alt="" aria-hidden="true" />
           <div><p className="eyebrow">ALPINE LINUX</p><h1>Desktop Center</h1></div>
         </div>
         <div className="release-chip"><span className="pulse-dot" /> {ui.chrome.localWorkspace} <strong>{ui.chrome.independentOperations}</strong></div>
@@ -510,7 +510,7 @@ function App() {
           <div className="crumb"><span>{ui.chrome.alpineWorkspace}</span><ChevronRight size={14} /><strong>{currentSectionText.label}</strong></div>
           <div className="top-actions">
             <span className="connection-pill"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {bridgeConnected ? (canExecute ? ui.chrome.localBridgeValidated : ui.chrome.bridgeBlocked) : ui.chrome.bridgeOffline}</span>
-            <label className="language-picker"><span className="sr-only">{ui.language}</span><select value={locale} onChange={(event) => setLocale(event.target.value as Locale)} aria-label={ui.language}><option value="pt-BR">{ui.languagePt}</option><option value="en-US">{ui.languageEn}</option></select></label>
+            <label className="language-picker"><span className="sr-only">{ui.language}</span><select value={locale} onChange={(event) => setLocale(event.target.value as Locale)} aria-label={ui.language} title={locale === 'pt-BR' ? ui.languagePtFull : ui.languageEnFull}><option value="pt-BR" aria-label={ui.languagePtFull}>{ui.languagePt}</option><option value="en-US" aria-label={ui.languageEnFull}>{ui.languageEn}</option></select></label>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label={ui.chrome.toggleTheme} title={ui.chrome.toggleTheme}>{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
           </div>
         </header>
@@ -528,14 +528,21 @@ function App() {
           <section className="primary-column">
             {activeStep === 'welcome' && <>
               <div className="hero-card">
-                <div className="hero-orbit orbit-one" /><div className="hero-orbit orbit-two" />
                 <div className="hero-content">
-                  <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> {ui.welcome.systemWorkspace} <span className="line" /></div>
-                  <h3>{ui.welcome.heroTitle}<br /><em>{ui.welcome.heroTitleAccent}</em></h3>
-                  <p>{ui.welcome.heroDescription}</p>
-                  <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>{ui.welcome.inspectRelease} <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>{ui.welcome.browseModules}</button></div>
+                  <div className="welcome-intro">
+                    <div className="hero-kicker"><span className="icon-square"><Layers3 size={17} /></span> {ui.welcome.systemWorkspace} <span className="line" /></div>
+                    <h3>{ui.welcome.heroTitle} <em>{ui.welcome.heroTitleAccent}</em></h3>
+                    <p>{ui.welcome.heroDescription}</p>
+                    <div className="hero-actions"><button className="primary-button" onClick={() => setActiveStep('validate')}>{ui.welcome.inspectRelease} <ArrowRight size={16} /></button><button className="ghost-button" onClick={() => setActiveStep('modules')}>{ui.welcome.browseModules}</button></div>
+                  </div>
+                  <div className="welcome-purpose" aria-label={ui.welcome.purposeLabel}>
+                    <p className="purpose-label">{ui.welcome.purposeLabel}</p>
+                    <div className="purpose-item"><span className="purpose-icon"><ShieldCheck size={16} /></span><div><strong>{ui.welcome.purposeBaseTitle}</strong><small>{ui.welcome.purposeBaseDescription}</small></div></div>
+                    <div className="purpose-item"><span className="purpose-icon"><Snowflake size={16} /></span><div><strong>{ui.welcome.purposeAppsTitle}</strong><small>{ui.welcome.purposeAppsDescription}</small></div></div>
+                    <div className="purpose-item"><span className="purpose-icon"><Layers3 size={16} /></span><div><strong>{ui.welcome.purposeModulesTitle}</strong><small>{ui.welcome.purposeModulesDescription}</small></div></div>
+                    <p className="purpose-note"><CheckCircle2 size={14} /> {ui.welcome.scopeNote}</p>
+                  </div>
                 </div>
-                <div className="hero-visual"><div className="mountain mountain-back" /><div className="mountain mountain-front" /><div className="visual-label"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {systemStateLabel}</div></div>
               </div>
               <div className="section-row"><div><p className="section-kicker">{ui.welcome.currentSnapshot}</p><h3>{ui.welcome.systemSignals}</h3></div><button className="text-button" onClick={() => setActiveStep('checks')}>{ui.welcome.openSystemCheck} <ArrowRight size={15} /></button></div>
               <div className="health-grid">

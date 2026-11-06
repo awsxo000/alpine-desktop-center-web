@@ -1,6 +1,16 @@
 # Changelog
 
-## Unreleased — Portuguese support and clearer Stable status
+## 0.1.0-alpha.33-web — tela cheia, onboarding e polimento visual
+- Chromium, Chromium Browser e Google Chrome passam a abrir em fullscreen app mode; Firefox mantém seu modo kiosk.
+- O seletor de idioma no cabeçalho exibe somente **BR** e **US**, com nomes completos preservados para acessibilidade e preferência local persistente.
+- A página Welcome explica que a ferramenta configura um Alpine já instalado, integra a base Stable com aplicativos Nix e módulos de desktop (áudio, Bluetooth, NetworkManager, KDE) e não instala o sistema operacional.
+- Redesenha a marca vetorial de montanhas Alpine e ponto central; o símbolo é usado no app, favicon e launcher do desktop.
+- Amplia o uso horizontal da viewport, adiciona rolagem interna quando a altura/zoom exige e troca o hover escuro dos botões primários por elevação, borda e sombra sutis, com foco por teclado visível.
+- Mantém o backend candidato `v1.44-dev` pinado ao commit `52712cb7872792c04495d8b63d1a917a35861e31`; nenhum comportamento privilegiado foi alterado.
+- Validação local: `pnpm check`, `pnpm test` (42 testes), `pnpm build`, sintaxe dos launchers e integridade do diff aprovados; prévias visuais em 1920×1080, 1366×768 e viewport compacta sem rolagem global nem corte interno do Welcome.
+- Continua sem validação operacional em Alpine real; testar em VM descartável com snapshot antes de uso estável.
+
+## 0.1.0-alpha.32-web — suporte de idioma e status Stable mais claro
 - Adds a visible top-bar selector between **Português brasileiro** and **English**, with the preference persisted locally in the browser.
 - Translates the application chrome and Welcome screen according to the selected language.
 - Welcome now shows the last Stable-channel verification date/time and the latest Stable version reported by the official source, with a direct **Open log** action for the saved check.

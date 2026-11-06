@@ -1,6 +1,6 @@
 # Verificações do sistema e histórico de logs
 
-Este guia descreve a organização da pré-release `0.1.0-alpha.32-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
+Este guia descreve a organização da pré-release `0.1.0-alpha.33-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
 
 ## Welcome: integridade e canal Stable
 
@@ -34,7 +34,7 @@ Uma checagem ou aplicação isolada de módulo usa:
 .alpine-state/web/<versao-frontend>/operations/modules/<id-do-modulo>/<id-da-operacao>.log
 ```
 
-Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.32-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.32-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
+Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.33-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.33-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
 
 Os arquivos `.log` são privados ao usuário local (permissões restritas). A interface pede ao bridge somente o identificador gerado da operação; o servidor local não aceita um caminho de arquivo arbitrário vindo do navegador. A rota continua limitada ao bridge local e à sessão autorizada.
 
