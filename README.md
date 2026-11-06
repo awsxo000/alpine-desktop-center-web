@@ -6,9 +6,9 @@ This project is the browser-first migration of Alpine Desktop Center. The web in
 
 The current backend is a post-install configurator, not an operating-system installer: Alpine must already be installed with `setup-alpine` and the graphical desktop prepared with `setup-desktop`. The backend currently targets Alpine Linux 3.24.3 Stable; supported hardware and desktop combinations still require validation on real Alpine installations.
 
-> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The alpha.35 candidate keeps the fixed backend pin and organizes the interface into five destinations: Home, Verify, Apply, Nix, and History. Nix combines Stable-channel checks with distinct Nix profile updates and KDE app-menu refresh; History brings session totals and persistent local operation logs together. It remains an alpha, not a stable release; use only in a disposable VM with a snapshot.
+> **Alpha safety status:** the withdrawn alpha.24 artifact embeds backend v1.43, which temporarily adds a broad `doas nopass` rule that can remain after a crash. The alpha.36 candidate keeps the fixed backend pin and organizes the interface into five destinations: Home, Verify, Apply, Nix, and History. Nix combines Stable-channel checks with distinct Nix profile updates and KDE app-menu refresh; History brings session totals and persistent local operation logs together. New logs are sorted into Verify, Apply and Nix folders that match the action. It remains an alpha, not a stable release; use only in a disposable VM with a snapshot.
 
-The local bridge executes named operations against the pinned backend candidate (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix user-profile updates, the separate KDE menu-cache refresh/Plasma restart, full Apply, diagnostic Apply and module Apply. The KDE refresh does not upgrade Nix packages. No arbitrary shell input is accepted by the client, and operations are logged under `.alpine-state/web/<frontend-version>/operations/general/` or `modules/<module>/` for an individual module.
+The local bridge executes named operations against the pinned backend candidate (`v1.44-dev`). It supports structured diagnostics, Stable Nix checks and migration, Nix user-profile updates, the separate KDE menu-cache refresh/Plasma restart, full Apply, diagnostic Apply and module Apply. The KDE refresh does not upgrade Nix packages. No arbitrary shell input is accepted by the client. New private logs are stored under `.alpine-state/web/<frontend-version>/logs/{verify,apply,nix}/` with subfolders for the action and module; older `operations/general/` and `operations/modules/` logs remain readable.
 
 The visual direction uses the user's [Rokko institutional site](https://rokko-institucional.pages.dev/) as its color reference: `#f4f6fa` surfaces, `#123c9c` blue actions, `#071225` ink and `#1d9b62` success states. Agama/openSUSE is used only as a structural reference for clarity and clean information density, not as the visual identity.
 
@@ -24,7 +24,7 @@ The release is designed to run without external hosting. Extract the package and
 
 While a terminal operation is active, its command output is streamed into **Show logs** and the private operation log. Authentication prompts still appear only in the system terminal. **Verify** owns read-only module checks, per-component status, and backend integrity details. **Apply** is dedicated to applying one module or the full configuration, with a preview and explicit confirmation; the module list keeps its semantic icon, name and accessible status indicator. **Nix** groups Stable-channel checks with Nix application refresh/migration, while **History** combines session totals and persistent local operation logs. Hover/focus colors are tuned independently for light and dark themes.
 
-The app shows each operation's saved log path. Full runs, all-module checks and the official Stable channel check go to `operations/general/<session>.log`; a module-only check or apply goes to `operations/modules/<module>/<session>.log`. **Verify** and **History** can read the last 50 saved operation summaries and open an individual log by generated operation ID; the bridge never accepts an arbitrary file path from the browser. A fresh release starts with no operation logs, so the Stable status is initially **Not checked**. After a check, **Home** restores the last Stable result from its general-operation log. The `.log` files are private to the local user and kept under the release-version state directory. See the Portuguese [system verification and log guide](docs/verificacao-e-logs.md) for the exact path structure and behavior.
+The app shows each operation's saved log path. Examples: Stable checks go to `logs/nix/stable-check/<session>.log`, Nix profile updates to `logs/nix/profile-apps/<session>.log`, KDE refreshes to `logs/nix/kde-refresh/<session>.log`, and module checks/applications to `logs/verify/modules/<module>/` or `logs/apply/modules/<module>/`. **Verify** and **History** can read the last 50 saved operation summaries and open an individual log by generated operation ID; the bridge never accepts an arbitrary file path from the browser. A fresh release starts with no operation logs, so the Stable status is initially **Not checked**. After a check, **Home** restores the last Stable result from `logs/nix/stable-check/`. The `.log` files are private to the local user and kept under the release-version state directory. See the Portuguese [system verification and log guide](docs/verificacao-e-logs.md) for the full tree and legacy-log behavior.
 
 The top-bar language selector displays **BR** for Portuguese brasileiro and **US** for English (United States). The selection remains accessible and is saved locally in the browser for the next launch. The localized interface uses five destinations — **Home** (Início), **Verify** (Verificar), **Apply** (Aplicar), **Nix**, and **History** (Histórico). Home explains the tool's scope and presents the date/time of the last Stable-channel verification, the latest Stable version reported by the official source, the current status, and an **Open log** action when a saved check log exists.
 
@@ -48,7 +48,7 @@ failed after its URL was saved (for example, because the VM clock caused a TLS
 certificate error), the next Apply retries the download instead of proceeding
 to a later `nixpkgs.<package> not found` failure.
 
-The current `doas` flow intentionally keeps administrator authentication in the system terminal; it does not bypass the password or create a broad `nopass` rule. Installing a KDE Polkit agent alone does not turn `doas` prompts into graphical dialogs. A terminal-free authorization flow would require a fixed, root-owned helper and a narrowly scoped Polkit action; it is not included in alpha.35.
+The current `doas` flow intentionally keeps administrator authentication in the system terminal; it does not bypass the password or create a broad `nopass` rule. Installing a KDE Polkit agent alone does not turn `doas` prompts into graphical dialogs. A terminal-free authorization flow would require a fixed, root-owned helper and a narrowly scoped Polkit action; it is not included in alpha.36.
 
 The **Apply** destination offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a
@@ -96,14 +96,14 @@ separate repositories, matching the original Qt project. The portable release
 builder combines this frontend with a pinned release of
 [`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
 `BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
-`RELEASE-VERSIONS`. The alpha.35 test package uses backend candidate `v1.44-dev`
+`RELEASE-VERSIONS`. The alpha.36 test package uses backend candidate `v1.44-dev`
 from branch `fix/one-shot-doas-authorization`, pinned to commit
 `52712cb7872792c04495d8b63d1a917a35861e31`. This is a development candidate,
 not an official backend release; the packager rejects a different SHA for this
 pin. The old v1.43 pin is retained only for historical reproducibility.
 
 ```sh
-sh scripts/package-portable.sh 0.1.0-alpha.35-web v1.44-dev
+sh scripts/package-portable.sh 0.1.0-alpha.36-web v1.44-dev
 ```
 
 The resulting archive contains `frontend/`, `server/` and `backend/` in one
@@ -112,7 +112,7 @@ cloning the official tag, set `BACKEND_SOURCE`:
 
 ```sh
 BACKEND_SOURCE=/path/to/alpine \
-  sh scripts/package-portable.sh 0.1.0-alpha.35-web v1.44-dev
+  sh scripts/package-portable.sh 0.1.0-alpha.36-web v1.44-dev
 ```
 
 The backend must remain beside the launcher in the extracted release. The

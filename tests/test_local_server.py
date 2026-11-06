@@ -365,17 +365,17 @@ class BridgeTestCase(unittest.TestCase):
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
         local_server.run_session(session, lock)
-        log_path = local_server.operation_dir(self.root) / "general" / "test-validate.log"
+        log_path = local_server.operation_log_path(self.root, "validate-backend", {}, "test-validate")
         self.assertEqual(session.status, "success")
         self.assertEqual(session.snapshot()["log_path"], log_path.relative_to(self.root).as_posix())
         self.assertIn("matches the release manifest", log_path.read_text(encoding="utf-8"))
         self.assertEqual(log_path.stat().st_mode & 0o777, 0o600)
 
-    def test_module_and_general_logs_are_partitioned_safely(self) -> None:
+    def test_module_and_apply_logs_are_partitioned_safely(self) -> None:
         module_log = local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "audio-session")
-        general_log = local_server.operation_log_path(self.root, "apply-full", {}, "general-session")
-        self.assertTrue(module_log.as_posix().endswith("/modules/audio/audio-session.log"))
-        self.assertTrue(general_log.as_posix().endswith("/general/general-session.log"))
+        apply_log = local_server.operation_log_path(self.root, "apply-full", {}, "apply-session")
+        self.assertTrue(module_log.as_posix().endswith("/logs/apply/modules/audio/audio-session.log"))
+        self.assertTrue(apply_log.as_posix().endswith("/logs/apply/all-modules/apply-session.log"))
         self.assertEqual(module_log.parent.stat().st_mode & 0o777, 0o700)
         with self.assertRaises(OSError):
             local_server.operation_log_path(self.root, "apply-module", {"module": "audio"}, "../outside")
@@ -452,8 +452,8 @@ class BridgeTestCase(unittest.TestCase):
         with urlopen(request, timeout=3) as response:
             payload = json.loads(response.read().decode("utf-8"))
         paths = {item["path"] for item in payload["logs"]}
-        self.assertIn(".alpine-state/web/unknown/operations/modules/audio/api-audio.log", paths)
-        self.assertNotIn(".alpine-state/web/unknown/operations/modules/audio/linked.log", paths)
+        self.assertIn(".alpine-state/web/unknown/logs/apply/modules/audio/api-audio.log", paths)
+        self.assertNotIn(".alpine-state/web/unknown/logs/apply/modules/audio/linked.log", paths)
         with self.assertRaises(HTTPError) as caught:
             urlopen(Request(f"{base_url}/api/logs/linked", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}), timeout=3)
         self.assertEqual(caught.exception.code, 404)
@@ -483,6 +483,44 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(detail["path"], entry["path"])
         self.assertEqual([directory.stat().st_mode & 0o777 for directory in state_dirs], [0o750] * len(state_dirs))
 
+    def test_operation_logs_are_grouped_by_action_and_destination(self) -> None:
+        cases = {
+            "validate-backend": ({}, ("logs", "verify", "backend")),
+            "system-check": ({}, ("logs", "verify", "system")),
+            "check-all-modules": ({}, ("logs", "verify", "all-modules")),
+            "diagnose-module": ({"module": "audio"}, ("logs", "verify", "modules", "audio")),
+            "simulate-full": ({}, ("logs", "apply", "preview")),
+            "apply-full": ({}, ("logs", "apply", "all-modules")),
+            "apply-diagnostics": ({}, ("logs", "apply", "diagnostics")),
+            "apply-module": ({"module": "audio"}, ("logs", "apply", "modules", "audio")),
+            "check-stable-channel": ({}, ("logs", "nix", "stable-check")),
+            "migrate-stable-channel": ({}, ("logs", "nix", "stable-migration")),
+            "refresh-nix-apps": ({}, ("logs", "nix", "profile-apps")),
+            "update-nix-apps": ({}, ("logs", "nix", "profile-apps")),
+            "refresh-kde-apps": ({}, ("logs", "nix", "kde-refresh")),
+        }
+        release_state = self.root / ".alpine-state" / "web" / "unknown"
+        for index, (operation, (payload, categories)) in enumerate(cases.items()):
+            session_id = f"bucket-{index}"
+            path = local_server.operation_log_path(self.root, operation, payload, session_id)
+            self.assertEqual(path.relative_to(release_state).parts, (*categories, f"{session_id}.log"))
+            self.assertEqual(path.parent.stat().st_mode & 0o777, 0o700)
+
+    def test_legacy_operation_logs_remain_listed_and_readable(self) -> None:
+        legacy_path = self.root / ".alpine-state" / "web" / "unknown" / "operations" / "general" / "legacy-stable.log"
+        legacy_path.parent.mkdir(parents=True, mode=0o700)
+        legacy_path.write_text("Operation: check official Stable Nix channel\nNamed operation: check-stable-channel\nOperation status: success\nLegacy output.\n", encoding="utf-8")
+        legacy_path.chmod(0o600)
+        new_path = local_server.operation_log_path(self.root, "refresh-kde-apps", {}, "new-kde-refresh")
+        new_path.write_text("Operation: refresh KDE Nix app menu and restart Plasma\nNamed operation: refresh-kde-apps\nOperation status: success\nNew output.\n", encoding="utf-8")
+        new_path.chmod(0o600)
+
+        history = local_server.list_operation_logs(self.root)
+        paths = {entry["path"] for entry in history}
+        self.assertIn(".alpine-state/web/unknown/operations/general/legacy-stable.log", paths)
+        self.assertIn(".alpine-state/web/unknown/logs/nix/kde-refresh/new-kde-refresh.log", paths)
+        self.assertIn("Legacy output.", local_server.read_operation_log(self.root, "legacy-stable")["content"])
+
     def test_stable_channel_status_starts_not_checked_without_saved_logs(self) -> None:
         _, base_url, host = self.start_http_server()
         headers = {"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}
@@ -508,7 +546,7 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(payload["status"], "success")
         self.assertEqual(payload["report"]["status"], "current")
         self.assertEqual(payload["log_id"], "stable-check-1")
-        self.assertTrue(payload["log_path"].endswith("/operations/general/stable-check-1.log"))
+        self.assertTrue(payload["log_path"].endswith("/logs/nix/stable-check/stable-check-1.log"))
 
     def test_browser_session_cookie_is_httponly_and_authenticates_without_header(self) -> None:
         _, base_url, host = self.start_http_server()

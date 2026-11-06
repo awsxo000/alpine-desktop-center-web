@@ -187,7 +187,7 @@ def release_version(root: Path) -> str:
     return release_metadata(root).get("frontend", "unknown")
 
 
-def operation_dir(root: Path, create: bool = True) -> Path:
+def release_state_dir(root: Path, create: bool = True) -> Path:
     version = release_version(root)
     if not re.fullmatch(r"[A-Za-z0-9._+-]{1,128}", version) or version in {".", ".."}:
         raise OSError("Frontend release version is invalid for a state directory.")
@@ -195,7 +195,6 @@ def operation_dir(root: Path, create: bool = True) -> Path:
         root / ".alpine-state",
         root / ".alpine-state" / "web",
         root / ".alpine-state" / "web" / version,
-        root / ".alpine-state" / "web" / version / "operations",
     ]
     for directory in directories:
         if directory.is_symlink():
@@ -215,17 +214,61 @@ def operation_dir(root: Path, create: bool = True) -> Path:
     return directories[-1]
 
 
+def operation_dir(root: Path, create: bool = True) -> Path:
+    base = release_state_dir(root, create=create)
+    directory = base / "operations"
+    if directory.is_symlink():
+        raise OSError("Release-local state path may not be a symbolic link.")
+    if create:
+        directory.mkdir(mode=0o700, exist_ok=True)
+        directory.chmod(0o700)
+    elif directory.exists() and not directory.is_dir():
+        raise OSError("Release-local state path contains a non-directory component.")
+    try:
+        directory.resolve().relative_to(base.resolve())
+    except ValueError as exc:
+        raise OSError("Release-local state path escapes the release directory.") from exc
+    return directory
+
+
+def operation_log_categories(operation: str, payload: dict[str, object]) -> tuple[str, ...]:
+    if operation == "validate-backend":
+        return ("verify", "backend")
+    if operation == "system-check":
+        return ("verify", "system")
+    if operation == "check-all-modules":
+        return ("verify", "all-modules")
+    if operation == "diagnose-module":
+        module = backend_module(payload.get("module"))
+        return ("verify", "modules", module) if module else ("verify", "modules")
+    if operation == "simulate-full":
+        return ("apply", "preview")
+    if operation == "apply-full":
+        return ("apply", "all-modules")
+    if operation == "apply-diagnostics":
+        return ("apply", "diagnostics")
+    if operation == "apply-module":
+        module = backend_module(payload.get("module"))
+        return ("apply", "modules", module) if module else ("apply", "modules")
+    if operation == "check-stable-channel":
+        return ("nix", "stable-check")
+    if operation == "migrate-stable-channel":
+        return ("nix", "stable-migration")
+    if operation in {"refresh-nix-apps", "update-nix-apps"}:
+        return ("nix", "profile-apps")
+    if operation == "refresh-kde-apps":
+        return ("nix", "kde-refresh")
+    return ("other",)
+
+
 def operation_log_path(root: Path, operation: str, payload: dict[str, object], session_id: str) -> Path:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", session_id):
         raise OSError("Operation session identifier is invalid for a log path.")
-    base = operation_dir(root)
-    parts = ("general",)
-    if operation in {"diagnose-module", "apply-module"}:
-        module = backend_module(payload.get("module"))
-        if module is not None:
-            parts = ("modules", module)
+    operation_dir(root)  # Preserve the private legacy directory used for temporary operation files.
+    base = release_state_dir(root)
     current = base
-    for part in parts:
+    parts = operation_log_categories(operation, payload)
+    for part in ("logs", *parts):
         current = current / part
         if current.is_symlink():
             raise OSError("Operation log directories may not be symbolic links.")
@@ -556,7 +599,12 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
     description = description_match.group(1).strip() if description_match else "Operation log"
     named_operation = named_match.group(1) if named_match else None
     parts = relative.parts
-    module = module_match.group(1) if module_match else (parts[1] if len(parts) >= 3 and parts[0] == "modules" else None)
+    module = module_match.group(1) if module_match else None
+    if module is None:
+        for index in range(max(0, len(parts) - 2)):
+            if parts[index] == "modules" and backend_module(parts[index + 1]) is not None:
+                module = parts[index + 1]
+                break
     if named_operation is None:
         normalized = description.lower()
         named_operation = next((operation for phrase, operation in (
@@ -600,7 +648,7 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
 
 
 def list_operation_logs(root: Path, limit: int = 50, create: bool = False) -> list[dict[str, object]]:
-    base = operation_dir(root, create=create)
+    base = release_state_dir(root, create=create)
     candidates: list[tuple[float, Path]] = []
     for path in base.rglob("*.log"):
         if path.is_symlink():
@@ -620,7 +668,7 @@ def list_operation_logs(root: Path, limit: int = 50, create: bool = False) -> li
 def read_operation_log(root: Path, log_id: str, create: bool = False) -> dict[str, object] | None:
     if not re.fullmatch(r"[A-Za-z0-9_-]{1,128}", log_id):
         return None
-    base = operation_dir(root, create=create)
+    base = release_state_dir(root, create=create)
     for path in base.rglob("*.log"):
         if path.stem != log_id or path.is_symlink():
             continue
@@ -987,7 +1035,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
     env = command_environment(session.root)
     try:
         operation_path = operation_dir(session.root)
-        prune_operation_logs(operation_path)
+        prune_operation_logs(release_state_dir(session.root))
         log_path = operation_log_path(session.root, session.operation, session.payload, session.session_id)
         session.log_path = log_path.relative_to(session.root).as_posix()
         valid, message = validate_backend(session.root)

@@ -1,6 +1,6 @@
 # Verificações do sistema e histórico de logs
 
-Este guia descreve a organização da pré-release `0.1.0-alpha.35-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
+Este guia descreve a organização da pré-release `0.1.0-alpha.36-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
 
 ## Início: integridade e canal Stable
 
@@ -24,21 +24,38 @@ A ação **Verificar novamente** na página **Verificar** valida os arquivos emb
 
 ## Onde os logs ficam
 
-Os logs são guardados localmente no diretório da release em que a aplicação foi executada e não são incluídos na versão limpa baixada do GitHub:
+Os novos logs são guardados localmente, no estado privado da release em que a aplicação foi executada. A raiz agora separa destino e ação:
 
 ```text
-.alpine-state/web/<versao-frontend>/operations/general/<id-da-operacao>.log
+.alpine-state/web/<versao-frontend>/logs/
+├── verify/
+│   ├── backend/
+│   ├── system/
+│   ├── all-modules/
+│   └── modules/<id-do-modulo>/
+├── apply/
+│   ├── preview/
+│   ├── all-modules/
+│   ├── diagnostics/
+│   └── modules/<id-do-modulo>/
+└── nix/
+    ├── stable-check/
+    ├── stable-migration/
+    ├── profile-apps/
+    └── kde-refresh/
 ```
 
-Uma checagem do canal Stable, uma execução de diagnósticos em lote e uma aplicação completa usam `operations/general/`. O identificador é gerado pela aplicação e segue o formato `YYYYMMDDTHHMMSSZ-<8 caracteres aleatórios>`.
+Cada operação grava `<id-da-operacao>.log` na pasta correspondente. Por exemplo, a checagem do canal Stable usa `logs/nix/stable-check/`; **Atualizar aplicativos Nix** usa `logs/nix/profile-apps/`; **Recarregar apps Nix no KDE** usa `logs/nix/kde-refresh/`. Verificar e Aplicar mantêm suas próprias pastas, com subpastas separadas para cada módulo.
 
-Uma checagem ou aplicação isolada de módulo usa:
+Por exemplo, numa release `0.1.0-alpha.36-web`, o log Stable ficará neste formato:
 
 ```text
-.alpine-state/web/<versao-frontend>/operations/modules/<id-do-modulo>/<id-da-operacao>.log
+.alpine-state/web/0.1.0-alpha.36-web/logs/nix/stable-check/<id-da-operacao>.log
 ```
 
-Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.35-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.35-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
+O Histórico mostra o caminho completo e permite abrir a saída salva pelo ID. Diretórios de log são privados ao usuário local (modo `0700`) e os arquivos têm acesso restrito (modo `0600`). A retenção considera toda a árvore categorizada.
+
+Logs criados por versões anteriores em `operations/general/` e `operations/modules/` continuam sendo encontrados e podem ser abertos; novos registros usam somente a estrutura `logs/` acima. Os logs ficam no diretório da release local e não são incluídos na versão limpa baixada do GitHub.
 
 Os arquivos `.log` são privados ao usuário local (permissões restritas). A interface pede ao bridge somente o identificador gerado da operação; o servidor local não aceita um caminho de arquivo arbitrário vindo do navegador. A rota continua limitada ao bridge local e à sessão autorizada.
 

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.36-web — logs organizados por destino e ação
+- Substitui o destino genérico para novos registros por pastas fáceis de reconhecer em `.alpine-state/web/<versão>/logs/`: `verify/`, `apply/` e `nix/`, com subpastas por ação e por módulo quando aplicável.
+- Exemplos: verificação Stable em `logs/nix/stable-check/`, atualização do perfil Nix em `logs/nix/profile-apps/` e refresh/reinício do KDE em `logs/nix/kde-refresh/`; o Histórico continua exibindo o caminho exato e abrindo cada log pelo ID.
+- Preserva e continua listando/abrindo arquivos legados em `operations/general/` e `operations/modules/`; a retenção e as permissões privadas são aplicadas sobre a árvore completa.
+- Validação: typecheck, build, `git diff --check` e 45 testes do bridge; nenhuma operação real no Alpine foi executada.
+
 ## 0.1.0-alpha.35-web — atualização Nix e refresh KDE separados
 - Restaura **Refresh Nix apps** como ação distinta: chama o script KDE embutido para reconstruir o menu de aplicativos e reiniciar o shell Plasma na sessão atual, sem atualizar pacotes nem alterar o perfil Nix.
 - Mantém **Update Nix apps** para atualizar os aplicativos do perfil do usuário; cada ação tem rótulo, descrição e confirmação próprios em EN-US e PT-BR.
