@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.38-web — compactação e coesão visual
+- Reduz o espaço vertical ocioso no desktop, aproximando cabeçalho, título, descrição e conteúdo principal.
+- Compacta cards, painéis, listas, áreas de diagnóstico, terminal e histórico sem remover informações ou ações.
+- Mantém o fluxo mobile separado, preservando o comportamento responsivo em telas pequenas.
+- Centraliza os ajustes em `src/density.css`, carregado após as folhas existentes para evitar regressões causadas pela cascata de estilos.
+- Validação: `pnpm check`, `pnpm test`, `pnpm build` e `git diff --check`.
+
 ## 0.1.0-alpha.37-web — verificação em dois fatores por módulo
 - Distingue explicitamente o **estado atual do sistema** (pacotes, serviços e configurações que já existem) da **prontidão para aplicar** (diagnóstico recente do módulo, dependências declaradas com diagnóstico completo e integridade dos arquivos do backend embarcado pelo manifesto SHA-256).
 - O painel Aplicar mostra os dois resultados lado a lado e explica bloqueios; um módulo incompleto no sistema não é tratado como prova de que está proibido instalá-lo.

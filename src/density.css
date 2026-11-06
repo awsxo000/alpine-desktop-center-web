@@ -1,0 +1,212 @@
+/* Alpha.37 UX density pass: tighter desktop composition without changing mobile flow. */
+@media (min-width: 761px) {
+  .app-shell .sidebar {
+    padding-top: 13px;
+    padding-bottom: 10px;
+  }
+
+  .app-shell .release-chip {
+    margin-top: 12px;
+    margin-bottom: 14px;
+  }
+
+  .app-shell .main-content {
+    padding: 0 22px 10px;
+  }
+
+  .app-shell .topbar {
+    height: 48px;
+  }
+
+  .app-shell .page-heading {
+    gap: 16px;
+    padding: 10px 0 8px;
+  }
+
+  .app-shell .page-heading h2 {
+    margin: 3px 0 4px;
+    font-size: clamp(21px, 2.2vw, 29px);
+  }
+
+  .app-shell .lede {
+    max-width: 700px;
+    line-height: 1.35;
+  }
+
+  .app-shell .content-grid {
+    gap: 10px;
+  }
+
+  .app-shell .primary-column,
+  .app-shell .inspector-column {
+    gap: 9px;
+  }
+
+  .app-shell .hero-card {
+    min-height: 208px;
+  }
+
+  .app-shell .hero-content {
+    padding: 23px 27px 20px;
+  }
+
+  .app-shell .hero-card h3 {
+    margin: 13px 0 8px;
+    font-size: clamp(23px, 2.55vw, 34px);
+  }
+
+  .app-shell .hero-card p {
+    line-height: 1.4;
+  }
+
+  .app-shell .hero-actions {
+    margin-top: 15px;
+  }
+
+  .app-shell .section-row {
+    margin-bottom: 4px;
+  }
+
+  .app-shell .health-grid {
+    gap: 7px;
+  }
+
+  .app-shell .health-card {
+    min-height: 116px;
+    padding: 10px 11px;
+  }
+
+  .app-shell .card-icon {
+    width: 26px;
+    height: 26px;
+    margin-bottom: 10px;
+  }
+
+  .app-shell .inspector-card,
+  .app-shell .audit-card {
+    padding: 10px 12px;
+  }
+
+  .app-shell .panel-card {
+    padding: 16px;
+  }
+
+  .app-shell .panel-header {
+    gap: 10px;
+    padding-bottom: 12px;
+  }
+
+  .app-shell .panel-header h3 {
+    margin: 3px 0 4px;
+    font-size: 16px;
+  }
+
+  .app-shell .validation-banner {
+    margin: 11px 0;
+    padding: 9px 11px;
+  }
+
+  .app-shell .metric-list,
+  .app-shell .summary-stats {
+    gap: 6px;
+  }
+
+  .app-shell .metric {
+    padding: 8px 9px;
+  }
+
+  .app-shell .panel-actions {
+    margin-top: 12px;
+  }
+
+  .app-shell .check-table {
+    margin: 10px 0 2px;
+  }
+
+  .app-shell .check-row {
+    padding: 8px 2px;
+  }
+
+  .app-shell .modules-workspace {
+    gap: 10px;
+    padding-top: 9px;
+  }
+
+  .app-shell .modules-panel .module-list {
+    max-height: min(48vh, 360px);
+  }
+
+  .app-shell .module-detail-pane {
+    max-height: min(51vh, 410px);
+    gap: 9px;
+  }
+
+  .app-shell .modules-panel .selected-module {
+    gap: 10px;
+    padding: 13px;
+  }
+
+  .app-shell .modules-panel .selected-module-copy {
+    gap: 8px;
+  }
+
+  .app-shell .module-verification-factors {
+    gap: 6px;
+  }
+
+  .app-shell .module-verification-factor {
+    gap: 4px;
+    padding: 8px 9px;
+  }
+
+  .app-shell .modules-panel .module-help-card {
+    padding: 10px 12px;
+  }
+
+  .app-shell .channel-card {
+    margin: 12px 0 8px;
+    padding: 10px 12px;
+  }
+
+  .app-shell .config-option {
+    padding: 9px 10px;
+  }
+
+  .app-shell .execution-state {
+    padding: 12px 0;
+  }
+
+  .app-shell .terminal {
+    margin-top: 12px;
+  }
+
+  .app-shell .terminal-body {
+    min-height: 145px;
+    max-height: 220px;
+    padding: 12px;
+  }
+
+  .app-shell .summary-panel {
+    padding: 27px 24px;
+  }
+}
+
+@media (max-width: 1060px) and (min-width: 761px) {
+  .app-shell .main-content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .app-shell .page-heading {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+
+  .app-shell .hero-card {
+    min-height: 190px;
+  }
+
+  .app-shell .hero-content {
+    padding: 20px 21px 18px;
+  }
+}
