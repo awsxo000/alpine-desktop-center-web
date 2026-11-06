@@ -159,8 +159,14 @@ class BridgeTestCase(unittest.TestCase):
         self.assertIn("simulate-full", local_server.PRIVILEGED_OPERATIONS)
         self.assertIn("simulate-full", local_server.SYSTEM_TERMINAL_OPERATIONS)
         self.assertIn("refresh-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        self.assertIn("update-nix-apps", local_server.OPERATIONS)
+        self.assertIn("update-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        self.assertIn("refresh-kde-apps", local_server.OPERATIONS)
+        self.assertNotIn("refresh-kde-apps", local_server.PRIVILEGED_OPERATIONS)
+        self.assertNotIn("refresh-kde-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
         self.assertIn("migrate-stable-channel", local_server.SYSTEM_TERMINAL_OPERATIONS)
         self.assertNotIn("refresh-nix-apps", local_server.PRIVILEGED_OPERATIONS)
+        self.assertNotIn("update-nix-apps", local_server.PRIVILEGED_OPERATIONS)
         self.assertNotIn("migrate-stable-channel", local_server.PRIVILEGED_OPERATIONS)
 
     def test_operations_block_without_supported_diagnostic_schema_metadata(self) -> None:
@@ -237,14 +243,32 @@ class BridgeTestCase(unittest.TestCase):
         self.assertIn("prerequisites", session.message)
         self.assertFalse((self.root / ".alpine-state" / "vars.yml").exists())
 
-    def test_nix_refresh_uses_terminal_without_preparing_ansible(self) -> None:
-        session = local_server.OperationSession("test-nix-refresh", self.root, "refresh-nix-apps", {})
+    def test_nix_profile_update_uses_terminal_without_preparing_ansible(self) -> None:
+        session = local_server.OperationSession("test-nix-update", self.root, "update-nix-apps", {})
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
         with patch.object(local_server, "execute_in_system_terminal", return_value=("updated", 0)) as terminal:
             local_server.run_session(session, lock)
         self.assertEqual(session.status, "success")
         self.assertEqual(terminal.call_args.args[2], ["sh", "scripts/atualizar-nix.sh", "aplicativos"])
+        self.assertEqual(local_server.resolve_command("refresh-nix-apps", {})[0], [["sh", "scripts/atualizar-nix.sh", "aplicativos"]])
+
+    def test_kde_nix_refresh_uses_allowlisted_script_without_system_actions_in_test(self) -> None:
+        commands, description = local_server.resolve_command("refresh-kde-apps", {})
+        self.assertEqual(commands, [["sh", "roles/nix/files/atualizar-aplicativos-nix.sh"]])
+        self.assertIn("restart Plasma", description)
+        self.assertIn("refresh-kde-apps", local_server.OPERATIONS)
+        self.assertNotIn("refresh-kde-apps", local_server.PRIVILEGED_OPERATIONS)
+        self.assertNotIn("refresh-kde-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
+
+        session = local_server.OperationSession("test-kde-refresh", self.root, "refresh-kde-apps", {})
+        lock = threading.Lock()
+        self.assertTrue(lock.acquire(blocking=False))
+        with patch.object(local_server, "run_pty_command", return_value=(0, "mocked KDE refresh")) as pty, patch.object(local_server, "execute_in_system_terminal") as terminal:
+            local_server.run_session(session, lock)
+        self.assertEqual(session.status, "success")
+        self.assertEqual(pty.call_args.args[1], ["sh", "roles/nix/files/atualizar-aplicativos-nix.sh"])
+        terminal.assert_not_called()
 
     def test_pty_timeout_terminates_command(self) -> None:
         env = os.environ.copy()

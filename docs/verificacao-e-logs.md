@@ -1,6 +1,6 @@
 # Verificações do sistema e histórico de logs
 
-Este guia descreve a organização da pré-release `0.1.0-alpha.34-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
+Este guia descreve a organização da pré-release `0.1.0-alpha.35-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
 
 ## Início: integridade e canal Stable
 
@@ -16,7 +16,7 @@ A ação **Verificar novamente** na página **Verificar** valida os arquivos emb
 
 ## Nix
 
-**Nix** agrupa as ações do canal oficial Stable — verificar o canal, atualizar os aplicativos Nix do perfil do usuário e migrar para a versão Stable mais recente. A migração exige uma verificação oficial recente nesta instância que indique uma atualização disponível; o histórico salvo, sozinho, não autoriza a ação.
+**Nix** agrupa as ações do canal oficial Stable e duas ações diferentes para aplicativos: **Atualizar aplicativos Nix** atualiza pacotes no perfil do usuário; **Recarregar apps Nix no KDE** reconstrói o menu de aplicativos e reinicia o shell Plasma na sessão atual, sem atualizar pacotes nem alterar o perfil. A segunda ação não usa privilégios de administrador e exige confirmação própria. Migrar para a versão Stable mais recente exige uma verificação oficial recente nesta instância que indique uma atualização disponível; o histórico salvo, sozinho, não autoriza a ação.
 
 ## Histórico
 
@@ -38,7 +38,7 @@ Uma checagem ou aplicação isolada de módulo usa:
 .alpine-state/web/<versao-frontend>/operations/modules/<id-do-modulo>/<id-da-operacao>.log
 ```
 
-Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.34-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.34-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
+Por exemplo, para a checagem de Stable na versão `0.1.0-alpha.35-web`, o arquivo ficará em `.alpine-state/web/0.1.0-alpha.35-web/operations/general/<id-da-operacao>.log`. O painel mostra o caminho efetivo em vez de exigir que a pessoa o adivinhe.
 
 Os arquivos `.log` são privados ao usuário local (permissões restritas). A interface pede ao bridge somente o identificador gerado da operação; o servidor local não aceita um caminho de arquivo arbitrário vindo do navegador. A rota continua limitada ao bridge local e à sessão autorizada.
 

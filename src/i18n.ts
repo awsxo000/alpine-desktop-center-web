@@ -131,6 +131,8 @@ type UiCopy = {
     stablePolicy: string
     checkChannel: string
     refreshApps: string
+    updateApps: string
+    appActionsDetail: string
     migrateStable: string
     migrationRequirement: string
     noSwitch: string
@@ -183,24 +185,32 @@ type UiCopy = {
     previewTitle: string
     applyAllTitle: string
     migrateTitle: string
-    refreshAppsTitle: string
+    updateAppsTitle: string
+    refreshKdeAppsTitle: string
     applyModuleTitle: (name: string) => string
     previewDescription: string
     applyAllDescription: string
     migrateDescription: string
-    refreshAppsDescription: string
+    updateAppsDescription: string
+    refreshKdeAppsDescription: string
     applyModuleDescription: string
     previewChange: string
     profileChange: string
+    desktopRefreshChange: string
     systemChange: string
     previewAction: string
     migrateAction: string
-    refreshAppsAction: string
+    updateAppsAction: string
+    refreshKdeAppsAction: string
     confirmAction: string
     confirmPreview: string
     confirmChange: string
+    confirmProfileChange: string
+    confirmRefreshKde: string
     reviewAndSnapshot: string
+    refreshKdeReview: string
     acknowledgement: string
+    refreshKdeAcknowledgement: string
     cancel: string
   }
   logs: {
@@ -406,14 +416,16 @@ const en: UiCopy = {
     stableOnly: 'Official Stable only',
     stablePolicy: 'This app does not offer or apply a switch to rolling or Unstable packages.',
     checkChannel: 'Check Stable channel',
-    refreshApps: 'Refresh Nix applications',
+    refreshApps: 'Refresh Nix apps',
+    updateApps: 'Update Nix apps',
+    appActionsDetail: 'Update changes packages in the user Nix profile; refresh rebuilds the KDE app menu and restarts Plasma without upgrading packages.',
     migrateStable: 'Migrate to latest Stable',
     migrationRequirement: 'Migration requires a successful official check from the last 10 minutes that reports an update.',
     noSwitch: 'No switch to rolling or Unstable packages is offered or performed by this application.',
     openLog: 'Open log',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Refresh Nix applications', 'migrate-stable-channel': 'Migrate Stable channel' },
+    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
     eyebrow: 'SESSION AND PERSISTENT LOGS',
     title: 'Operation history',
     latestComplete: 'Latest operation completed.',
@@ -459,24 +471,32 @@ const en: UiCopy = {
     previewTitle: 'Run a full configuration preview?',
     applyAllTitle: 'Apply all modules?',
     migrateTitle: 'Migrate to the latest official Stable Nix channel?',
-    refreshAppsTitle: 'Refresh Nix applications?',
+    updateAppsTitle: 'Update Nix applications in the user profile?',
+    refreshKdeAppsTitle: 'Refresh Nix apps in KDE?',
     applyModuleTitle: (name) => `Apply ${name}?`,
     previewDescription: 'This runs Ansible in check mode with diff only when make, Ansible and prepared release-local state already exist; it does not install prerequisites. Check mode is best-effort: command and shell tasks without check-mode support may be skipped.',
     applyAllDescription: 'The current backend defaults can install packages, enable or reconfigure services, create a 12 GiB swapfile and update boot parameters for hibernation when supported.',
     migrateDescription: 'The operation updates the configured Nix channel and runs nix-channel --update. It is enabled only after the official Stable check reports a newer release.',
-    refreshAppsDescription: 'The operation updates applications in the current user Nix profile. Review the terminal output and verify the profile afterwards.',
+    updateAppsDescription: 'The operation updates applications in the current user Nix profile. Review the terminal output and verify the profile afterwards.',
+    refreshKdeAppsDescription: 'This rebuilds the KDE app menu cache and restarts Plasma after a short delay. It does not upgrade packages, change the Nix profile, or reboot the system.',
     applyModuleDescription: 'This role can install or update packages and change system services or configuration files.',
     previewChange: 'Preview check mode; still best-effort.',
     profileChange: 'This action changes the user Nix profile or channel.',
+    desktopRefreshChange: 'The Plasma shell restarts in your current desktop session; its panel may briefly disappear.',
     systemChange: 'This action changes the installed system.',
     previewAction: 'Run preview',
     migrateAction: 'Migrate Stable',
-    refreshAppsAction: 'Refresh applications',
+    updateAppsAction: 'Update Nix apps',
+    refreshKdeAppsAction: 'Refresh KDE menu',
     confirmAction: 'Confirm and run',
     confirmPreview: 'CONFIRM BEST-EFFORT PREVIEW',
     confirmChange: 'CONFIRM SYSTEM CHANGE',
+    confirmProfileChange: 'CONFIRM NIX PROFILE CHANGE',
+    confirmRefreshKde: 'CONFIRM DESKTOP REFRESH',
     reviewAndSnapshot: 'Review terminal output before proceeding; use a disposable VM snapshot for early testing.',
+    refreshKdeReview: 'The KDE app menu and panel may briefly reload while Plasma restarts.',
     acknowledgement: 'I understand this operation can modify the system, Nix profile, or release-local state.',
+    refreshKdeAcknowledgement: 'I understand this rebuilds the KDE app menu and restarts Plasma without upgrading Nix packages.',
     cancel: 'Cancel',
   },
   logs: {
@@ -684,14 +704,16 @@ const pt: UiCopy = {
     stableOnly: 'Somente Stable oficial',
     stablePolicy: 'Este app não oferece nem executa a troca para pacotes rolling ou Unstable.',
     checkChannel: 'Verificar canal Stable',
-    refreshApps: 'Atualizar aplicativos Nix',
+    refreshApps: 'Recarregar apps Nix no KDE',
+    updateApps: 'Atualizar aplicativos Nix',
+    appActionsDetail: 'Atualizar aplicativos altera o perfil Nix do usuário; recarregar apps no KDE reconstrói o menu e reinicia o Plasma, sem atualizar pacotes.',
     migrateStable: 'Migrar para o Stable mais recente',
     migrationRequirement: 'A migração exige uma verificação oficial bem-sucedida, feita nos últimos 10 minutos, que indique uma atualização.',
     noSwitch: 'Este aplicativo não oferece nem executa a troca para pacotes rolling ou Unstable.',
     openLog: 'Abrir registro',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'migrate-stable-channel': 'Migrar para Stable' },
+    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
     eyebrow: 'SESSÃO E REGISTROS PERSISTENTES',
     title: 'Histórico de operações',
     latestComplete: 'Última operação concluída.',
@@ -737,24 +759,32 @@ const pt: UiCopy = {
     previewTitle: 'Executar uma prévia completa da configuração?',
     applyAllTitle: 'Aplicar todos os módulos?',
     migrateTitle: 'Migrar para o canal Nix Stable oficial mais recente?',
-    refreshAppsTitle: 'Atualizar aplicativos Nix?',
+    updateAppsTitle: 'Atualizar aplicativos Nix do perfil do usuário?',
+    refreshKdeAppsTitle: 'Recarregar apps Nix no KDE?',
     applyModuleTitle: (name) => `Aplicar ${name}?`,
     previewDescription: 'O Ansible será executado em modo de verificação com diff somente se make, Ansible e o estado preparado local à versão já existirem; a ação não instala pré-requisitos. Esse modo é best-effort: tarefas de comando e shell sem suporte a check mode podem ser ignoradas.',
     applyAllDescription: 'As configurações atuais do backend podem instalar pacotes, ativar ou reconfigurar serviços, criar um arquivo swap de 12 GiB e atualizar parâmetros de inicialização para hibernação quando houver suporte.',
     migrateDescription: 'A operação atualiza o canal Nix configurado e executa nix-channel --update. Só é liberada se a verificação Stable oficial indicar uma versão mais nova.',
-    refreshAppsDescription: 'A operação atualiza aplicativos no perfil Nix do usuário atual. Revise a saída do terminal e confira o perfil depois.',
+    updateAppsDescription: 'A operação atualiza aplicativos no perfil Nix do usuário atual. Revise a saída do terminal e confira o perfil depois.',
+    refreshKdeAppsDescription: 'Reconstrói o cache do menu de aplicativos KDE e reinicia o Plasma após um breve intervalo. Não atualiza pacotes, não altera o perfil Nix e não reinicia o sistema.',
     applyModuleDescription: 'Esta função pode instalar ou atualizar pacotes e alterar serviços do sistema ou arquivos de configuração.',
     previewChange: 'Prévia em modo de verificação; ainda assim, best-effort.',
     profileChange: 'Esta ação altera o perfil Nix do usuário ou o canal.',
+    desktopRefreshChange: 'O shell do Plasma será reiniciado na sessão atual; o painel pode desaparecer brevemente.',
     systemChange: 'Esta ação altera o sistema instalado.',
     previewAction: 'Executar prévia',
     migrateAction: 'Migrar Stable',
-    refreshAppsAction: 'Atualizar aplicativos',
+    updateAppsAction: 'Atualizar aplicativos Nix',
+    refreshKdeAppsAction: 'Recarregar menu do KDE',
     confirmAction: 'Confirmar e executar',
     confirmPreview: 'CONFIRMAR PRÉVIA BEST-EFFORT',
     confirmChange: 'CONFIRMAR ALTERAÇÃO NO SISTEMA',
+    confirmProfileChange: 'CONFIRMAR ALTERAÇÃO DO PERFIL NIX',
+    confirmRefreshKde: 'CONFIRMAR ATUALIZAÇÃO DO DESKTOP',
     reviewAndSnapshot: 'Revise a saída do terminal antes de continuar; nos primeiros testes, use um snapshot descartável da VM.',
+    refreshKdeReview: 'O menu e o painel do KDE podem recarregar brevemente enquanto o Plasma reinicia.',
     acknowledgement: 'Entendo que esta operação pode alterar o sistema, o perfil Nix ou o estado local desta versão.',
+    refreshKdeAcknowledgement: 'Entendo que esta ação reconstrói o menu de aplicativos do KDE e reinicia o Plasma, sem atualizar pacotes Nix.',
     cancel: 'Cancelar',
   },
   logs: {

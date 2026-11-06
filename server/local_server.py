@@ -48,7 +48,8 @@ DIAGNOSTIC_MAX_AGE_SECONDS = 600
 OPERATIONS = {
     "validate-backend", "system-check", "check-all-modules", "diagnose-module",
     "simulate-full", "apply-full", "apply-diagnostics", "refresh-nix-apps",
-    "check-stable-channel", "migrate-stable-channel", "apply-module",
+    "update-nix-apps", "refresh-kde-apps", "check-stable-channel",
+    "migrate-stable-channel", "apply-module",
 }
 DIAGNOSTIC_MODULES = ("base", "audio", "energia", "fontes", "kde", "bluetooth", "rede", "nix", "nix_opengl", "steam", "swap")
 PUBLIC_MODULE_ALIASES = {"network": "rede"}
@@ -68,7 +69,7 @@ DEPENDENCY_STATUSES = {"not_checked", *DIAGNOSTIC_STATUSES}
 PRIVILEGED_OPERATIONS = {
     "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
 }
-SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "migrate-stable-channel"}
+SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"}
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
 DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
@@ -567,6 +568,8 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
             ("all module diagnostics", "check-all-modules"),
             ("read-only system checks", "system-check"),
             ("preview full configuration", "simulate-full"),
+            ("update nix applications", "update-nix-apps"),
+            ("refresh nix applications in kde", "refresh-kde-apps"),
             ("refresh nix applications", "refresh-nix-apps"),
         ) if normalized.startswith(phrase)), None)
     status = status_match.group(1) if status_match else "unknown"
@@ -854,7 +857,9 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
     simple = {
         "check-stable-channel": (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel"),
         "migrate-stable-channel": (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel"),
-        "refresh-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "refresh Nix applications"),
+        "refresh-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "update Nix applications (legacy operation id)"),
+        "update-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "update Nix applications in the user profile"),
+        "refresh-kde-apps": (["sh", "roles/nix/files/atualizar-aplicativos-nix.sh"], "refresh KDE Nix app menu and restart Plasma"),
         "simulate-full": (["make", "simular"], "preview full configuration in Ansible check mode"),
         "apply-full": (["make", "aplicar"], "apply full configuration"),
         "apply-diagnostics": (["make", "diagnostico"], "apply configuration with diagnostics"),
@@ -1140,10 +1145,10 @@ def start_operation(root: Path, operation: str, payload: dict[str, object], oper
         if blocker:
             operation_lock.release()
             return {"status": "blocked", "operation": operation, "message": blocker}
-    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "migrate-stable-channel"}:
+    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"}:
         with DIAGNOSTIC_LOCK:
             DIAGNOSTIC_CACHE.clear()
-    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "migrate-stable-channel"} or operation.startswith("apply-"):
+    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"} or operation.startswith("apply-"):
         with STABLE_CHANNEL_LOCK:
             STABLE_CHANNEL_CACHE = None
     session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"

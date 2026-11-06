@@ -72,6 +72,8 @@ const endpointFor: Record<NamedOperation, string> = {
   'apply-full': '/api/operations/apply-full',
   'apply-diagnostics': '/api/operations/apply-diagnostics',
   'refresh-nix-apps': '/api/operations/refresh-nix-apps',
+  'update-nix-apps': '/api/operations/update-nix-apps',
+  'refresh-kde-apps': '/api/operations/refresh-kde-apps',
   'check-stable-channel': '/api/operations/check-stable-channel',
   'migrate-stable-channel': '/api/operations/migrate-stable-channel',
   'apply-module': '/api/operations/apply-module',

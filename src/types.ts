@@ -59,6 +59,8 @@ export type NamedOperation =
   | 'apply-full'
   | 'apply-diagnostics'
   | 'refresh-nix-apps'
+  | 'update-nix-apps'
+  | 'refresh-kde-apps'
   | 'check-stable-channel'
   | 'migrate-stable-channel'
   | 'apply-module'

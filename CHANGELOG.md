@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.35-web — atualização Nix e refresh KDE separados
+- Restaura **Refresh Nix apps** como ação distinta: chama o script KDE embutido para reconstruir o menu de aplicativos e reiniciar o shell Plasma na sessão atual, sem atualizar pacotes nem alterar o perfil Nix.
+- Mantém **Update Nix apps** para atualizar os aplicativos do perfil do usuário; cada ação tem rótulo, descrição e confirmação próprios em EN-US e PT-BR.
+- O bridge registra `refresh-kde-apps` como operação nomeada não privilegiada; `update-nix-apps` é o identificador explícito da atualização de perfil, e `refresh-nix-apps` continua aceito como alias legado dessa atualização.
+- Validação: `pnpm check`, 43 testes (`pnpm test`), `pnpm build` e `git diff --check`; prévia desktop em 1440×900 inspecionada em EN-US e PT-BR. Nenhuma operação de sistema/KDE foi executada; ainda é necessária validação numa VM Alpine descartável.
+- Mantém backend `v1.44-dev` no commit `52712cb7872792c04495d8b63d1a917a35861e31`; nenhuma regra `doas` ou política de privilégio foi alterada.
+
 ## 0.1.0-alpha.34-web — cinco destinos e localização ampla
 - Reorganiza a navegação em **Início, Verificar, Aplicar, Nix e Histórico**: diagnósticos ficam separados da aplicação; canal Stable e manutenção de apps Nix dividem um destino; sessão e logs persistentes passam a uma fonte canônica.
 - Amplia a tradução PT-BR para títulos, instruções e estados técnicos; o seletor conciso permanece **BR/US**.
