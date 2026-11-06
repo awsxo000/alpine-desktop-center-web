@@ -1,6 +1,6 @@
-# Alpine Desktop Center Web — alpha.36
+# Alpine Desktop Center Web — alpha.37
 
-A alpha.36 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
+A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
 
 ## Mudanças desta candidata
 
@@ -10,6 +10,7 @@ A alpha.36 é uma pré-release comunitária para validação em Alpine 3.24.3/KD
 - **Localização:** amplia o PT-BR para títulos, ações, instruções técnicas e estados; mantém os seletores concisos **BR/US** com nomes acessíveis.
 - **Densidade desktop:** remove o chip lateral repetitivo e uma etapa duplicada do resumo inicial, aproveita a largura disponível e evita rolagem global nas resoluções verificadas.
 - **Logs por ação:** organiza os novos registros em `.alpine-state/web/<versão>/logs/verify/`, `apply/` e `nix/`, com subpastas por tipo de operação e módulo; o Histórico mostra o destino e continua lendo os caminhos legados `operations/general/` e `operations/modules/`.
+- **Verificação em dois fatores:** para cada módulo, distingue o estado atual do sistema (pacotes, serviços e configurações que já estão presentes) da prontidão para aplicar (diagnóstico recente, dependências declaradas verificadas e arquivos do backend embarcado validados pelo manifesto SHA-256). Um módulo incompleto pode estar pronto para receber a instalação.
 - **Integridade:** o painel descreve a integridade do backend da versão e distingue falha de conexão sem afirmar falsamente que o bloqueio está ativo.
 
 - **Abertura em tela cheia:** Chromium, Chromium Browser e Google Chrome abrem o app local em fullscreen; Firefox continua usando kiosk. O launcher mantém o perfil local e o bridge loopback.
@@ -27,7 +28,7 @@ A alpha.28 falhou na role Steam porque `nixpkgs.steam` não estava disponível d
 
 ## Próximas validações na VM
 
-- [ ] Baixar e extrair a alpha.36 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
+- [ ] Baixar e extrair a alpha.37 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
 - [ ] Confirmar no ambiente desktop real que Chromium/Chrome abre em tela cheia, que Firefox permanece em kiosk, que o launcher mostra a nova logo e que a janela pode ser encerrada sem matar o bridge inesperadamente.
 - [ ] Conferir **BR** seleciona Português brasileiro e **US** seleciona English (United States), incluindo rótulos acessíveis, teclado, preferência salva e restauração após fechar/reabrir.
 - [ ] Conferir em tema claro/escuro e em 1366×768/resolução menor que a página Início explica o escopo correto, que a marca permanece nítida, que a largura é aproveitada e que scroll interno não corta cards em 100%/150% de zoom.
@@ -36,6 +37,7 @@ A alpha.28 falhou na role Steam porque `nixpkgs.steam` não estava disponível d
 - [ ] Acionar atualização de integridade do backend e confirmar resposta ao vivo, catálogo e estado validado. Não alterar nem apagar arquivos da release durante esse teste.
 - [ ] Executar check de um módulo e check de todos; conferir componentes PASS/MISSING/WARN, status por módulo, caminhos em `logs/verify/modules/<module>/` e `logs/verify/all-modules/`, e abertura dos logs em Verificar e Histórico.
 - [ ] Confirmar que Verificar concentra diagnósticos somente para leitura; Aplicar oferece aplicação individual, prévia e aplicação completa, com diagnóstico/dependências recentes exigidos para a ação individual.
+- [ ] Em cada módulo, conferir que **Estado atual do sistema** descreve componentes instalados/configurados e que **Prontidão para instalar** reporta separadamente diagnóstico recente, dependências completas e integridade SHA-256 do backend; confirmar que componente ausente no módulo-alvo não bloqueia sua própria instalação quando os pré-requisitos estão satisfeitos.
 - [ ] Confirmar que Nix oferece somente Stable, separa atualização do perfil de usuário do refresh do menu KDE/Plasma, e não habilita migração por status salvo: exige check oficial recente nesta instância e update disponível.
 - [ ] Em VM de teste, confirmar que **Atualizar aplicativos Nix** atualiza o perfil do usuário e que **Recarregar apps Nix no KDE** reconstrói o menu e reinicia o Plasma sem atualizar pacotes nem alterar o perfil; conferir as confirmações distintas e os registros no Histórico.
 - [ ] Conferir Histórico com operações da sessão, contadores, histórico persistente, atualização e abertura de logs privados.

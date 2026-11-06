@@ -11,7 +11,7 @@ Fortalecer a versão web local sem alterar a ideia original: o usuário baixa a 
 3. **Estado real**: endpoints locais para health, módulos e histórico de operações; a interface não trata integridade nem módulos fixos como fatos atuais.
 4. **Launcher confiável**: aguarda `/api/health` antes de abrir a janela dedicada e entrega o token por cookie local; Chromium/Chrome abrem em fullscreen app mode e Firefox permanece em kiosk.
 5. **Transparência**: operação, logs, integridade e módulos alimentam a interface; ações destrutivas exigem confirmação explícita.
-6. **Apresentação alpha.36**: a navegação consolida-se em cinco destinos — Início, Verificar, Aplicar, Nix e Histórico — com logs locais separados por destino/ação em Verify, Apply e Nix, e registros legados ainda acessíveis. Nix mantém atualização do perfil e refresh KDE/Plasma separados; Histórico reúne atividade da sessão, caminhos e logs persistentes. PT-BR cobre detalhes técnicos, o seletor exibe BR/US, o desktop usa largura com densidade sem espaços redundantes e botões preservam hover/foco discretos e acessíveis.
+6. **Apresentação alpha.37**: a navegação consolida-se em cinco destinos — Início, Verificar, Aplicar, Nix e Histórico — e cada módulo apresenta separadamente seu estado atual instalado/configurado e sua prontidão para instalação, baseada em diagnóstico recente, dependências completas e integridade SHA-256 do backend embarcado. Logs locais são separados por destino/ação, Nix mantém atualização do perfil e refresh KDE/Plasma separados, e Histórico reúne atividade e registros persistentes. PT-BR cobre detalhes técnicos, o seletor exibe BR/US, o desktop usa largura com densidade sem espaços redundantes e botões preservam hover/foco discretos e acessíveis.
 
 ## Arquitetura
 

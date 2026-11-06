@@ -139,6 +139,10 @@
     max-height: 38vh;
   }
 
+  .module-verification-factors {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .app-shell .modules-panel .module-actions {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -173,6 +177,58 @@
   min-width: 0;
   flex-direction: column;
   gap: 10px;
+}
+
+.module-verification-factors {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.module-verification-factor {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface-2);
+}
+
+.module-verification-factor .section-kicker {
+  margin: 0;
+  font-size: 8px;
+}
+
+.module-verification-factor strong {
+  color: var(--text);
+  font-size: 11px;
+}
+
+.module-verification-factor small {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.module-verification-factor.status-complete,
+.module-verification-factor.is-ready {
+  border-color: rgba(56, 164, 111, .45);
+  background: rgba(56, 164, 111, .07);
+}
+
+.module-verification-factor.status-partial,
+.module-verification-factor.status-incomplete,
+.module-verification-factor.is-blocked {
+  border-color: rgba(213, 157, 58, .45);
+  background: rgba(213, 157, 58, .07);
+}
+
+.module-verification-factor.status-unknown,
+.module-verification-factor.status-unchecked {
+  border-color: var(--line);
 }
 
 .modules-panel .selected-module-heading {

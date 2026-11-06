@@ -1,6 +1,6 @@
 # Verificações do sistema e histórico de logs
 
-Este guia descreve a organização da pré-release `0.1.0-alpha.36-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
+Este guia descreve a organização da pré-release `0.1.0-alpha.37-web`. Ela continua sendo uma versão alpha e ainda requer validação operacional em Alpine Linux real.
 
 ## Início: integridade e canal Stable
 
@@ -11,6 +11,13 @@ A ação **Verificar novamente** na página **Verificar** valida os arquivos emb
 ## Verificar e Aplicar
 
 **Verificar** concentra diagnósticos sem aplicar mudanças. É possível verificar um módulo por vez ou todos. Os resultados incluem status, horário, componentes aprovados/faltantes e avisos/erros. A página mostra o histórico recente e permite abrir os logs associados.
+
+Para cada módulo, a aplicação separa dois fatores que respondem a perguntas diferentes:
+
+1. **Estado atual do sistema:** o diagnóstico somente para leitura consulta os pacotes, serviços, processos, arquivos de configuração e recursos pertinentes ao módulo. Esse resultado informa o que já existe no Alpine instalado; componentes ausentes podem ser justamente o que o Apply deverá configurar.
+2. **Prontidão para instalar/aplicar:** o painel Aplicar só mostra “Pronto para aplicar” quando há um diagnóstico recente do módulo, todos os módulos declarados como dependências têm diagnóstico recente e completo, o catálogo de dependências corresponde ao diagnóstico e os arquivos do backend embarcado passam pela validação SHA-256 da release. Se algum requisito faltar, o painel apresenta o bloqueio correspondente.
+
+Assim, um módulo pode aparecer como parcial/incompleto no estado atual e ainda estar pronto para instalação. Os dois resultados não devem ser confundidos: a prontidão não exige que o próprio módulo já esteja instalado. A integridade SHA-256 cobre os arquivos do backend embarcado e do catálogo/roles usados para aplicar as configurações; não é uma verificação individual de cada arquivo do sistema Alpine.
 
 **Aplicar** é dedicado às mudanças: aplicar um módulo ou a configuração completa, além de pré-visualizar a configuração quando os pré-requisitos locais já existem. A aplicação individual permanece bloqueada até haver diagnóstico válido recente e dependências completas. A ação completa e a prévia exigem confirmação explícita.
 
@@ -47,10 +54,10 @@ Os novos logs são guardados localmente, no estado privado da release em que a a
 
 Cada operação grava `<id-da-operacao>.log` na pasta correspondente. Por exemplo, a checagem do canal Stable usa `logs/nix/stable-check/`; **Atualizar aplicativos Nix** usa `logs/nix/profile-apps/`; **Recarregar apps Nix no KDE** usa `logs/nix/kde-refresh/`. Verificar e Aplicar mantêm suas próprias pastas, com subpastas separadas para cada módulo.
 
-Por exemplo, numa release `0.1.0-alpha.36-web`, o log Stable ficará neste formato:
+Por exemplo, numa release `0.1.0-alpha.37-web`, o log Stable ficará neste formato:
 
 ```text
-.alpine-state/web/0.1.0-alpha.36-web/logs/nix/stable-check/<id-da-operacao>.log
+.alpine-state/web/0.1.0-alpha.37-web/logs/nix/stable-check/<id-da-operacao>.log
 ```
 
 O Histórico mostra o caminho completo e permite abrir a saída salva pelo ID. Diretórios de log são privados ao usuário local (modo `0700`) e os arquivos têm acesso restrito (modo `0600`). A retenção considera toda a árvore categorizada.

@@ -94,6 +94,14 @@ type UiCopy = {
     title: string
     detail: string
     selectedModule: string
+    systemFactorTitle: string
+    systemFactorCopy: string
+    systemNotChecked: string
+    diagnosticExpired: string
+    readinessFactorTitle: string
+    readyToApply: string
+    notReadyToApply: string
+    readinessCriteria: string
     dependencies: string
     applyModule: string
     applyAll: string
@@ -358,7 +366,7 @@ const en: UiCopy = {
     validateAgain: 'Validate again',
     checksEyebrow: 'READ-ONLY INSPECTION',
     checksTitle: 'System diagnostics',
-    checksDetail: 'Run a diagnostic for one module or inspect every module. These checks do not apply configuration.',
+    checksDetail: 'Module diagnostics report what is currently installed/configured. Apply separately checks embedded backend-file integrity, fresh dependency diagnostics and installation readiness; missing module components can be expected before setup.',
     moduleStatus: 'Module status',
     checksReadonly: 'Checks do not apply configuration.',
     checkAll: 'Check all modules',
@@ -378,8 +386,16 @@ const en: UiCopy = {
   apply: {
     eyebrow: 'DESKTOP MODULES',
     title: 'Apply a selected module.',
-    detail: 'Choose one module and review its status. Apply is enabled only after a fresh diagnostic and complete dependencies.',
+    detail: 'Review the current system state and installation readiness separately. Apply requires fresh diagnostics, complete dependencies and valid embedded backend files.',
     selectedModule: 'Selected module',
+    systemFactorTitle: '1 · Current system state',
+    systemFactorCopy: 'Read-only checks report installed packages, services and configuration for this module.',
+    systemNotChecked: 'Not checked yet',
+    diagnosticExpired: 'Check expired · run it again',
+    readinessFactorTitle: '2 · Installation readiness',
+    readyToApply: 'Ready to apply',
+    notReadyToApply: 'Not ready yet',
+    readinessCriteria: 'Backend integrity passed · fresh module check · declared dependencies complete.',
     dependencies: 'Dependencies',
     applyModule: 'Apply module',
     applyAll: 'Apply all modules',
@@ -646,7 +662,7 @@ const pt: UiCopy = {
     validateAgain: 'Validar novamente',
     checksEyebrow: 'INSPEÇÃO SOMENTE PARA LEITURA',
     checksTitle: 'Diagnósticos do sistema',
-    checksDetail: 'Execute um diagnóstico de um módulo ou inspecione todos. Essas verificações não aplicam configurações.',
+    checksDetail: 'Os diagnósticos mostram o que está instalado/configurado no sistema. Em Aplicar, a prontidão é avaliada separadamente: integridade SHA-256 dos arquivos do backend embarcado, diagnósticos recentes das dependências e condições para instalar. Componentes ausentes no próprio módulo podem ser esperados antes da configuração.',
     moduleStatus: 'Estado dos módulos',
     checksReadonly: 'As verificações não aplicam alterações à configuração.',
     checkAll: 'Verificar todos os módulos',
@@ -666,8 +682,16 @@ const pt: UiCopy = {
   apply: {
     eyebrow: 'MÓDULOS DO DESKTOP',
     title: 'Aplique um módulo selecionado.',
-    detail: 'Escolha um módulo e revise seu estado. Aplicar só é liberado após um diagnóstico recente e dependências completas.',
+    detail: 'Confira separadamente o estado atual do sistema e a prontidão para instalar. Aplicar exige diagnósticos recentes, dependências completas e integridade dos arquivos do backend embarcado.',
     selectedModule: 'Módulo selecionado',
+    systemFactorTitle: '1 · Estado atual do sistema',
+    systemFactorCopy: 'Verificações somente para leitura mostram pacotes, serviços e configurações já presentes para este módulo.',
+    systemNotChecked: 'Ainda não verificado',
+    diagnosticExpired: 'Verificação expirada · execute novamente',
+    readinessFactorTitle: '2 · Prontidão para instalar',
+    readyToApply: 'Pronto para aplicar',
+    notReadyToApply: 'Ainda não está pronto',
+    readinessCriteria: 'Integridade do backend aprovada · diagnóstico recente do módulo · dependências declaradas completas.',
     dependencies: 'Dependências',
     applyModule: 'Aplicar módulo',
     applyAll: 'Aplicar todos os módulos',

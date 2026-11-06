@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.37-web — verificação em dois fatores por módulo
+- Distingue explicitamente o **estado atual do sistema** (pacotes, serviços e configurações que já existem) da **prontidão para aplicar** (diagnóstico recente do módulo, dependências declaradas com diagnóstico completo e integridade dos arquivos do backend embarcado pelo manifesto SHA-256).
+- O painel Aplicar mostra os dois resultados lado a lado e explica bloqueios; um módulo incompleto no sistema não é tratado como prova de que está proibido instalá-lo.
+- A página Verificar explica a diferença em PT-BR e EN-US. A lógica existente de autorização de Apply permanece a fonte de verdade; nenhuma operação do sistema foi executada.
+- Validação: `pnpm check`, 45 testes (`pnpm test`), `pnpm build` e `git diff --check`; captura visual desktop não realizada porque o navegador headless não está instalado no sandbox.
+
 ## 0.1.0-alpha.36-web — logs organizados por destino e ação
 - Substitui o destino genérico para novos registros por pastas fáceis de reconhecer em `.alpine-state/web/<versão>/logs/`: `verify/`, `apply/` e `nix/`, com subpastas por ação e por módulo quando aplicável.
 - Exemplos: verificação Stable em `logs/nix/stable-check/`, atualização do perfil Nix em `logs/nix/profile-apps/` e refresh/reinício do KDE em `logs/nix/kde-refresh/`; o Histórico continua exibindo o caminho exato e abrindo cada log pelo ID.

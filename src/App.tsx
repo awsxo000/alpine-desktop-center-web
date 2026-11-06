@@ -591,9 +591,13 @@ function ModulesPanel({ modules, catalogStatus, selectedModule, setSelectedModul
   const { ui, locale } = useCopy()
   const selectedName = selected ? ui.modules.names[selected.id] : ''
   const dependencies = selected?.dependencies?.map((id) => ui.modules.names[id]) ?? []
-  const checkSummary = selectedDiagnostic
-    ? `${ui.states.diagnostic[selectedDiagnostic.status]} · ${selectedDiagnostic.summary.passed}/${selectedDiagnostic.summary.total} ${ui.verify.componentChecks} · ${selectedDiagnostic.summary.warnings} ${ui.verify.warnings} · ${formatDate(selectedDiagnostic.checked_at, locale)}`
-    : ui.apply.checkFirst
+  const diagnosticFresh = isDiagnosticFresh(selectedDiagnostic)
+  const systemStateLabel = !selectedDiagnostic
+    ? ui.apply.systemNotChecked
+    : !diagnosticFresh
+      ? ui.apply.diagnosticExpired
+      : ui.states.diagnostic[selectedDiagnostic.status]
+  const readinessLabel = canApply ? ui.apply.readyToApply : ui.apply.notReadyToApply
   return <div className="panel-card modules-panel">
     <PanelHeader icon={<Layers3 size={22} />} eyebrow={ui.apply.eyebrow} title={ui.apply.title} detail={ui.apply.detail} />
     {catalogStatus === 'loading' && <p className="muted-note">{ui.apply.catalogLoading}</p>}
@@ -621,9 +625,20 @@ function ModulesPanel({ modules, catalogStatus, selectedModule, setSelectedModul
                 <span className={`module-detail-state ${selected.state.toLowerCase().replace(' ', '-')}`}>{ui.states.module[selected.state]}</span>
               </div>
               <p className="selected-module-description">{ui.modules.descriptions[selected.id]}</p>
-              <p className="muted-note">{checkSummary}</p>
+              <div className="module-verification-factors" aria-label={ui.apply.readinessFactorTitle}>
+                <section className={`module-verification-factor system-factor ${diagnosticFresh ? `status-${selectedDiagnostic?.status ?? 'unknown'}` : 'status-unchecked'}`}>
+                  <p className="section-kicker">{ui.apply.systemFactorTitle}</p>
+                  <strong>{systemStateLabel}</strong>
+                  <small>{diagnosticFresh ? ui.apply.systemFactorCopy : selectedDiagnostic ? ui.apply.diagnosticExpired : ui.apply.checkFirst}</small>
+                  {selectedDiagnostic && diagnosticFresh && <small>{selectedDiagnostic.summary.passed}/{selectedDiagnostic.summary.total} {ui.verify.componentChecks} · {selectedDiagnostic.summary.failed} {ui.verify.errors} · {selectedDiagnostic.summary.warnings} {ui.verify.warnings} · {formatDate(selectedDiagnostic.checked_at, locale)}</small>}
+                </section>
+                <section className={`module-verification-factor readiness-factor ${canApply ? 'is-ready' : 'is-blocked'}`}>
+                  <p className="section-kicker">{ui.apply.readinessFactorTitle}</p>
+                  <strong>{readinessLabel}</strong>
+                  <small>{canApply ? ui.apply.readinessCriteria : applyBlockReason}</small>
+                </section>
+              </div>
               {dependencies.length > 0 && <p className="module-dependencies">{ui.apply.dependencies}: {dependencies.join(', ')}.</p>}
-              {!canApply && <div className="manual-attention"><LockKeyhole size={15} /><span>{applyBlockReason}</span></div>}
             </div>
             <div className="module-actions"><OperationButton onClick={onApply} operation={operation} icon={<Wrench size={15} />} disabled={!canApply}>{ui.apply.applyModule}</OperationButton><OperationButton onClick={onPreview} operation={operation} icon={<Activity size={15} />} disabled={!canExecute}>{ui.apply.previewConfiguration}</OperationButton><OperationButton onClick={onApplyAll} operation={operation} icon={<Layers3 size={15} />} disabled={!canExecute}>{ui.apply.applyAll}</OperationButton></div>
           </div>
