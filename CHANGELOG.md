@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0-alpha.39-web — equilíbrio entre temas e sinais do ambiente
+- Equaliza a geometria do modo claro e do modo escuro: hero, tipografia, colunas, espaçamentos e dimensões permanecem consistentes; apenas a identidade cromática muda.
+- Adiciona ao Welcome um painel compacto de sinais do ambiente com módulos disponíveis, diagnósticos da sessão e operações salvas.
+- Mantém os indicadores ligados ao estado real do bridge e traduzidos em PT-BR e EN-US.
+- Centraliza a nova camada visual em `src/theme-balance.css`, preservando o fluxo mobile e evitando alterações nas operações do backend.
+- Validação: `pnpm check`, 45 testes (`pnpm test`), `pnpm build` e `git diff --check`.
+
 ## 0.1.0-alpha.38-web — compactação e coesão visual
 - Reduz o espaço vertical ocioso no desktop, aproximando cabeçalho, título, descrição e conteúdo principal.
 - Compacta cards, painéis, listas, áreas de diagnóstico, terminal e histórico sem remover informações ou ações.

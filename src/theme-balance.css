@@ -1,0 +1,157 @@
+/* Alpha.39 UX pass: equal geometry across themes and useful overview density. */
+.workspace-overview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.workspace-overview-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspace-overview-heading .section-kicker {
+  margin: 0;
+}
+
+.workspace-overview-heading > span {
+  color: var(--faint);
+  font-size: 9px;
+}
+
+.workspace-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.workspace-metric {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 10px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.workspace-metric-icon {
+  display: grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--cyan);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+}
+
+.workspace-metric > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.workspace-metric p,
+.workspace-metric strong,
+.workspace-metric small {
+  margin: 0;
+}
+
+.workspace-metric p {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.2;
+}
+
+.workspace-metric strong {
+  color: var(--text);
+  font-family: 'DM Mono', monospace;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.workspace-metric small {
+  overflow: hidden;
+  color: var(--faint);
+  font-size: 8px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (min-width: 1061px) {
+  /* Explicitly lock geometry; theme changes only colors, never dimensions. */
+  .app-shell.light .hero-card,
+  .app-shell.dark .hero-card {
+    height: 224px;
+    min-height: 224px;
+  }
+
+  .app-shell.light .hero-content,
+  .app-shell.dark .hero-content {
+    height: 100%;
+    grid-template-columns: minmax(0, 1.18fr) minmax(280px, .82fr);
+    align-items: center;
+  }
+
+  .app-shell.light .welcome-intro h3,
+  .app-shell.dark .welcome-intro h3 {
+    margin-top: 13px;
+    margin-bottom: 8px;
+    font-size: clamp(23px, 2.55vw, 34px);
+    line-height: 1.04;
+  }
+
+  .app-shell.light .welcome-intro > p,
+  .app-shell.dark .welcome-intro > p {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .app-shell.light .welcome-purpose,
+  .app-shell.dark .welcome-purpose {
+    gap: 10px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .app-shell.light .purpose-item strong,
+  .app-shell.dark .purpose-item strong {
+    font-size: 10px;
+  }
+
+  .app-shell.light .purpose-item small,
+  .app-shell.dark .purpose-item small {
+    font-size: 9px;
+    line-height: 1.3;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1060px) {
+  .workspace-metrics {
+    gap: 6px;
+  }
+
+  .workspace-metric {
+    padding: 8px 9px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace-overview-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .workspace-metrics {
+    grid-template-columns: 1fr;
+  }
+}

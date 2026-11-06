@@ -6,6 +6,7 @@ import './light-accessibility.css'
 import './modules-layout.css'
 import './workspace-enhancements.css'
 import './density.css'
+import './theme-balance.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

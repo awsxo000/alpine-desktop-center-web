@@ -54,6 +54,11 @@ type UiCopy = {
     latestStable: string
     noStableCheck: string
     openNix: string
+    workspaceOverview: string
+    availableModules: string
+    diagnosticsSession: string
+    savedOperations: string
+    overviewEmpty: string
   }
   verify: {
     validationEyebrow: string
@@ -348,6 +353,11 @@ const en: UiCopy = {
     latestStable: 'Latest Stable',
     noStableCheck: 'No saved Stable channel check yet.',
     openNix: 'Open Nix',
+    workspaceOverview: 'WORKSPACE SIGNALS',
+    availableModules: 'Available modules',
+    diagnosticsSession: 'Session diagnostics',
+    savedOperations: 'Saved operations',
+    overviewEmpty: 'No activity recorded yet.',
   },
   verify: {
     validationEyebrow: 'BACKEND VALIDATION',
@@ -644,6 +654,11 @@ const pt: UiCopy = {
     latestStable: 'Última versão Stable',
     noStableCheck: 'Ainda não há verificação Stable salva.',
     openNix: 'Abrir Nix',
+    workspaceOverview: 'SINAIS DO AMBIENTE',
+    availableModules: 'Módulos disponíveis',
+    diagnosticsSession: 'Diagnósticos da sessão',
+    savedOperations: 'Operações salvas',
+    overviewEmpty: 'Ainda não há atividade registrada.',
   },
   verify: {
     validationEyebrow: 'VALIDAÇÃO DO BACKEND',

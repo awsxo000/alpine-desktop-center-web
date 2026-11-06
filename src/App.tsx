@@ -510,6 +510,14 @@ function App() {
                 <HealthCard icon={<FolderLock size={18} />} label={ui.welcome.backendIntegrity} value={canExecute ? ui.welcome.validated : bridgeConnected ? ui.welcome.blocked : backendCheckedAt ? ui.welcome.unavailable : ui.chrome.unknown} detail={backendCheckedAt ? `${ui.welcome.lastVerification}: ${formatDate(backendCheckedAt, locale)}` : ui.verify.notValidated} tone={canExecute ? 'green' : 'blue'} action={<button className="health-card-log-link" onClick={() => setActiveStep('verify')}>{ui.welcome.openSystemCheck} <ArrowRight size={13} /></button>} />
                 <HealthCard icon={<Network size={18} />} label={ui.welcome.stableChannel} value={stableHomeLabel} detail={stableHomeDetail} tone="violet" action={<button className="health-card-log-link" onClick={() => setActiveStep('nix')}>{ui.welcome.openNix} <ArrowRight size={13} /></button>} />
               </div>
+              <section className="workspace-overview" aria-label={ui.welcome.workspaceOverview}>
+                <div className="workspace-overview-heading"><p className="section-kicker">{ui.welcome.workspaceOverview}</p><span>{moduleCatalog.length || systemDiagnostics.length || operationHistory.length ? ui.history.currentSession : ui.welcome.overviewEmpty}</span></div>
+                <div className="workspace-metrics">
+                  <WorkspaceMetric icon={<Layers3 size={16} />} label={ui.welcome.availableModules} value={moduleCatalog.length ? String(moduleCatalog.length) : '—'} detail={moduleCatalog.length ? ui.apply.title : ui.verify.catalogLoading} />
+                  <WorkspaceMetric icon={<Activity size={16} />} label={ui.welcome.diagnosticsSession} value={systemDiagnostics.length ? String(systemDiagnostics.length) : '—'} detail={systemDiagnostics.length ? ui.verify.checksTitle : ui.verify.notChecked} />
+                  <WorkspaceMetric icon={<FileClock size={16} />} label={ui.welcome.savedOperations} value={operationHistory.length ? String(operationHistory.length) : '—'} detail={operationHistory.length ? ui.history.savedLogs : ui.welcome.overviewEmpty} />
+                </div>
+              </section>
             </>}
 
             {activeStep === 'verify' && <>
@@ -537,6 +545,10 @@ function OperationIcon({ state, size = 20 }: { state: OperationState; size?: num
 
 function HealthCard({ icon, label, value, detail, tone, action }: { icon: ReactNode; label: string; value: string; detail: string; tone: string; action?: ReactNode }) {
   return <div className="health-card"><div className="health-card-top"><div className={`card-icon ${tone}`}>{icon}</div>{action}</div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div>
+}
+
+function WorkspaceMetric({ icon, label, value, detail }: { icon: ReactNode; label: string; value: string; detail: string }) {
+  return <div className="workspace-metric"><span className="workspace-metric-icon">{icon}</span><div><p>{label}</p><strong>{value}</strong><small>{detail}</small></div></div>
 }
 
 function PanelHeader({ icon, eyebrow, title, detail }: { icon: ReactNode; eyebrow: string; title: string; detail: string }) {
