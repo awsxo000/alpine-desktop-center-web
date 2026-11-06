@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.40-web — paridade real entre temas
+- Remove as regras exclusivas de tamanho do modo claro que aumentavam fontes, line-heights, paddings, gaps e dimensões de componentes.
+- Mantém no tema claro somente ajustes de contraste, cores de estado e legibilidade; a geometria passa a vir das mesmas regras compartilhadas pelo modo escuro.
+- Preserva a acessibilidade visual sem alterar operações do backend, fluxo mobile ou componentes funcionais.
+- Validação: `pnpm check`, 45 testes (`pnpm test`), `pnpm build` e `git diff --check`.
+
 ## 0.1.0-alpha.39-web — equilíbrio entre temas e sinais do ambiente
 - Equaliza a geometria do modo claro e do modo escuro: hero, tipografia, colunas, espaçamentos e dimensões permanecem consistentes; apenas a identidade cromática muda.
 - Adiciona ao Welcome um painel compacto de sinais do ambiente com módulos disponíveis, diagnósticos da sessão e operações salvas.

@@ -1,4 +1,6 @@
-/* Applied after the compact visual theme so light-mode accessibility wins the cascade. */
+/* Theme parity: light mode keeps the same geometry as dark mode.
+   This file is intentionally limited to contrast and state colors; typography,
+   padding, gaps and component dimensions come from the shared styles. */
 .app-shell.light {
   --text: #111827;
   --muted: #27364a;
@@ -28,17 +30,6 @@
 .app-shell.light .diagnostic-check-state,
 .app-shell.light .diagnostic-check-kind {
   color: #334155;
-  font-size: 11px;
-  font-weight: 650;
-  line-height: 1.4;
-}
-
-.app-shell.light .nav-caption,
-.app-shell.light .eyebrow,
-.app-shell.light .section-kicker,
-.app-shell.light .meta-label,
-.app-shell.light .channel-label {
-  letter-spacing: .04em;
 }
 
 .app-shell.light .lede,
@@ -64,30 +55,27 @@
 .app-shell.light .persistent-log-path,
 .app-shell.light .diagnostic-check p {
   color: #27364a;
-  font-size: 12px;
-  line-height: 1.55;
 }
 
 .app-shell.light .step-copy strong,
 .app-shell.light .module-copy strong,
 .app-shell.light .check-row strong,
 .app-shell.light .help-card strong,
-.app-shell.light .validation-banner strong {
+.app-shell.light .validation-banner strong,
+.app-shell.light .metric strong,
+.app-shell.light .diagnostic-check > div strong {
   color: #111827;
-  font-size: 12px;
-}
-
-.app-shell.light .metric strong {
-  color: #111827;
-  font-size: 11px;
 }
 
 .app-shell.light .primary-button,
 .app-shell.light .secondary-button,
 .app-shell.light .ghost-button,
 .app-shell.light .text-button {
-  font-size: 12px;
-  line-height: 1.35;
+  color: #172334;
+}
+
+.app-shell.light .primary-button {
+  color: #ffffff;
 }
 
 .app-shell.light .primary-button:disabled:not(.is-running) {
@@ -114,92 +102,27 @@
 }
 
 .app-shell.light .selected-module {
-  align-items: flex-start;
   background: #f3f6f9;
 }
 
-.app-shell.light .selected-module > div:first-child {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.app-shell.light .module-actions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 8px;
-  min-width: 180px;
-}
-
-.app-shell.light .module-actions .primary-button {
-  justify-content: flex-start;
-  min-height: 38px;
-}
-
 .app-shell.light .diagnostic-check-list {
-  margin-top: 16px;
-  padding: 14px;
-  border: 1px solid #bdc8d5;
-  border-radius: 8px;
+  border-color: #bdc8d5;
   background: #fff;
 }
 
-.app-shell.light .diagnostic-check-heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin-bottom: 10px;
-  color: #111827;
-  font-size: 13px;
-}
-
-.app-shell.light .diagnostic-check-heading span {
-  color: #334155;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.app-shell.light .diagnostic-check-list ul {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
 .app-shell.light .diagnostic-check {
-  display: grid;
-  grid-template-columns: 78px minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 10px;
-  padding: 10px;
-  border: 1px solid #d1d8e1;
-  border-radius: 7px;
+  border-color: #d1d8e1;
   background: #f8fafc;
 }
 
+.app-shell.light .diagnostic-check-heading,
 .app-shell.light .diagnostic-check > div strong {
   color: #111827;
-  font-size: 12px;
 }
 
-.app-shell.light .diagnostic-check p {
-  margin: 3px 0 0;
-  overflow-wrap: anywhere;
-}
-
-.app-shell.light .diagnostic-check-state {
-  display: inline-flex;
-  justify-content: center;
-  padding: 3px 5px;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 750;
+.app-shell.light .diagnostic-check-heading span,
+.app-shell.light .diagnostic-check-kind {
+  color: #334155;
 }
 
 .app-shell.light .diagnostic-check-state.ok {
@@ -226,36 +149,6 @@
   border-color: #b6c2d1;
 }
 
-.app-shell.light .diagnostic-check-kind {
-  padding-top: 3px;
-  white-space: nowrap;
-}
-
-.app-shell.light .persistent-log-path {
-  overflow-wrap: anywhere;
-  margin: 10px 0 0;
-}
-
 .app-shell.light .persistent-log-path code {
   color: #17324a;
-  font-size: 11px;
-}
-
-@media (max-width: 900px) {
-  .app-shell.light .selected-module {
-    flex-direction: column;
-  }
-
-  .app-shell.light .module-actions {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .app-shell.light .diagnostic-check {
-    grid-template-columns: 72px minmax(0, 1fr);
-  }
-
-  .app-shell.light .diagnostic-check-kind {
-    grid-column: 2;
-  }
 }
