@@ -18,9 +18,6 @@ missing_runtime() {
   command -v python3 >/dev/null 2>&1 || missing="$missing python3"
   command -v make >/dev/null 2>&1 || missing="$missing make"
   command -v ansible-playbook >/dev/null 2>&1 || missing="$missing ansible"
-  if [ "$(id -u)" -ne 0 ] && ! command -v doas >/dev/null 2>&1 && ! command -v sudo >/dev/null 2>&1; then
-    missing="$missing doas"
-  fi
   has_browser || missing="$missing chromium"
   printf '%s' "$missing"
 }

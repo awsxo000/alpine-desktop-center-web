@@ -161,6 +161,18 @@ def detect_nix_support() -> dict[str, object]:
     return {"supported": supported, "nix_env": True, "stable_channel": stable_channel, "version": version, "reason": reason}
 
 
+def detect_base_status() -> dict[str, object]:
+    checks = []
+    for package in ("doas", "bash", "curl", "git", "shadow"):
+        installed = shutil.which("apk") is not None and subprocess.run(["apk", "info", "-e", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=3, check=False).returncode == 0
+        checks.append({"id": package, "label": package, "ready": installed})
+    repositories = Path("/etc/apk/repositories")
+    community = repositories.is_file() and "community" in repositories.read_text(errors="replace")
+    checks.append({"id": "community", "label": "community repository", "ready": community})
+    checks.append({"id": "ansible", "label": "ansible-playbook", "ready": shutil.which("ansible-playbook") is not None})
+    return {"ready": all(check["ready"] for check in checks), "checks": checks}
+
+
 def backend_module(module: object) -> str | None:
     if not isinstance(module, str):
         return None
@@ -1461,6 +1473,9 @@ class Handler(BaseHTTPRequestHandler):
             return
         if path == "/api/nix/status":
             self.send_json(detect_nix_support())
+            return
+        if path == "/api/base/status":
+            self.send_json(detect_base_status())
             return
         if path == "/api/health":
             valid, message = validate_backend(self.root)

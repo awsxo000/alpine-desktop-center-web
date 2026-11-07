@@ -1,4 +1,4 @@
-import type { BridgeHealth, DesktopEnvironment, DesktopEnvironmentId, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation, NixSupport, OperationLogSummary, PersistedStableChannelStatus, SavedOperationLog } from './types'
+import type { BaseStatus, BridgeHealth, DesktopEnvironment, DesktopEnvironmentId, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation, NixSupport, OperationLogSummary, PersistedStableChannelStatus, SavedOperationLog } from './types'
 
 export const initialLogs: LogEntry[] = [
   { time: '--:--:--', level: 'info', text: 'Waiting for the local bridge.' },
@@ -136,6 +136,15 @@ export async function getNixSupport(): Promise<NixSupport> {
     throw new Error('The Nix support response does not match the supported schema.')
   }
   return { supported: value.supported, nixEnv: value.nix_env, stableChannel: value.stable_channel, version: value.version, reason: value.reason }
+}
+
+export async function getBaseStatus(): Promise<BaseStatus> {
+  const response = await localApi('/api/base/status')
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || typeof value.ready !== 'boolean' || !Array.isArray(value.checks) || !value.checks.every((check) => isRecord(check) && typeof check.id === 'string' && typeof check.label === 'string' && typeof check.ready === 'boolean')) {
+    throw new Error('The base module status response does not match the supported schema.')
+  }
+  return { ready: value.ready, checks: value.checks as BaseStatus['checks'] }
 }
 
 export async function getBridgeHealth(): Promise<BridgeHealth> {

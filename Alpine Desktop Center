@@ -35,8 +35,7 @@ has_browser() {
 
 runtime_ready() {
   command -v python3 >/dev/null 2>&1 && command -v make >/dev/null 2>&1 && \
-    command -v ansible-playbook >/dev/null 2>&1 && has_browser && \
-    { [ "$(id -u)" -eq 0 ] || command -v doas >/dev/null 2>&1 || command -v sudo >/dev/null 2>&1; }
+    command -v ansible-playbook >/dev/null 2>&1 && has_browser
 }
 
 if ! runtime_ready; then

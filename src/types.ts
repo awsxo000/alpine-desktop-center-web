@@ -95,6 +95,11 @@ export type NixSupport = {
   reason: string | null
 }
 
+export type BaseStatus = {
+  ready: boolean
+  checks: Array<{ id: string; label: string; ready: boolean }>
+}
+
 export type BridgeHealth = {
   bridge: 'local' | 'unknown'
   backend: 'validated' | 'failed'

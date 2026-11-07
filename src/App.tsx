@@ -35,9 +35,9 @@ import {
   Zap,
   XCircle,
 } from 'lucide-react'
-import { getBridgeHealth, getDesktopEnvironment, getModuleCatalog, getNixSupport, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, startNamedOperation } from './api'
+import { getBaseStatus, getBridgeHealth, getDesktopEnvironment, getModuleCatalog, getNixSupport, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, startNamedOperation } from './api'
 import { copy, formatDate, initialLocale, type Locale } from './i18n'
-import type { BridgeHealth, DesktopEnvironment, LogEntry, Module, NixApp, ModuleDiagnostic, ModuleState, NamedOperation, NixSupport, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
+import type { BaseStatus, BridgeHealth, DesktopEnvironment, LogEntry, Module, NixApp, ModuleDiagnostic, ModuleState, NamedOperation, NixSupport, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
 
 const steps: Array<{ id: StepId }> = [
   { id: 'welcome' }, { id: 'verify' }, { id: 'apply' }, { id: 'nix' }, { id: 'history' },
@@ -155,6 +155,7 @@ function App() {
   const [bridgeMessage, setBridgeMessage] = useState(() => copy[initialLocale()].messages.checkingBridge)
   const [desktopEnvironment, setDesktopEnvironment] = useState<DesktopEnvironment | null>(null)
   const [nixSupport, setNixSupport] = useState<NixSupport | null>(null)
+  const [baseStatus, setBaseStatus] = useState<BaseStatus | null>(null)
   const [startupReady, setStartupReady] = useState(false)
 
   const ui = copy[locale]
@@ -196,6 +197,9 @@ function App() {
     void getNixSupport()
       .then((support) => { if (active) setNixSupport(support) })
       .catch(() => { if (active) setNixSupport({ supported: false, nixEnv: false, stableChannel: false, version: null, reason: 'Classic Nix support could not be detected.' }) })
+    void getBaseStatus()
+      .then((status) => { if (active) setBaseStatus(status) })
+      .catch(() => { if (active) setBaseStatus({ ready: false, checks: [] }) })
     void getBridgeHealth()
       .then((payload) => {
         if (!active) return
@@ -248,6 +252,10 @@ function App() {
   useEffect(() => {
     if (!startupReady && desktopEnvironment && nixSupport && backendCheckedAt !== null && moduleCatalogStatus !== 'loading') setStartupReady(true)
   }, [startupReady, desktopEnvironment, nixSupport, backendCheckedAt, moduleCatalogStatus])
+
+  useEffect(() => {
+    if (startupReady && baseStatus && !baseStatus.ready && activeStep === 'welcome') setActiveStep('verify')
+  }, [startupReady, baseStatus, activeStep])
 
   const addLog = (level: LogEntry['level'], text: string) => {
     const now = new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -464,7 +472,7 @@ function App() {
     ? `${ui.welcome.lastVerification}: ${formatDate(stableChannelCheck.checkedAt, locale)} · ${ui.welcome.latestStable}: ${stableChannelCheck.report?.latest_version ?? '—'}`
     : ui.welcome.noStableCheck
 
-  if (!startupReady) return <StartupScreen environment={desktopEnvironment} bridgeChecked={backendCheckedAt !== null} catalogReady={moduleCatalogStatus !== 'loading'} />
+  if (!startupReady) return <StartupScreen environment={desktopEnvironment} bridgeChecked={backendCheckedAt !== null} catalogReady={moduleCatalogStatus !== 'loading'} baseStatus={baseStatus} />
 
   return (
     <CopyContext.Provider value={{ ui, locale }}>
@@ -685,15 +693,16 @@ function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { modul
   const title = activeOperation === 'diagnose-module' ? ui.apply.checkingModule.replace('{module}', moduleName) : fullApply ? ui.apply.applyingAll : ui.apply.applyingModule.replace('{module}', moduleName)
   return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">{ui.states.operation.running}</p><h4>{title}</h4><p>{requiresSystemTerminal ? ui.apply.inProgress : ui.apply.showLogs}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span>{ui.apply.terminalAttention}</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> {ui.apply.showLogs}</button></div>
 }
-function StartupScreen({ environment, bridgeChecked, catalogReady }: { environment: DesktopEnvironment | null; bridgeChecked: boolean; catalogReady: boolean }) {
+function StartupScreen({ environment, bridgeChecked, catalogReady, baseStatus }: { environment: DesktopEnvironment | null; bridgeChecked: boolean; catalogReady: boolean; baseStatus: BaseStatus | null }) {
   const { ui } = useCopy()
   const environmentReady = Boolean(environment)
   const checks = [
     { label: ui.welcome.startupDetecting, ready: environmentReady, detail: environment?.name ?? ui.states.operation.running },
     { label: ui.welcome.startupBridge, ready: bridgeChecked, detail: bridgeChecked ? ui.welcome.startupReady : ui.states.operation.running },
     { label: ui.welcome.startupCatalog, ready: catalogReady, detail: catalogReady ? ui.welcome.startupReady : ui.states.operation.running },
+    { label: `${ui.modules.names.base} module`, ready: baseStatus?.ready === true, detail: baseStatus === null ? ui.states.operation.running : baseStatus.ready ? ui.welcome.startupReady : ui.apply.checkFirst },
   ]
-  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 44</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : 'pending'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : <LoaderCircle className="spin" size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
+  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 45</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : 'pending'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : <LoaderCircle className="spin" size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
 }
 function ConfigPanel({ apps, onRun, onListApps, onUninstallApp, onCollectGarbage, onUpdateNixApps, onRefreshKdeApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { apps: NixApp[]; onRun: () => void; onListApps: () => void; onUninstallApp: (app: NixApp) => void; onCollectGarbage: () => void; onUpdateNixApps: () => void; onRefreshKdeApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
   const { ui } = useCopy()
