@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.59-web — estado externo do bridge
+- Corrige o bridge instalado pelo APK para usar o mesmo estado gravável do launcher em `~/.local/state/alpine-desktop-center`.
+- Remove a tentativa de criar `.alpine-state` dentro de `/usr/lib`, que causava `Permission denied` e impedia o startup.
+- Adiciona regressão para instalação em diretório somente leitura.
+
 ## 0.1.0-alpha.58-web — preparação para pacote Alpine APK
 - Adiciona recipe `packaging/alpine/APKBUILD` para instalar frontend, bridge, backend embarcado e desktop entry como um único pacote `.apk`.
 - Adiciona `scripts/build-alpine-apk.sh` para construir com `abuild` em um ambiente Alpine.

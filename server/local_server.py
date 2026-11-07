@@ -291,10 +291,16 @@ def release_state_dir(root: Path, create: bool = True) -> Path:
     version = release_version(root)
     if not re.fullmatch(r"[A-Za-z0-9._+-]{1,128}", version) or version in {".", ".."}:
         raise OSError("Frontend release version is invalid for a state directory.")
+    configured_root = os.environ.get("ALPINE_DESKTOP_CENTER_STATE_ROOT", "").strip()
+    state_root = Path(configured_root).expanduser() if configured_root else root / ".alpine-state"
+    if not state_root.is_absolute():
+        raise OSError("Configured state root must be an absolute path.")
+    if state_root.is_symlink():
+        raise OSError("State root may not be a symbolic link.")
     directories = [
-        root / ".alpine-state",
-        root / ".alpine-state" / "web",
-        root / ".alpine-state" / "web" / version,
+        state_root,
+        state_root / "web",
+        state_root / "web" / version,
     ]
     for directory in directories:
         if directory.is_symlink():
@@ -308,7 +314,7 @@ def release_state_dir(root: Path, create: bool = True) -> Path:
             raise OSError("Release-local state path contains a non-directory component.")
     resolved = directories[-1].resolve()
     try:
-        resolved.relative_to(root.resolve())
+        resolved.relative_to(state_root.resolve())
     except ValueError as exc:
         raise OSError("Release-local state path escapes the release directory.") from exc
     return directories[-1]
@@ -410,14 +416,20 @@ def prune_operation_logs(directory: Path) -> None:
 
 
 def acquire_server_lock(root: Path) -> int:
-    state_dirs = [root / ".alpine-state", root / ".alpine-state" / "web"]
+    configured_root = os.environ.get("ALPINE_DESKTOP_CENTER_STATE_ROOT", "").strip()
+    state_root = Path(configured_root).expanduser() if configured_root else root / ".alpine-state"
+    if not state_root.is_absolute():
+        raise OSError("Configured state root must be an absolute path.")
+    if state_root.is_symlink():
+        raise OSError("State root may not be a symbolic link.")
+    state_dirs = [state_root, state_root / "web"]
     for directory in state_dirs:
         if directory.is_symlink():
             raise OSError("Server state path may not be a symbolic link.")
         directory.mkdir(mode=0o700, exist_ok=True)
         directory.chmod(0o700)
     try:
-        state_dirs[-1].resolve().relative_to(root.resolve())
+        state_dirs[-1].resolve().relative_to(state_root.resolve())
     except ValueError as exc:
         raise OSError("Server state path escapes the release directory.") from exc
     lock_path = state_dirs[-1] / "server.lock"
@@ -1300,7 +1312,8 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                         session.nix_packages = cached_packages
                     session.append("\nSearch results restored from the recent Nix catalog cache.\n")
                     pending_commands = []
-            state_dir = session.root / ".alpine-state"
+            configured_state_root = os.environ.get("ALPINE_DESKTOP_CENTER_STATE_ROOT", "").strip()
+            state_dir = Path(configured_state_root).expanduser() if configured_state_root else session.root / ".alpine-state"
             ansible_collection = state_dir / "collections" / "ansible_collections" / "community" / "general"
             prerequisites_missing = (
                 shutil.which("make", path=env["PATH"]) is None

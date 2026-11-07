@@ -132,7 +132,7 @@ finally:
     except FileNotFoundError:
         pass
 PY
-  nohup "$PYTHON" "$APP_DIR/server/local_server.py" --root "$APP_DIR" --host 127.0.0.1 --port "$PORT" --token-file "$STATE_DIR/session.token" 9>&- >"$LOG_FILE" 2>&1 </dev/null &
+  ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" nohup "$PYTHON" "$APP_DIR/server/local_server.py" --root "$APP_DIR" --host 127.0.0.1 --port "$PORT" --token-file "$STATE_DIR/session.token" 9>&- >"$LOG_FILE" 2>&1 </dev/null &
   PID=$!
   printf '%s\n' "$PID" > "$PID_FILE"
 fi

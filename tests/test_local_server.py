@@ -104,6 +104,16 @@ class BridgeTestCase(unittest.TestCase):
         with self.assertRaises(OSError):
             local_server.operation_dir(self.root)
 
+    def test_uses_external_state_root_for_read_only_package_installations(self) -> None:
+        external = self.root / "user-state"
+        with patch.dict(os.environ, {"ALPINE_DESKTOP_CENTER_STATE_ROOT": str(external)}):
+            operation_path = local_server.operation_dir(self.root)
+            lock_fd = local_server.acquire_server_lock(self.root)
+        try:
+            self.assertTrue(operation_path.is_relative_to(external))
+        finally:
+            os.close(lock_fd)
+
     def test_server_lock_rejects_second_instance(self) -> None:
         lock_fd = local_server.acquire_server_lock(self.root)
         try:
