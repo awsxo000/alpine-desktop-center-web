@@ -63,5 +63,5 @@ EOF
 }
 
 sha256sums="
-REPLACE_AFTER_ALPHA58_PACKAGE  Alpine-Desktop-Center-Web-v0.1.0-alpha.58-web.tar.gz
+295be9ee4669a1c830a311c1379433076ad71c48356093f57edb5669e2efbc4f  Alpine-Desktop-Center-Web-v0.1.0-alpha.58-web.tar.gz
 "
