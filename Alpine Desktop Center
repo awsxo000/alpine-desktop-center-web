@@ -7,11 +7,30 @@ STATE_DIR="$APP_DIR/.alpine-state/web"
 LOG_FILE="$STATE_DIR/server.log"
 PID_FILE="$STATE_DIR/server.pid"
 
+show_error() {
+  MESSAGE=$1
+  mkdir -p "$STATE_DIR" 2>/dev/null || true
+  printf '%s\n' "$MESSAGE" >> "$LOG_FILE" 2>/dev/null || true
+  if command -v kdialog >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    kdialog --error "$MESSAGE" --title "Alpine Desktop Center" >/dev/null 2>&1 || true
+  elif command -v zenity >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    zenity --error --title="Alpine Desktop Center" --text="$MESSAGE" >/dev/null 2>&1 || true
+  elif command -v notify-send >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    notify-send --urgency=critical "Alpine Desktop Center" "$MESSAGE" >/dev/null 2>&1 || true
+  else
+    printf '%s\n' "$MESSAGE" >&2
+  fi
+}
+
+fail_launch() {
+  show_error "$1"
+  exit 1
+}
+
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
   TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
   if [ -z "$TERMINAL" ]; then
-    printf '%s\n' 'Python 3 is required. Install it, then run Alpine Desktop Center again.' >&2
-    exit 1
+    fail_launch 'Python 3 is required. Install it, then run Alpine Desktop Center again.'
   fi
   exec "$TERMINAL" -e sh -c 'cd "$1/backend" && printf "%s\\n" "Alpine Desktop Center needs Python 3 before it can start." "The backend installer will prepare Python, Ansible, make and doas." "Enter any doas password only in this system terminal."; sh instalar.sh; status=$?; if [ "$status" -ne 0 ]; then printf "\\nSetup failed with exit code %s. Press Enter to close..." "$status"; read -r _; fi; exit "$status"' sh "$APP_DIR"
 fi
@@ -117,8 +136,7 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 if [ "$READY" -ne 1 ]; then
-  printf '%s\n' 'Alpine Desktop Center local bridge did not become ready. Check .alpine-state/web/server.log.' >&2
-  exit 1
+  fail_launch 'The local bridge did not become ready. Open .alpine-state/web/server.log for details.'
 fi
 if [ "${ALPINE_DESKTOP_CENTER_LOCKED:-0}" = 1 ]; then
   exec 9>&-
@@ -196,9 +214,11 @@ open_app_window() {
     sleep 0.5
     return 0
   fi
-  printf '%s\n' 'No supported app-window browser was found. Install Chromium or Firefox.' >&2
+  show_error 'No supported app-window browser was found. Install Chromium, Brave or Firefox.'
   return 1
 }
 
-open_app_window
+if ! open_app_window; then
+  exit 1
+fi
 printf '%s\n' "Alpine Desktop Center is running at $URL"
