@@ -35,9 +35,9 @@ import {
   Zap,
   XCircle,
 } from 'lucide-react'
-import { getBridgeHealth, getModuleCatalog, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, startNamedOperation } from './api'
+import { getBridgeHealth, getDesktopEnvironment, getModuleCatalog, getNixSupport, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, startNamedOperation } from './api'
 import { copy, formatDate, initialLocale, type Locale } from './i18n'
-import type { BridgeHealth, LogEntry, Module, ModuleDiagnostic, ModuleState, NamedOperation, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
+import type { BridgeHealth, DesktopEnvironment, LogEntry, Module, NixApp, ModuleDiagnostic, ModuleState, NamedOperation, NixSupport, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
 
 const steps: Array<{ id: StepId }> = [
   { id: 'welcome' }, { id: 'verify' }, { id: 'apply' }, { id: 'nix' }, { id: 'history' },
@@ -138,6 +138,7 @@ function App() {
   const [operationRecords, setOperationRecords] = useState<OperationRecord[]>([])
   const [stableChannelCheck, setStableChannelCheck] = useState<StableChannelCheck | null>(null)
   const [stableMigrationStale, setStableMigrationStale] = useState(true)
+  const [nixApps, setNixApps] = useState<NixApp[]>([])
   const [backendCheckedAt, setBackendCheckedAt] = useState<number | null>(null)
   const [operationHistory, setOperationHistory] = useState<OperationLogSummary[]>([])
   const [historyRefreshing, setHistoryRefreshing] = useState(false)
@@ -152,6 +153,9 @@ function App() {
   const [bridgeConnected, setBridgeConnected] = useState(false)
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth | null>(null)
   const [bridgeMessage, setBridgeMessage] = useState(() => copy[initialLocale()].messages.checkingBridge)
+  const [desktopEnvironment, setDesktopEnvironment] = useState<DesktopEnvironment | null>(null)
+  const [nixSupport, setNixSupport] = useState<NixSupport | null>(null)
+  const [startupReady, setStartupReady] = useState(false)
 
   const ui = copy[locale]
   const currentSection = steps.find((step) => step.id === activeStep) ?? steps[0]
@@ -186,6 +190,12 @@ function App() {
     let active = true
     const initialStableRevision = stableCheckRevision.current
     const initialHistoryRevision = historyRevision.current
+    void getDesktopEnvironment()
+      .then((detected) => { if (active) setDesktopEnvironment(detected) })
+      .catch(() => { if (active) setDesktopEnvironment({ id: 'unknown', name: ui.welcome.startupUnknown, sessionType: 'unknown', detectionSource: 'unavailable', capabilities: [] }) })
+    void getNixSupport()
+      .then((support) => { if (active) setNixSupport(support) })
+      .catch(() => { if (active) setNixSupport({ supported: false, nixEnv: false, stableChannel: false, version: null, reason: 'Classic Nix support could not be detected.' }) })
     void getBridgeHealth()
       .then((payload) => {
         if (!active) return
@@ -234,6 +244,10 @@ function App() {
     document.documentElement.lang = locale
     document.title = ui.documentTitle
   }, [locale, ui.documentTitle])
+
+  useEffect(() => {
+    if (!startupReady && desktopEnvironment && nixSupport && backendCheckedAt !== null && moduleCatalogStatus !== 'loading') setStartupReady(true)
+  }, [startupReady, desktopEnvironment, nixSupport, backendCheckedAt, moduleCatalogStatus])
 
   const addLog = (level: LogEntry['level'], text: string) => {
     const now = new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -321,6 +335,7 @@ function App() {
         }
         if (update.log_path) setActiveLogPath(update.log_path)
         cursor = update.next_cursor
+        if (update.nix_apps !== undefined) setNixApps(update.nix_apps)
         if (update.results?.length) {
           setDiagnostics((current) => {
             const next = { ...current }
@@ -410,7 +425,7 @@ function App() {
       saveRecord(namedOperation, label, 'blocked')
       return
     }
-    const needsConfirmation = namedOperation === 'simulate-full' || namedOperation.startsWith('apply-') || namedOperation === 'migrate-stable-channel' || namedOperation === 'refresh-nix-apps' || namedOperation === 'update-nix-apps' || namedOperation === 'refresh-kde-apps'
+    const needsConfirmation = namedOperation === 'simulate-full' || namedOperation.startsWith('apply-') || namedOperation === 'migrate-stable-channel' || namedOperation === 'refresh-nix-apps' || namedOperation === 'update-nix-apps' || namedOperation === 'refresh-kde-apps' || namedOperation === 'uninstall-nix-app' || namedOperation === 'collect-nix-garbage'
     if (needsConfirmation) {
       setPendingOperation({ operation: namedOperation, label, parameters, targetStep })
       return
@@ -449,6 +464,8 @@ function App() {
     ? `${ui.welcome.lastVerification}: ${formatDate(stableChannelCheck.checkedAt, locale)} · ${ui.welcome.latestStable}: ${stableChannelCheck.report?.latest_version ?? '—'}`
     : ui.welcome.noStableCheck
 
+  if (!startupReady) return <StartupScreen environment={desktopEnvironment} bridgeChecked={backendCheckedAt !== null} catalogReady={moduleCatalogStatus !== 'loading'} />
+
   return (
     <CopyContext.Provider value={{ ui, locale }}>
     <div className={darkMode ? 'app-shell dark' : 'app-shell light'}>
@@ -459,7 +476,7 @@ function App() {
         </div>
         <nav className="stepper" aria-label={ui.chrome.workspaceSections}>
           <p className="nav-caption">{ui.chrome.workspaceSections}</p>
-          {steps.map((step) => {
+          {steps.filter((step) => step.id !== 'nix' || nixSupport?.supported).map((step) => {
             const isActive = step.id === activeStep
             return <button className={`step-item ${isActive ? 'active' : ''}`} key={step.id} onClick={() => setActiveStep(step.id)} aria-current={isActive ? 'page' : undefined}>
               <span className="step-copy"><strong>{ui.nav[step.id].label}</strong><small>{ui.nav[step.id].note}</small></span>{isActive && <ChevronRight size={15} className="step-arrow" />}
@@ -472,6 +489,7 @@ function App() {
         <header className="topbar">
           <div className="crumb"><span>{ui.chrome.alpineWorkspace}</span><ChevronRight size={14} /><strong>{currentSectionText.label}</strong></div>
           <div className="top-actions">
+            {desktopEnvironment && <span className="desktop-pill" title={desktopEnvironment.detectionSource}>{desktopEnvironment.name}</span>}
             <span className="connection-pill"><span className={`status-led ${canExecute ? 'green' : 'amber'}`} /> {bridgeConnected ? (canExecute ? ui.chrome.localBridgeValidated : ui.chrome.bridgeBlocked) : ui.chrome.bridgeOffline}</span>
             <label className="language-picker"><span className="sr-only">{ui.language}</span><select value={locale} onChange={(event) => setLocale(event.target.value as Locale)} aria-label={ui.language} title={locale === 'pt-BR' ? ui.languagePtFull : ui.languageEnFull}><option value="pt-BR" aria-label={ui.languagePtFull}>{ui.languagePt}</option><option value="en-US" aria-label={ui.languageEnFull}>{ui.languageEn}</option></select></label>
             <button className="icon-button" onClick={() => setDarkMode((current) => !current)} aria-label={ui.chrome.toggleTheme} title={ui.chrome.toggleTheme}>{darkMode ? <Sun size={17} /> : <Moon size={17} />}</button>
@@ -525,7 +543,7 @@ function App() {
               <ChecksPanel modules={moduleCatalog.map((module) => moduleStates[module.id] ? { ...module, state: moduleStates[module.id] } : module)} catalogStatus={moduleCatalogStatus} diagnostics={systemDiagnostics} operation={operation} activeOperation={activeOperation} canExecute={canExecute} onRunAll={() => void runOperation('check-all-modules', ui.verify.checkAll, {}, 'verify')} onCheckModule={(module) => void runOperation('diagnose-module', `${ui.verify.checkOne}: ${ui.modules.names[module.id]}`, { module: module.id }, 'verify')} />
             </>}
             {activeStep === 'apply' && <ModulesPanel modules={moduleCatalog.map((module) => moduleStates[module.id] ? { ...module, state: moduleStates[module.id] } : module)} catalogStatus={moduleCatalogStatus} selectedModule={selected?.id ?? ''} setSelectedModule={setSelectedModule} selected={selected} selectedDiagnostic={selectedDiagnostic} applyBlockReason={applyBlockReason} onPreview={() => requestOperation('simulate-full', ui.apply.previewConfiguration, {}, 'apply')} onApply={() => selected && requestOperation('apply-module', `${ui.apply.applyModule}: ${ui.modules.names[selected.id]}`, { module: selected.id }, 'apply')} onApplyAll={() => requestOperation('apply-full', ui.apply.applyAll, {}, 'apply')} operation={operation} activeOperation={activeOperation} onShowLogs={() => setLogsOpen(true)} canExecute={canExecute} canApply={canApplySelected} />}
-            {activeStep === 'nix' && <ConfigPanel onRun={() => void runOperation('check-stable-channel', ui.nix.checkChannel, {}, 'nix')} onUpdateNixApps={() => requestOperation('update-nix-apps', ui.nix.updateApps, {}, 'nix')} onRefreshKdeApps={() => requestOperation('refresh-kde-apps', ui.nix.refreshApps, {}, 'nix')} onMigrateStable={() => requestOperation('migrate-stable-channel', ui.nix.migrateStable, {}, 'nix')} operation={operation} canExecute={canExecute} stableChannelCheck={stableChannelCheck} canMigrateStable={canMigrateStable} />}
+            {activeStep === 'nix' && <ConfigPanel apps={nixApps} onRun={() => void runOperation('check-stable-channel', ui.nix.checkChannel, {}, 'nix')} onListApps={() => void runOperation('list-nix-apps', ui.nix.listApps, {}, 'nix')} onUninstallApp={(app) => requestOperation('uninstall-nix-app', `${ui.nix.uninstallApp}: ${app.name}`, { name: app.name }, 'nix')} onCollectGarbage={() => requestOperation('collect-nix-garbage', ui.nix.collectGarbage, {}, 'nix')} onUpdateNixApps={() => void runOperation('update-nix-apps', ui.nix.updateApps, {}, 'nix')} onRefreshKdeApps={() => void runOperation('refresh-kde-apps', ui.nix.refreshApps, {}, 'nix')} onMigrateStable={() => requestOperation('migrate-stable-channel', ui.nix.migrateStable, {}, 'nix')} operation={operation} canExecute={canExecute} stableChannelCheck={stableChannelCheck} canMigrateStable={canMigrateStable} />}
             {activeStep === 'history' && <SummaryPanel operation={operation} records={operationRecords} history={operationHistory} historyRefreshing={historyRefreshing} onRefreshHistory={() => void refreshOperationHistory()} onOpenLog={(entry) => void openSavedLog(entry)} onGoVerify={() => setActiveStep('verify')} onGoApply={() => setActiveStep('apply')} />}
           </section>
         </div>
@@ -667,7 +685,17 @@ function ModuleOperationLoading({ module, activeOperation, onShowLogs }: { modul
   const title = activeOperation === 'diagnose-module' ? ui.apply.checkingModule.replace('{module}', moduleName) : fullApply ? ui.apply.applyingAll : ui.apply.applyingModule.replace('{module}', moduleName)
   return <div className="module-operation-loading"><div className="loading-orbit"><LoaderCircle className="spin" size={24} /></div><div className="loading-copy"><p className="section-kicker">{ui.states.operation.running}</p><h4>{title}</h4><p>{requiresSystemTerminal ? ui.apply.inProgress : ui.apply.showLogs}</p>{requiresSystemTerminal && <div className="manual-attention"><CircleAlert size={16} /><span>{ui.apply.terminalAttention}</span></div>}</div><button className="secondary-button" onClick={onShowLogs}><TerminalSquare size={15} /> {ui.apply.showLogs}</button></div>
 }
-function ConfigPanel({ onRun, onUpdateNixApps, onRefreshKdeApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { onRun: () => void; onUpdateNixApps: () => void; onRefreshKdeApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
+function StartupScreen({ environment, bridgeChecked, catalogReady }: { environment: DesktopEnvironment | null; bridgeChecked: boolean; catalogReady: boolean }) {
+  const { ui } = useCopy()
+  const environmentReady = Boolean(environment)
+  const checks = [
+    { label: ui.welcome.startupDetecting, ready: environmentReady, detail: environment?.name ?? ui.states.operation.running },
+    { label: ui.welcome.startupBridge, ready: bridgeChecked, detail: bridgeChecked ? ui.welcome.startupReady : ui.states.operation.running },
+    { label: ui.welcome.startupCatalog, ready: catalogReady, detail: catalogReady ? ui.welcome.startupReady : ui.states.operation.running },
+  ]
+  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 42</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : 'pending'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : <LoaderCircle className="spin" size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
+}
+function ConfigPanel({ apps, onRun, onListApps, onUninstallApp, onCollectGarbage, onUpdateNixApps, onRefreshKdeApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { apps: NixApp[]; onRun: () => void; onListApps: () => void; onUninstallApp: (app: NixApp) => void; onCollectGarbage: () => void; onUpdateNixApps: () => void; onRefreshKdeApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
   const { ui } = useCopy()
   const reportStatus = stableChannelCheck?.report?.status
   const channelLabel = stableChannelCheck?.status === 'blocked' ? ui.nix.checkBlocked
@@ -686,12 +714,16 @@ function ConfigPanel({ onRun, onUpdateNixApps, onRefreshKdeApps, onMigrateStable
     <div className="muted-note"><LockKeyhole size={13} /> {ui.nix.migrationRequirement}</div>
     <div className="panel-actions"><OperationButton onClick={onUpdateNixApps} operation={operation} icon={<Wrench size={15} />} disabled={!canExecute}>{ui.nix.updateApps}</OperationButton><OperationButton onClick={onRefreshKdeApps} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>{ui.nix.refreshApps}</OperationButton></div>
     <p className="muted-note">{ui.nix.appActionsDetail}</p>
+    <section className="nix-apps-section">
+      <div className="section-row nix-apps-heading"><div><p className="section-kicker">{ui.nix.appsTitle}</p><h4>{apps.length ? `${apps.length} ${ui.nix.appsTitle.toLowerCase()}` : ui.nix.appsTitle}</h4></div><OperationButton onClick={onListApps} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>{ui.nix.listApps}</OperationButton></div>
+      {apps.length === 0 ? <p className="muted-note">{ui.nix.noApps}</p> : <div className="nix-app-list">{apps.map((app) => <div className="nix-app-row" key={`${app.index}-${app.name}`}><div><strong>{app.name}</strong>{app.attrPath && <small>{app.attrPath}</small>}<small>#{app.index}{app.active ? '' : ' · inactive'}</small></div><button className="secondary-button" onClick={() => onUninstallApp(app)} disabled={!canExecute || operation === 'running'}>{ui.nix.uninstallApp}</button></div>)}</div>}
+      <div className="nix-garbage-row"><p className="muted-note">{ui.nix.garbageDetail}</p><OperationButton onClick={onCollectGarbage} operation={operation} icon={<HardDrive size={15} />} disabled={!canExecute}>{ui.nix.collectGarbage}</OperationButton></div>
+    </section>
   </div>
 }
-
 function LogsModal({ operation, activeOperation, logs, persistentLogPath, onRefresh, onClose }: { operation: OperationState; activeOperation: NamedOperation | null; logs: LogEntry[]; persistentLogPath: string | null; onRefresh: () => void; onClose: () => void }) {
   const { ui } = useCopy()
-  const systemTerminal = activeOperation === 'simulate-full' || activeOperation === 'apply-full' || activeOperation === 'apply-diagnostics' || activeOperation === 'apply-module' || activeOperation === 'refresh-nix-apps' || activeOperation === 'update-nix-apps' || activeOperation === 'migrate-stable-channel'
+  const systemTerminal = activeOperation === 'simulate-full' || activeOperation === 'apply-full' || activeOperation === 'apply-diagnostics' || activeOperation === 'apply-module' || activeOperation === 'refresh-nix-apps' || activeOperation === 'update-nix-apps' || activeOperation === 'uninstall-nix-app' || activeOperation === 'collect-nix-garbage' || activeOperation === 'migrate-stable-channel'
   const statusLabel = operation === 'running' ? ui.logs.running : operation === 'error' ? ui.logs.failed : operation === 'blocked' ? ui.logs.blocked : operation === 'success' ? ui.logs.finished : ui.logs.waiting
   return <div className="logs-modal-backdrop" role="dialog" aria-modal="true" aria-label={ui.logs.ariaLabel}><div className="panel-card logs-modal"><div className="inspector-heading"><div><p className="section-kicker">{ui.logs.eyebrow}</p><h3>{ui.logs.title}</h3></div><button className="icon-button" onClick={onClose} aria-label={ui.logs.close}><XCircle size={17} /></button></div><div className="execution-state"><div className={`big-state-icon ${operation}`}><OperationIcon state={operation} size={24} /></div><div><span className="section-kicker">{ui.logs.currentState}</span><strong>{statusLabel}</strong><p>{ui.logs.namedCommand}: <code>{activeOperation ? ui.history.operationLabels[activeOperation] : '—'}</code></p></div><button className="icon-button subtle" onClick={onRefresh} aria-label={ui.logs.refresh} title={ui.logs.refresh}><RefreshCw size={15} /></button></div>{systemTerminal && <div className="manual-attention"><TerminalSquare size={16} /><span>{ui.logs.systemTerminalWarning}</span></div>}{persistentLogPath && <p className="persistent-log-path"><strong>{ui.logs.savedLog}:</strong> <code>{persistentLogPath}</code></p>}<div className="terminal"><div className="terminal-bar"><span /><span /><span /><small>{ui.logs.terminalTitle}</small></div><div className="terminal-body">{logs.length === 0 && operation !== 'running' && <p className="muted-note">{ui.logs.noOutput}</p>}{logs.map((log, index) => <div className="terminal-line" key={`${log.time}-${index}`}><span className="terminal-time">[{log.time}]</span><span className={`terminal-level ${log.level}`}>{ui.states.logLevel[log.level]}</span><span>{log.text}</span></div>)}{operation === 'running' && <div className="terminal-line live"><LoaderCircle className="spin" size={14} /> {ui.logs.waitingOutput}</div>}</div></div></div></div>
 }
@@ -704,12 +736,14 @@ function ConfirmationModal({ pending, module, onConfirm, onCancel }: { pending: 
   const migrateStable = pending.operation === 'migrate-stable-channel'
   const updateNixApps = pending.operation === 'refresh-nix-apps' || pending.operation === 'update-nix-apps'
   const refreshKdeApps = pending.operation === 'refresh-kde-apps'
+  const uninstallNixApp = pending.operation === 'uninstall-nix-app'
+  const collectNixGarbage = pending.operation === 'collect-nix-garbage'
   const moduleName = module ? ui.modules.names[module.id] : ui.chrome.unknown
-  const title = preview ? ui.confirmation.previewTitle : fullApply ? ui.confirmation.applyAllTitle : migrateStable ? ui.confirmation.migrateTitle : updateNixApps ? ui.confirmation.updateAppsTitle : refreshKdeApps ? ui.confirmation.refreshKdeAppsTitle : ui.confirmation.applyModuleTitle(moduleName)
-  const description = preview ? ui.confirmation.previewDescription : fullApply ? ui.confirmation.applyAllDescription : migrateStable ? ui.confirmation.migrateDescription : updateNixApps ? ui.confirmation.updateAppsDescription : refreshKdeApps ? ui.confirmation.refreshKdeAppsDescription : ui.confirmation.applyModuleDescription
-  const changeLabel = preview ? ui.confirmation.previewChange : refreshKdeApps ? ui.confirmation.desktopRefreshChange : migrateStable || updateNixApps ? ui.confirmation.profileChange : ui.confirmation.systemChange
-  const actionLabel = preview ? ui.confirmation.previewAction : migrateStable ? ui.confirmation.migrateAction : updateNixApps ? ui.confirmation.updateAppsAction : refreshKdeApps ? ui.confirmation.refreshKdeAppsAction : ui.confirmation.confirmAction
-  const confirmHeading = preview ? ui.confirmation.confirmPreview : refreshKdeApps ? ui.confirmation.confirmRefreshKde : migrateStable || updateNixApps ? ui.confirmation.confirmProfileChange : ui.confirmation.confirmChange
+  const title = preview ? ui.confirmation.previewTitle : fullApply ? ui.confirmation.applyAllTitle : migrateStable ? ui.confirmation.migrateTitle : updateNixApps ? ui.confirmation.updateAppsTitle : refreshKdeApps ? ui.confirmation.refreshKdeAppsTitle : uninstallNixApp ? ui.confirmation.uninstallAppTitle(pending.label.split(': ').slice(1).join(': ')) : collectNixGarbage ? ui.confirmation.collectGarbageTitle : ui.confirmation.applyModuleTitle(moduleName)
+  const description = preview ? ui.confirmation.previewDescription : fullApply ? ui.confirmation.applyAllDescription : migrateStable ? ui.confirmation.migrateDescription : updateNixApps ? ui.confirmation.updateAppsDescription : refreshKdeApps ? ui.confirmation.refreshKdeAppsDescription : uninstallNixApp ? ui.confirmation.uninstallAppDescription : collectNixGarbage ? ui.confirmation.collectGarbageDescription : ui.confirmation.applyModuleDescription
+  const changeLabel = preview ? ui.confirmation.previewChange : refreshKdeApps ? ui.confirmation.desktopRefreshChange : migrateStable || updateNixApps || uninstallNixApp || collectNixGarbage ? ui.confirmation.profileChange : ui.confirmation.systemChange
+  const actionLabel = preview ? ui.confirmation.previewAction : migrateStable ? ui.confirmation.migrateAction : updateNixApps ? ui.confirmation.updateAppsAction : refreshKdeApps ? ui.confirmation.refreshKdeAppsAction : uninstallNixApp ? ui.confirmation.uninstallAppAction : collectNixGarbage ? ui.confirmation.collectGarbageAction : ui.confirmation.confirmAction
+  const confirmHeading = preview ? ui.confirmation.confirmPreview : refreshKdeApps ? ui.confirmation.confirmRefreshKde : migrateStable || updateNixApps || uninstallNixApp || collectNixGarbage ? ui.confirmation.confirmProfileChange : ui.confirmation.confirmChange
   const reviewMessage = refreshKdeApps ? ui.confirmation.refreshKdeReview : ui.confirmation.reviewAndSnapshot
   const acknowledgement = refreshKdeApps ? ui.confirmation.refreshKdeAcknowledgement : ui.confirmation.acknowledgement
   return <div className="logs-modal-backdrop" role="alertdialog" aria-modal="true" aria-labelledby="apply-confirm-title">

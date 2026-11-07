@@ -16,6 +16,7 @@ export type Module = {
   detail: string
   accent: string
   dependencies?: ModuleId[]
+  desktopTargets?: DesktopEnvironmentId[]
 }
 
 export type DiagnosticCheck = {
@@ -50,6 +51,14 @@ export type LogEntry = {
   text: string
 }
 
+export type NixApp = {
+  index: number
+  name: string
+  attrPath: string | null
+  active: boolean
+  storePaths: string[]
+}
+
 export type NamedOperation =
   | 'validate-backend'
   | 'system-check'
@@ -60,10 +69,31 @@ export type NamedOperation =
   | 'apply-diagnostics'
   | 'refresh-nix-apps'
   | 'update-nix-apps'
+  | 'list-nix-apps'
+  | 'uninstall-nix-app'
+  | 'collect-nix-garbage'
   | 'refresh-kde-apps'
   | 'check-stable-channel'
   | 'migrate-stable-channel'
   | 'apply-module'
+
+export type DesktopEnvironmentId = 'kde' | 'gnome' | 'xfce' | 'mate' | 'lxqt' | 'cinnamon' | 'budgie' | 'unknown'
+
+export type DesktopEnvironment = {
+  id: DesktopEnvironmentId
+  name: string
+  sessionType: string
+  detectionSource: string
+  capabilities: string[]
+}
+
+export type NixSupport = {
+  supported: boolean
+  nixEnv: boolean
+  stableChannel: boolean
+  version: string | null
+  reason: string | null
+}
 
 export type BridgeHealth = {
   bridge: 'local' | 'unknown'

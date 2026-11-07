@@ -59,6 +59,13 @@ type UiCopy = {
     diagnosticsSession: string
     savedOperations: string
     overviewEmpty: string
+    startupTitle: string
+    startupDescription: string
+    startupDetecting: string
+    startupBridge: string
+    startupCatalog: string
+    startupReady: string
+    startupUnknown: string
   }
   verify: {
     validationEyebrow: string
@@ -150,6 +157,13 @@ type UiCopy = {
     migrationRequirement: string
     noSwitch: string
     openLog: string
+    listApps: string
+    appsTitle: string
+    appsLoading: string
+    noApps: string
+    uninstallApp: string
+    collectGarbage: string
+    garbageDetail: string
   }
   history: {
     operationLabels: Record<NamedOperation, string>
@@ -200,6 +214,12 @@ type UiCopy = {
     migrateTitle: string
     updateAppsTitle: string
     refreshKdeAppsTitle: string
+    uninstallAppTitle: (name: string) => string
+    collectGarbageTitle: string
+    uninstallAppDescription: string
+    collectGarbageDescription: string
+    uninstallAppAction: string
+    collectGarbageAction: string
     applyModuleTitle: (name: string) => string
     previewDescription: string
     applyAllDescription: string
@@ -358,6 +378,13 @@ const en: UiCopy = {
     diagnosticsSession: 'Session diagnostics',
     savedOperations: 'Saved operations',
     overviewEmpty: 'No activity recorded yet.',
+    startupTitle: 'Preparing your Alpine workspace.',
+    startupDescription: 'Detecting the current desktop session and loading the capabilities available for this environment.',
+    startupDetecting: 'Detecting desktop environment',
+    startupBridge: 'Validating local bridge',
+    startupCatalog: 'Loading module catalog',
+    startupReady: 'Workspace ready',
+    startupUnknown: 'Generic Linux desktop',
   },
   verify: {
     validationEyebrow: 'BACKEND VALIDATION',
@@ -449,9 +476,16 @@ const en: UiCopy = {
     migrationRequirement: 'Migration requires a successful official check from the last 10 minutes that reports an update.',
     noSwitch: 'No switch to rolling or Unstable packages is offered or performed by this application.',
     openLog: 'Open log',
+    listApps: 'List installed apps',
+    appsTitle: 'Nix apps in the user profile',
+    appsLoading: 'Loading the Nix profile…',
+    noApps: 'No profile entries were returned.',
+    uninstallApp: 'Uninstall',
+    collectGarbage: 'Collect garbage',
+    garbageDetail: 'Removes unreachable store paths only; profile generations are not deleted.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
+    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'list-nix-apps': 'List Nix applications', 'uninstall-nix-app': 'Uninstall Nix application', 'collect-nix-garbage': 'Collect Nix garbage', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
     eyebrow: 'SESSION AND PERSISTENT LOGS',
     title: 'Operation history',
     latestComplete: 'Latest operation completed.',
@@ -499,6 +533,12 @@ const en: UiCopy = {
     migrateTitle: 'Migrate to the latest official Stable Nix channel?',
     updateAppsTitle: 'Update Nix applications in the user profile?',
     refreshKdeAppsTitle: 'Refresh Nix apps in KDE?',
+    uninstallAppTitle: (name) => `Uninstall ${name}?`,
+    collectGarbageTitle: 'Collect unreachable Nix store paths?',
+    uninstallAppDescription: 'This removes the selected entry from the current user Nix profile. It does not accept arbitrary shell input.',
+    collectGarbageDescription: 'Nix will remove store paths that are no longer reachable. Profile generations are kept.',
+    uninstallAppAction: 'Uninstall app',
+    collectGarbageAction: 'Collect garbage',
     applyModuleTitle: (name) => `Apply ${name}?`,
     previewDescription: 'This runs Ansible in check mode with diff only when make, Ansible and prepared release-local state already exist; it does not install prerequisites. Check mode is best-effort: command and shell tasks without check-mode support may be skipped.',
     applyAllDescription: 'The current backend defaults can install packages, enable or reconfigure services, create a 12 GiB swapfile and update boot parameters for hibernation when supported.',
@@ -659,6 +699,13 @@ const pt: UiCopy = {
     diagnosticsSession: 'Diagnósticos da sessão',
     savedOperations: 'Operações salvas',
     overviewEmpty: 'Ainda não há atividade registrada.',
+    startupTitle: 'Preparando seu workspace Alpine.',
+    startupDescription: 'Detectando a sessão gráfica atual e carregando as capacidades disponíveis para este ambiente.',
+    startupDetecting: 'Detectando ambiente gráfico',
+    startupBridge: 'Validando ponte local',
+    startupCatalog: 'Carregando catálogo de módulos',
+    startupReady: 'Workspace pronto',
+    startupUnknown: 'Desktop Linux genérico',
   },
   verify: {
     validationEyebrow: 'VALIDAÇÃO DO BACKEND',
@@ -750,9 +797,16 @@ const pt: UiCopy = {
     migrationRequirement: 'A migração exige uma verificação oficial bem-sucedida, feita nos últimos 10 minutos, que indique uma atualização.',
     noSwitch: 'Este aplicativo não oferece nem executa a troca para pacotes rolling ou Unstable.',
     openLog: 'Abrir registro',
+    listApps: 'Listar apps instalados',
+    appsTitle: 'Apps Nix no perfil do usuário',
+    appsLoading: 'Carregando o perfil Nix…',
+    noApps: 'Nenhuma entrada foi retornada pelo perfil.',
+    uninstallApp: 'Desinstalar',
+    collectGarbage: 'Coletar lixo',
+    garbageDetail: 'Remove apenas caminhos não alcançáveis do armazenamento; as gerações do perfil não são apagadas.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
+    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'list-nix-apps': 'Listar aplicativos Nix', 'uninstall-nix-app': 'Desinstalar aplicativo Nix', 'collect-nix-garbage': 'Coletar lixo do Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
     eyebrow: 'SESSÃO E REGISTROS PERSISTENTES',
     title: 'Histórico de operações',
     latestComplete: 'Última operação concluída.',
@@ -800,6 +854,12 @@ const pt: UiCopy = {
     migrateTitle: 'Migrar para o canal Nix Stable oficial mais recente?',
     updateAppsTitle: 'Atualizar aplicativos Nix do perfil do usuário?',
     refreshKdeAppsTitle: 'Recarregar apps Nix no KDE?',
+    uninstallAppTitle: (name) => `Desinstalar ${name}?`,
+    collectGarbageTitle: 'Coletar caminhos Nix não alcançáveis?',
+    uninstallAppDescription: 'Isso remove a entrada selecionada do perfil Nix do usuário atual. Nenhum comando de shell arbitrário é aceito.',
+    collectGarbageDescription: 'O Nix removerá caminhos de armazenamento que não são mais alcançáveis. As gerações do perfil serão mantidas.',
+    uninstallAppAction: 'Desinstalar app',
+    collectGarbageAction: 'Coletar lixo',
     applyModuleTitle: (name) => `Aplicar ${name}?`,
     previewDescription: 'O Ansible será executado em modo de verificação com diff somente se make, Ansible e o estado preparado local à versão já existirem; a ação não instala pré-requisitos. Esse modo é best-effort: tarefas de comando e shell sem suporte a check mode podem ser ignoradas.',
     applyAllDescription: 'As configurações atuais do backend podem instalar pacotes, ativar ou reconfigurar serviços, criar um arquivo swap de 12 GiB e atualizar parâmetros de inicialização para hibernação quando houver suporte.',

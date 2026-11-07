@@ -48,7 +48,7 @@ DIAGNOSTIC_MAX_AGE_SECONDS = 600
 OPERATIONS = {
     "validate-backend", "system-check", "check-all-modules", "diagnose-module",
     "simulate-full", "apply-full", "apply-diagnostics", "refresh-nix-apps",
-    "update-nix-apps", "refresh-kde-apps", "check-stable-channel",
+    "update-nix-apps", "list-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "refresh-kde-apps", "check-stable-channel",
     "migrate-stable-channel", "apply-module",
 }
 DIAGNOSTIC_MODULES = ("base", "audio", "energia", "fontes", "kde", "bluetooth", "rede", "nix", "nix_opengl", "steam", "swap")
@@ -63,13 +63,16 @@ MODULE_ACCENTS = {
     "kde": "violet", "bluetooth": "blue", "rede": "green", "nix": "blue",
     "nix_opengl": "cyan", "steam": "pink", "swap": "amber",
 }
+MODULE_DESKTOP_TARGETS = {
+    "kde": ("kde",),
+}
 DIAGNOSTIC_STATUSES = {"complete", "partial", "incomplete", "unknown"}
 CHECK_STATUSES = {"ok", "warning", "error", "unknown"}
 DEPENDENCY_STATUSES = {"not_checked", *DIAGNOSTIC_STATUSES}
 PRIVILEGED_OPERATIONS = {
     "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
 }
-SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"}
+SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
 DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
@@ -78,6 +81,84 @@ STABLE_CHANNEL_CACHE: tuple[dict[str, object], float] | None = None
 STABLE_CHANNEL_LOCK = threading.Lock()
 LINGERING_PROCESS_PIDS: set[int] = set()
 LINGERING_PROCESS_LOCK = threading.Lock()
+
+
+DESKTOP_CAPABILITIES = {
+    "kde": ("KDE Plasma", ("KDE Plasma integration", "KDE application menu refresh", "Plasma session controls")),
+    "gnome": ("GNOME", ("GNOME Shell integration", "GNOME application menu refresh", "GNOME session controls")),
+    "xfce": ("XFCE", ("XFCE desktop integration", "XFCE application menu refresh")),
+    "mate": ("MATE", ("MATE desktop integration", "MATE application menu refresh")),
+    "lxqt": ("LXQt", ("LXQt desktop integration", "LXQt application menu refresh")),
+    "cinnamon": ("Cinnamon", ("Cinnamon desktop integration", "Cinnamon application menu refresh")),
+    "budgie": ("Budgie", ("Budgie desktop integration", "Budgie application menu refresh")),
+    "unknown": ("Generic Linux desktop", ("Generic desktop integration",)),
+}
+
+def detect_desktop_environment() -> dict[str, object]:
+    env = os.environ
+    candidates = [
+        (env.get("XDG_CURRENT_DESKTOP", ""), "XDG_CURRENT_DESKTOP"),
+        (env.get("XDG_SESSION_DESKTOP", ""), "XDG_SESSION_DESKTOP"),
+        (env.get("DESKTOP_SESSION", ""), "DESKTOP_SESSION"),
+    ]
+    aliases = (
+        ("kde", "kde"), ("plasma", "kde"), ("gnome", "gnome"),
+        ("xfce", "xfce"), ("xfce4", "xfce"), ("mate", "mate"),
+        ("lxqt", "lxqt"), ("cinnamon", "cinnamon"), ("budgie", "budgie"),
+    )
+    detected = ""
+    source = "fallback"
+    for raw, candidate_source in candidates:
+        normalized = raw.lower().replace(";", ":").replace("_", "-")
+        for token, desktop_id in aliases:
+            if token in normalized:
+                detected = desktop_id
+                source = candidate_source
+                break
+        if detected:
+            break
+    if not detected:
+        if env.get("KDE_FULL_SESSION") or env.get("KDE_SESSION_VERSION"):
+            detected, source = "kde", "KDE session markers"
+        elif env.get("GNOME_DESKTOP_SESSION_ID") or env.get("GNOME_SHELL_SESSION_MODE"):
+            detected, source = "gnome", "GNOME session markers"
+        else:
+            detected = "unknown"
+    name, capabilities = DESKTOP_CAPABILITIES[detected]
+    return {"id": detected, "name": name, "session_type": env.get("XDG_SESSION_TYPE", "unknown"), "detection_source": source, "capabilities": list(capabilities)}
+
+
+def module_desktop_targets(module: str, catalog_entry: dict[str, object] | None = None) -> tuple[str, ...]:
+    declared = catalog_entry.get("desktop_targets") if catalog_entry else None
+    if isinstance(declared, list) and declared and all(isinstance(target, str) for target in declared):
+        return tuple(declared)
+    return MODULE_DESKTOP_TARGETS.get(module, ("shared",))
+
+
+def module_desktop_blocker(module: str, catalog_entry: dict[str, object] | None = None) -> str | None:
+    desktop_id = str(detect_desktop_environment().get("id", "unknown"))
+    targets = module_desktop_targets(module, catalog_entry)
+    if "shared" in targets or desktop_id in targets:
+        return None
+    return f"The {module} module is not available for the detected {desktop_id} desktop."
+
+
+def detect_nix_support() -> dict[str, object]:
+    nix_env = shutil.which("nix-env")
+    nix_channel = shutil.which("nix-channel")
+    if not nix_env or not nix_channel:
+        return {"supported": False, "nix_env": bool(nix_env), "stable_channel": False, "version": None, "reason": "Classic Nix support is not installed."}
+    try:
+        version_result = subprocess.run([nix_env, "--version"], capture_output=True, text=True, timeout=3, check=False)
+        channel_result = subprocess.run([nix_channel, "--list"], capture_output=True, text=True, timeout=3, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return {"supported": False, "nix_env": True, "stable_channel": False, "version": None, "reason": "Classic Nix could not be queried."}
+    version = version_result.stdout.strip() or None
+    channels = channel_result.stdout.splitlines() if channel_result.returncode == 0 else []
+    stable_channel = any(line.split()[0] in {"nixpkgs", "nixos"} and "unstable" not in line.lower() for line in channels if line.split())
+    supported = version_result.returncode == 0 and stable_channel
+    reason = None if supported else "A configured Stable Nix channel is required."
+    return {"supported": supported, "nix_env": True, "stable_channel": stable_channel, "version": version, "reason": reason}
 
 
 def backend_module(module: object) -> str | None:
@@ -100,6 +181,7 @@ class OperationSession:
     output_truncated: bool = False
     results: list[dict[str, object]] = dataclasses.field(default_factory=list)
     log_path: str | None = None
+    nix_apps: list[dict[str, object]] = dataclasses.field(default_factory=list)
     thread: threading.Thread | None = None
     lock: threading.Lock = dataclasses.field(default_factory=threading.Lock)
 
@@ -129,6 +211,7 @@ class OperationSession:
                 "output": self.output[safe_cursor:],
                 "next_cursor": len(self.output),
                 "results": self.results.copy(),
+                "nix_apps": self.nix_apps.copy(),
                 "log_path": self.log_path,
             }
 
@@ -254,7 +337,7 @@ def operation_log_categories(operation: str, payload: dict[str, object]) -> tupl
         return ("nix", "stable-check")
     if operation == "migrate-stable-channel":
         return ("nix", "stable-migration")
-    if operation in {"refresh-nix-apps", "update-nix-apps"}:
+    if operation in {"refresh-nix-apps", "update-nix-apps", "list-nix-apps", "uninstall-nix-app", "collect-nix-garbage"}:
         return ("nix", "profile-apps")
     if operation == "refresh-kde-apps":
         return ("nix", "kde-refresh")
@@ -468,6 +551,9 @@ def module_apply_blocker(root: Path, module: str) -> str | None:
     try:
         catalog = json.loads((root / "backend" / "modulos.json").read_text(encoding="utf-8"))
         entry = next(item for item in catalog if isinstance(item, dict) and item.get("key") == module)
+        desktop_blocker = module_desktop_blocker(module, entry)
+        if desktop_blocker:
+            return desktop_blocker
         dependencies = entry.get("dependencies")
         if not isinstance(dependencies, list) or not all(isinstance(item, str) for item in dependencies):
             raise ValueError("Module dependency catalog is invalid.")
@@ -616,6 +702,9 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
             ("all module diagnostics", "check-all-modules"),
             ("read-only system checks", "system-check"),
             ("preview full configuration", "simulate-full"),
+            ("uninstall nix package ", "uninstall-nix-app"),
+            ("collect unreachable nix store paths", "collect-nix-garbage"),
+            ("list nix applications", "list-nix-apps"),
             ("update nix applications", "update-nix-apps"),
             ("refresh nix applications in kde", "refresh-kde-apps"),
             ("refresh nix applications", "refresh-nix-apps"),
@@ -892,6 +981,36 @@ def execute_in_system_terminal(root: Path, backend: Path, command: list[str], op
     return "The privileged operation exceeded the 15-minute safety timeout.", 124
 
 
+def parse_nix_profile_apps(output: str) -> list[dict[str, object]]:
+    """Parse JSON emitted by the classic `nix-env --query --json` command."""
+    start = output.find("{")
+    end = output.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError("Nix profile listing did not return JSON.")
+    value = json.loads(output[start:end + 1])
+    elements = value.get("elements") if isinstance(value, dict) else None
+    if isinstance(elements, list):
+        entries = [(None, item) for item in elements]
+    elif isinstance(value, dict):
+        entries = list(value.items())
+    else:
+        raise ValueError("Nix profile listing has an unsupported JSON shape.")
+    apps: list[dict[str, object]] = []
+    for position, (attribute, item) in enumerate(entries, start=1):
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name") or item.get("pname") or attribute
+        if not isinstance(name, str) or not name.strip():
+            name = f"profile entry {position}"
+        attr_path = item.get("attrPath") or attribute
+        if not isinstance(attr_path, str):
+            attr_path = None
+        store_path = item.get("storePath") or item.get("outPath")
+        store_paths = item.get("storePaths") if isinstance(item.get("storePaths"), list) else ([store_path] if isinstance(store_path, str) else [])
+        apps.append({"index": position, "name": name, "attrPath": attr_path, "active": item.get("active") is not False, "storePaths": [path for path in store_paths if isinstance(path, str)]})
+    return apps
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         return ([diagnostic_command(module) for module in ("base", "audio", "rede", "energia")], "read-only system checks")
@@ -902,11 +1021,19 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
         if module is None:
             raise ValueError("A valid module identifier is required for diagnose-module.")
         return ([diagnostic_command(module)], f"check module {module}")
+    if operation == "uninstall-nix-app":
+        package_name = payload.get("name")
+        if not isinstance(package_name, str) or not re.fullmatch(r"[A-Za-z0-9+._-]+", package_name):
+            raise ValueError("A valid Nix package name is required for uninstall-nix-app.")
+        selector = f"^{re.escape(package_name)}$"
+        return ([["nix-env", "--uninstall", selector]], f"uninstall Nix package {package_name}")
     simple = {
         "check-stable-channel": (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel"),
         "migrate-stable-channel": (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel"),
         "refresh-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "update Nix applications (legacy operation id)"),
         "update-nix-apps": (["sh", "scripts/atualizar-nix.sh", "aplicativos"], "update Nix applications in the user profile"),
+        "list-nix-apps": (["nix-env", "--query", "--installed", "--json"], "list Nix applications in the user profile"),
+        "collect-nix-garbage": (["nix-collect-garbage"], "collect unreachable Nix store paths"),
         "refresh-kde-apps": (["sh", "roles/nix/files/atualizar-aplicativos-nix.sh"], "refresh KDE Nix app menu and restart Plasma"),
         "simulate-full": (["make", "simular"], "preview full configuration in Ansible check mode"),
         "apply-full": (["make", "aplicar"], "apply full configuration"),
@@ -1122,6 +1249,13 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                         STABLE_CHANNEL_CACHE = (report, time.monotonic()) if report is not None else None
                     if return_code == 0 and report is None:
                         session.append("\nStable status output was not recognized; migration remains blocked.\n")
+                if session.operation == "list-nix-apps" and return_code == 0:
+                    try:
+                        with session.lock:
+                            session.nix_apps = parse_nix_profile_apps(command_output)
+                    except (json.JSONDecodeError, ValueError) as exc:
+                        return_code = 1
+                        session.append(f"\nNix profile output was invalid: {exc}\n")
                 if session.operation in {"system-check", "check-all-modules", "diagnose-module"} and return_code == 0:
                     try:
                         diagnostic = validate_diagnostic_payload(json.loads(command_output))
@@ -1193,10 +1327,10 @@ def start_operation(root: Path, operation: str, payload: dict[str, object], oper
         if blocker:
             operation_lock.release()
             return {"status": "blocked", "operation": operation, "message": blocker}
-    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"}:
+    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}:
         with DIAGNOSTIC_LOCK:
             DIAGNOSTIC_CACHE.clear()
-    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "migrate-stable-channel"} or operation.startswith("apply-"):
+    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"} or operation.startswith("apply-"):
         with STABLE_CHANNEL_LOCK:
             STABLE_CHANNEL_CACHE = None
     session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
@@ -1322,6 +1456,12 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/stable-channel/status":
             self.send_json(latest_stable_channel_check(self.root))
             return
+        if path == "/api/environment":
+            self.send_json(detect_desktop_environment())
+            return
+        if path == "/api/nix/status":
+            self.send_json(detect_nix_support())
+            return
         if path == "/api/health":
             valid, message = validate_backend(self.root)
             metadata = release_metadata(self.root)
@@ -1339,7 +1479,18 @@ class Handler(BaseHTTPRequestHandler):
                     catalog = {str(item["key"]): item for item in raw_catalog if isinstance(item, dict) and "key" in item}
             except (OSError, json.JSONDecodeError, TypeError):
                 catalog = {}
-            self.send_json({"modules": [{"id": module, "name": MODULE_LABELS[module], "description": str(catalog.get(module, {}).get("description", "")), "state": "Unknown", "detail": "Run a live diagnostic.", "accent": MODULE_ACCENTS[module], "dependencies": catalog.get(module, {}).get("dependencies", [])} for module in DIAGNOSTIC_MODULES]})
+            desktop_id = str(detect_desktop_environment().get("id", "unknown"))
+            nix_supported = bool(detect_nix_support().get("supported"))
+            modules = []
+            for module in DIAGNOSTIC_MODULES:
+                entry = catalog.get(module, {})
+                if module in {"nix", "nix_opengl", "steam"} and not nix_supported:
+                    continue
+                if module_desktop_blocker(module, entry):
+                    continue
+                targets = module_desktop_targets(module, entry)
+                modules.append({"id": module, "name": MODULE_LABELS[module], "description": str(entry.get("description", "")), "state": "Unknown", "detail": "Run a live diagnostic.", "accent": MODULE_ACCENTS[module], "dependencies": entry.get("dependencies", []), "desktop_targets": list(targets), "desktop": desktop_id})
+            self.send_json({"desktop": desktop_id, "modules": modules})
             return
         if path == "/api/logs":
             self.send_json({"logs": list_operation_logs(self.root, 50)})

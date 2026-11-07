@@ -253,6 +253,38 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(terminal.call_args.args[2], ["sh", "scripts/atualizar-nix.sh", "aplicativos"])
         self.assertEqual(local_server.resolve_command("refresh-nix-apps", {})[0], [["sh", "scripts/atualizar-nix.sh", "aplicativos"]])
 
+    def test_nix_profile_list_parser_returns_safe_app_entries(self) -> None:
+        output = json.dumps({"elements": [
+            {"name": "hello-2.12", "attrPath": "nixpkgs#hello", "active": True, "storePaths": ["/nix/store/demo-hello"]},
+            {"name": "vim", "active": False},
+        ]})
+        self.assertEqual(local_server.parse_nix_profile_apps(output), [
+            {"index": 1, "name": "hello-2.12", "attrPath": "nixpkgs#hello", "active": True, "storePaths": ["/nix/store/demo-hello"]},
+            {"index": 2, "name": "vim", "attrPath": None, "active": False, "storePaths": []},
+        ])
+
+    def test_nix_profile_mutations_are_allowlisted_and_index_is_numeric(self) -> None:
+        self.assertEqual(local_server.resolve_command("uninstall-nix-app", {"name": "firefox"})[0], [["nix-env", "--uninstall", "^firefox$"]])
+        self.assertEqual(local_server.resolve_command("collect-nix-garbage", {})[0], [["nix-collect-garbage"]])
+        with self.assertRaises(ValueError):
+            local_server.resolve_command("uninstall-nix-app", {"name": "firefox; rm -rf /"})
+
+    def test_desktop_environment_detection_uses_session_variables(self) -> None:
+        with patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE", "XDG_SESSION_TYPE": "wayland"}, clear=True):
+            detected = local_server.detect_desktop_environment()
+        self.assertEqual(detected["id"], "kde")
+        self.assertEqual(detected["session_type"], "wayland")
+        self.assertIn("KDE application menu refresh", detected["capabilities"])
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertEqual(local_server.detect_desktop_environment()["id"], "unknown")
+
+    def test_desktop_target_blocks_kde_module_outside_kde(self) -> None:
+        with patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=True):
+            self.assertIn("not available", local_server.module_desktop_blocker("kde"))
+        with patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE"}, clear=True):
+            self.assertIsNone(local_server.module_desktop_blocker("kde"))
+        self.assertEqual(local_server.module_desktop_targets("audio", {"desktop_targets": ["gnome"]}), ("gnome",))
+
     def test_kde_nix_refresh_uses_allowlisted_script_without_system_actions_in_test(self) -> None:
         commands, description = local_server.resolve_command("refresh-kde-apps", {})
         self.assertEqual(commands, [["sh", "roles/nix/files/atualizar-aplicativos-nix.sh"]])
@@ -438,6 +470,19 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(audio["description"], "PipeWire services")
         self.assertEqual(audio["dependencies"], ["base"])
         self.assertEqual(audio["state"], "Unknown")
+
+    def test_module_catalog_hides_desktop_specific_modules(self) -> None:
+        _, base_url, host = self.start_http_server()
+        (self.backend / "modulos.json").write_text(json.dumps([
+            {"key": "audio", "description": "Shared audio", "dependencies": []},
+            {"key": "kde", "description": "KDE only", "dependencies": [], "desktop_targets": ["kde"]},
+        ]), encoding="utf-8")
+        with patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "GNOME"}, clear=True):
+            request = Request(f"{base_url}/api/modules", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"})
+            with urlopen(request, timeout=3) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        self.assertEqual(payload["desktop"], "gnome")
+        self.assertEqual([module["id"] for module in payload["modules"] if module["id"] == "kde"], [])
 
     def test_logs_endpoint_lists_nested_module_logs_without_following_symlinks(self) -> None:
         _, base_url, host = self.start_http_server()

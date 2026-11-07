@@ -1,4 +1,4 @@
-import type { BridgeHealth, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation, OperationLogSummary, PersistedStableChannelStatus, SavedOperationLog } from './types'
+import type { BridgeHealth, DesktopEnvironment, DesktopEnvironmentId, DependencyStatus, DiagnosticCheck, DiagnosticCheckStatus, DiagnosticStatus, LogEntry, Module, ModuleDiagnostic, ModuleId, ModuleState, NamedOperation, NixSupport, OperationLogSummary, PersistedStableChannelStatus, SavedOperationLog } from './types'
 
 export const initialLogs: LogEntry[] = [
   { time: '--:--:--', level: 'info', text: 'Waiting for the local bridge.' },
@@ -7,6 +7,7 @@ export const initialLogs: LogEntry[] = [
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 const operationStatuses = new Set(['running', 'success', 'error', 'blocked'])
 const knownModuleIds = new Set<ModuleId>(['base', 'audio', 'energia', 'fontes', 'kde', 'bluetooth', 'rede', 'nix', 'nix_opengl', 'steam', 'swap'])
+const knownDesktopIds = new Set<DesktopEnvironmentId>(['kde', 'gnome', 'xfce', 'mate', 'lxqt', 'cinnamon', 'budgie', 'unknown'])
 const moduleStates = new Set<ModuleState>(['Ready', 'Needs attention', 'Not detected', 'Unknown'])
 const moduleStatuses = new Set<DiagnosticStatus>(['complete', 'partial', 'incomplete', 'unknown'])
 const checkStatuses = new Set<DiagnosticCheckStatus>(['ok', 'warning', 'error', 'unknown'])
@@ -73,6 +74,9 @@ const endpointFor: Record<NamedOperation, string> = {
   'apply-diagnostics': '/api/operations/apply-diagnostics',
   'refresh-nix-apps': '/api/operations/refresh-nix-apps',
   'update-nix-apps': '/api/operations/update-nix-apps',
+  'list-nix-apps': '/api/operations/list-nix-apps',
+  'uninstall-nix-app': '/api/operations/uninstall-nix-app',
+  'collect-nix-garbage': '/api/operations/collect-nix-garbage',
   'refresh-kde-apps': '/api/operations/refresh-kde-apps',
   'check-stable-channel': '/api/operations/check-stable-channel',
   'migrate-stable-channel': '/api/operations/migrate-stable-channel',
@@ -95,17 +99,43 @@ export type OperationUpdate = {
   output: string
   next_cursor: number
   results?: ModuleDiagnostic[]
+  nix_apps?: import('./types').NixApp[]
   log_path?: string | null
 }
 
 export async function getOperationUpdate(sessionId: string, cursor = 0): Promise<OperationUpdate> {
   const response = await localApi(`/api/operations/${encodeURIComponent(sessionId)}?cursor=${cursor}`)
   const value = await response.json().catch(() => null) as unknown
-  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.log_path !== undefined && value.log_path !== null && typeof value.log_path !== 'string') || (value.results !== undefined && !Array.isArray(value.results))) {
+  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.log_path !== undefined && value.log_path !== null && typeof value.log_path !== 'string') || (value.results !== undefined && !Array.isArray(value.results)) || (value.nix_apps !== undefined && !Array.isArray(value.nix_apps))) {
     throw new Error(isRecord(value) && typeof value.message === 'string' ? value.message : 'Could not read the operation session.')
   }
   const results = value.results === undefined ? undefined : value.results.map(parseDiagnostic)
-  return { ...value, results } as OperationUpdate
+  const nix_apps = value.nix_apps === undefined ? undefined : value.nix_apps.map((app) => {
+    if (!isRecord(app) || typeof app.index !== 'number' || !Number.isInteger(app.index) || app.index < 1 || typeof app.name !== 'string' || (app.attrPath !== null && typeof app.attrPath !== 'string') || typeof app.active !== 'boolean' || !Array.isArray(app.storePaths) || !app.storePaths.every((path) => typeof path === 'string')) {
+      throw new Error('The backend returned an invalid Nix application list.')
+    }
+    return app as import('./types').NixApp
+  })
+  return { ...value, results, nix_apps } as OperationUpdate
+}
+
+
+export async function getDesktopEnvironment(): Promise<DesktopEnvironment> {
+  const response = await localApi('/api/environment')
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || typeof value.id !== 'string' || typeof value.name !== 'string' || typeof value.session_type !== 'string' || typeof value.detection_source !== 'string' || !Array.isArray(value.capabilities) || !value.capabilities.every((item) => typeof item === 'string')) {
+    throw new Error(isRecord(value) && typeof value.error === 'string' ? value.error : 'Could not detect the desktop environment.')
+  }
+  return { id: value.id as DesktopEnvironment['id'], name: value.name, sessionType: value.session_type, detectionSource: value.detection_source, capabilities: value.capabilities }
+}
+
+export async function getNixSupport(): Promise<NixSupport> {
+  const response = await localApi('/api/nix/status')
+  const value = await response.json().catch(() => null) as unknown
+  if (!response.ok || !isRecord(value) || typeof value.supported !== 'boolean' || typeof value.nix_env !== 'boolean' || typeof value.stable_channel !== 'boolean' || (value.version !== null && typeof value.version !== 'string') || (value.reason !== null && typeof value.reason !== 'string')) {
+    throw new Error('The Nix support response does not match the supported schema.')
+  }
+  return { supported: value.supported, nixEnv: value.nix_env, stableChannel: value.stable_channel, version: value.version, reason: value.reason }
 }
 
 export async function getBridgeHealth(): Promise<BridgeHealth> {
@@ -166,6 +196,10 @@ export async function getModuleCatalog(): Promise<Module[]> {
       throw new Error('The module catalog contains invalid dependencies.')
     }
     const dependencies = item.dependencies as ModuleId[]
+    const desktopTargets = item.desktop_targets === undefined ? undefined : item.desktop_targets
+    if (desktopTargets !== undefined && (!Array.isArray(desktopTargets) || !desktopTargets.every((target) => typeof target === 'string' && knownDesktopIds.has(target as DesktopEnvironmentId)))) {
+      throw new Error('The module catalog contains invalid desktop targets.')
+    }
     return {
       id: item.id,
       name: item.name,
@@ -174,6 +208,7 @@ export async function getModuleCatalog(): Promise<Module[]> {
       accent: item.accent,
       state: item.state,
       dependencies,
+      ...(desktopTargets ? { desktopTargets: desktopTargets as DesktopEnvironmentId[] } : {}),
     }
   })
 }

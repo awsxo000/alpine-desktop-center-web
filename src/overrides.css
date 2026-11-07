@@ -16,3 +16,14 @@
 .light .terminal { border-color: #223955; }
 .light .panel-card, .light .health-card, .light .inspector-card, .light .audit-card, .light .help-card { box-shadow: 0 8px 30px rgba(46, 82, 118, .08); }
 .light .connection-pill { background: rgba(255,255,255,.7); }
+
+.nix-apps-section { margin-top: 1.25rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.nix-apps-heading { align-items: center; margin-bottom: .75rem; }
+.nix-apps-heading h4 { margin: .2rem 0 0; }
+.nix-app-list { display: grid; gap: .5rem; }
+.nix-app-row, .nix-garbage-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem; border: 1px solid var(--line); border-radius: .65rem; background: var(--surface-2); }
+.nix-app-row strong, .nix-app-row small { display: block; }
+.nix-app-row small { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
+.nix-garbage-row { margin-top: .75rem; align-items: flex-end; }
+.nix-garbage-row .muted-note { margin: 0; max-width: 32rem; }
+@media (max-width: 700px) { .nix-app-row, .nix-garbage-row { align-items: stretch; flex-direction: column; } }
