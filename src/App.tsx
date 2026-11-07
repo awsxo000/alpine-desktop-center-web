@@ -533,19 +533,23 @@ function App() {
                   </div>
                 </div>
               </div>
-              <div className="section-row"><div><p className="section-kicker">{ui.welcome.currentSnapshot}</p><h3>{ui.welcome.systemSignals}</h3></div><button className="text-button" onClick={() => setActiveStep('verify')}>{ui.welcome.openSystemCheck} <ArrowRight size={15} /></button></div>
-              <div className="health-grid">
-                <HealthCard icon={<FolderLock size={18} />} label={ui.welcome.backendIntegrity} value={canExecute ? ui.welcome.validated : bridgeConnected ? ui.welcome.blocked : backendCheckedAt ? ui.welcome.unavailable : ui.chrome.unknown} detail={backendCheckedAt ? `${ui.welcome.lastVerification}: ${formatDate(backendCheckedAt, locale)}` : ui.verify.notValidated} tone={canExecute ? 'green' : 'blue'} action={<button className="health-card-log-link" onClick={() => setActiveStep('verify')}>{ui.welcome.openSystemCheck} <ArrowRight size={13} /></button>} />
-                <HealthCard icon={<Network size={18} />} label={ui.welcome.stableChannel} value={stableHomeLabel} detail={stableHomeDetail} tone="violet" action={<button className="health-card-log-link" onClick={() => setActiveStep('nix')}>{ui.welcome.openNix} <ArrowRight size={13} /></button>} />
-              </div>
-              <section className="workspace-overview" aria-label={ui.welcome.workspaceOverview}>
-                <div className="workspace-overview-heading"><p className="section-kicker">{ui.welcome.workspaceOverview}</p><span>{moduleCatalog.length || systemDiagnostics.length || operationHistory.length ? ui.history.currentSession : ui.welcome.overviewEmpty}</span></div>
-                <div className="workspace-metrics">
-                  <WorkspaceMetric icon={<Layers3 size={16} />} label={ui.welcome.availableModules} value={moduleCatalog.length ? String(moduleCatalog.length) : '—'} detail={moduleCatalog.length ? ui.apply.title : ui.verify.catalogLoading} />
-                  <WorkspaceMetric icon={<Activity size={16} />} label={ui.welcome.diagnosticsSession} value={systemDiagnostics.length ? String(systemDiagnostics.length) : '—'} detail={systemDiagnostics.length ? ui.verify.checksTitle : ui.verify.notChecked} />
-                  <WorkspaceMetric icon={<FileClock size={16} />} label={ui.welcome.savedOperations} value={operationHistory.length ? String(operationHistory.length) : '—'} detail={operationHistory.length ? ui.history.savedLogs : ui.welcome.overviewEmpty} />
+              <div className="welcome-lower-grid">
+                <div className="welcome-health-block">
+                  <div className="section-row"><div><p className="section-kicker">{ui.welcome.currentSnapshot}</p><h3>{ui.welcome.systemSignals}</h3></div><button className="text-button" onClick={() => setActiveStep('verify')}>{ui.welcome.openSystemCheck} <ArrowRight size={15} /></button></div>
+                  <div className="health-grid">
+                    <HealthCard icon={<FolderLock size={18} />} label={ui.welcome.backendIntegrity} value={canExecute ? ui.welcome.validated : bridgeConnected ? ui.welcome.blocked : backendCheckedAt ? ui.welcome.unavailable : ui.chrome.unknown} detail={backendCheckedAt ? `${ui.welcome.lastVerification}: ${formatDate(backendCheckedAt, locale)}` : ui.verify.notValidated} tone={canExecute ? 'green' : 'blue'} action={<button className="health-card-log-link" onClick={() => setActiveStep('verify')}>{ui.welcome.openSystemCheck} <ArrowRight size={13} /></button>} />
+                    <HealthCard icon={<Network size={18} />} label={ui.welcome.stableChannel} value={stableHomeLabel} detail={stableHomeDetail} tone="violet" action={<button className="health-card-log-link" onClick={() => setActiveStep('nix')}>{ui.welcome.openNix} <ArrowRight size={13} /></button>} />
+                  </div>
                 </div>
-              </section>
+                <section className="workspace-overview" aria-label={ui.welcome.workspaceOverview}>
+                  <div className="workspace-overview-heading"><p className="section-kicker">{ui.welcome.workspaceOverview}</p><span>{moduleCatalog.length || systemDiagnostics.length || operationHistory.length ? ui.history.currentSession : ui.welcome.overviewEmpty}</span></div>
+                  <div className="workspace-metrics">
+                    <WorkspaceMetric icon={<Layers3 size={16} />} label={ui.welcome.availableModules} value={moduleCatalog.length ? String(moduleCatalog.length) : '—'} detail={moduleCatalog.length ? ui.apply.title : ui.verify.catalogLoading} />
+                    <WorkspaceMetric icon={<Activity size={16} />} label={ui.welcome.diagnosticsSession} value={systemDiagnostics.length ? String(systemDiagnostics.length) : '—'} detail={systemDiagnostics.length ? ui.verify.checksTitle : ui.verify.notChecked} />
+                    <WorkspaceMetric icon={<FileClock size={16} />} label={ui.welcome.savedOperations} value={operationHistory.length ? String(operationHistory.length) : '—'} detail={operationHistory.length ? ui.history.savedLogs : ui.welcome.overviewEmpty} />
+                  </div>
+                </section>
+              </div>
             </>}
 
             {activeStep === 'verify' && <>
@@ -699,12 +703,12 @@ function StartupScreen({ environment, bridgeChecked, catalogReady, baseStatus }:
   const { ui } = useCopy()
   const environmentReady = Boolean(environment)
   const checks = [
-    { label: ui.welcome.startupDetecting, ready: environmentReady, detail: environment?.name ?? ui.states.operation.running },
-    { label: ui.welcome.startupBridge, ready: bridgeChecked, detail: bridgeChecked ? ui.welcome.startupReady : ui.states.operation.running },
-    { label: ui.welcome.startupCatalog, ready: catalogReady, detail: catalogReady ? ui.welcome.startupReady : ui.states.operation.running },
-    { label: `${ui.modules.names.base} module`, ready: baseStatus?.ready === true, detail: baseStatus === null ? ui.states.operation.running : baseStatus.ready ? ui.welcome.startupReady : ui.apply.checkFirst },
+    { label: ui.welcome.startupDetecting, ready: environmentReady, pending: !environmentReady, detail: environment?.name ?? ui.states.operation.running },
+    { label: ui.welcome.startupBridge, ready: bridgeChecked, pending: !bridgeChecked, detail: bridgeChecked ? ui.welcome.startupReady : ui.states.operation.running },
+    { label: ui.welcome.startupCatalog, ready: catalogReady, pending: !catalogReady, detail: catalogReady ? ui.welcome.startupReady : ui.states.operation.running },
+    { label: `${ui.modules.names.base} module`, ready: baseStatus?.ready === true, pending: baseStatus === null, detail: baseStatus === null ? ui.states.operation.running : baseStatus.ready ? ui.welcome.startupReady : ui.apply.checkFirst },
   ]
-  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 47</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : 'pending'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : <LoaderCircle className="spin" size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
+  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 48</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : check.pending ? 'pending' : 'attention'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : check.pending ? <LoaderCircle className="spin" size={17} /> : <CircleAlert size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
 }
 function ConfigPanel({ apps, packages, onSearch, onInstallPackage, onRun, onListApps, onUninstallApp, onCollectGarbage, onUpdateNixApps, onRefreshKdeApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { apps: NixApp[]; packages: NixPackage[]; onSearch: (query: string) => void; onInstallPackage: (pkg: NixPackage) => void; onRun: () => void; onListApps: () => void; onUninstallApp: (app: NixApp) => void; onCollectGarbage: () => void; onUpdateNixApps: () => void; onRefreshKdeApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
   const { ui } = useCopy()
