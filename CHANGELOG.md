@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.55-web — duplo clique corrigido
+- Corrige o campo `Exec` do desktop entry portátil: o parser do KDE/GLib agora reconhece corretamente o comando de lançamento.
+- O arquivo `Alpine Desktop Center.desktop` deixa de ser silenciosamente ignorado pelo duplo clique.
+- Adiciona regressão automatizada para impedir que escapes inválidos quebrem o lançamento novamente.
+- Validação: `pnpm check`, `pnpm build`, 58 testes, `gio launch` do desktop entry e `git diff --check`.
+
 ## 0.1.0-alpha.54-web — perfil Nix sem terminal externo
 - Instalação, desinstalação, atualização e coleta de lixo do perfil Nix agora executam no bridge como usuário normal.
 - O terminal externo fica reservado para aplicação de configuração de sistema e migração do canal Stable, enquanto a integração Polkit é preparada.
