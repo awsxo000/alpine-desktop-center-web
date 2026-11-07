@@ -83,6 +83,7 @@ pnpm --dir "$REPO_ROOT" test
 pnpm --dir "$REPO_ROOT" build
 if [ -e "$STAGE" ] || [ -L "$STAGE" ]; then
   find "$STAGE" -type d -exec chmod u+w {} +
+  find "$STAGE" -type f -exec chmod u+w {} +
   rm -rf "$STAGE"
 fi
 mkdir -p "$STAGE/frontend/dist" "$STAGE/server" "$STAGE/backend" "$STAGE/.alpine-state"
