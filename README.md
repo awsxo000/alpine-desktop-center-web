@@ -41,6 +41,18 @@ The current system-terminal integration supports Konsole, xterm and XFCE Termina
 desktop without one of these, operations requiring that terminal are blocked with an error;
 read-only diagnostics can still use the browser window.
 
+## Alpine APK packaging
+
+The project includes an Alpine Linux package recipe at `packaging/alpine/APKBUILD`. The APK embeds the frontend, local bridge, `backend/` and `BACKEND-MANIFEST.sha256` in one installable package; the backend is never downloaded by a post-install hook. The package installs a stable `/usr/bin/alpine-desktop-center` launcher and a KDE-compatible desktop entry, so future versions can be updated with `apk upgrade alpine-desktop-center` instead of extracting another release directory. Package state, logs and the browser profile are stored under `${XDG_STATE_HOME:-~/.local/state}/alpine-desktop-center` because `/usr/lib` is intentionally not writable by the desktop user.
+
+Build the package inside an Alpine environment with `abuild` configured:
+
+```sh
+./scripts/build-alpine-apk.sh
+```
+
+The current development sandbox is Ubuntu and does not contain `abuild`; it can validate the frontend and portable archive but cannot produce a native signed Alpine `.apk` locally. The package recipe is pinned to the complete Alpha 57 archive and must be updated with a new release URL and checksum for each published version.
+
 **Undo/rollback is not yet implemented.** The current backend roles do not save a complete pre-Apply snapshot, so this release cannot safely promise to return an already-modified system to its exact prior state. Do not infer package removals or alter swap/hibernation/GRUB state automatically. Use a VM/hypervisor snapshot to return to a known baseline; a future per-module undo must be snapshot-based, drift-checked and previewed before confirmation.
 
 The session token is stored in a user-private file and is not passed in the

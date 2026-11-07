@@ -1,0 +1,67 @@
+# Maintainer: Alpine Desktop Center maintainers <maintainers@example.invalid>
+pkgname=alpine-desktop-center
+pkgver=0.1.0_alpha58
+pkgrel=0
+pkgdesc="Browser-first Alpine Linux desktop configuration center"
+url="https://github.com/awsxo000/alpine-desktop-center-web"
+arch="noarch"
+license="MIT"
+# Chromium and Firefox are alternatives; the launcher checks for either at runtime.
+depends="python3 make ansible"
+options="!check"
+source="https://github.com/awsxo000/alpine-desktop-center-web/releases/download/v0.1.0-alpha.58-web/Alpine-Desktop-Center-Web-v0.1.0-alpha.58-web.tar.gz"
+
+_builddir="Alpine-Desktop-Center-Web-v0.1.0-alpha.58-web"
+
+build() {
+	:
+}
+
+package() {
+	cd "$srcdir/$_builddir"
+
+	# The embedded backend is part of the package, not a post-install download.
+	install -d "$pkgdir/usr/lib/alpine-desktop-center"
+	cp -R frontend server backend "$pkgdir/usr/lib/alpine-desktop-center/"
+	install -m 0644 BACKEND-MANIFEST.sha256 RELEASE-VERSIONS \
+		"$pkgdir/usr/lib/alpine-desktop-center/"
+	install -m 0644 README.md CHANGELOG.md TODO.md LICENSE \
+		"$pkgdir/usr/lib/alpine-desktop-center/"
+	install -m 0755 "Alpine Desktop Center" launch-from-desktop.sh \
+		bootstrap-runtime.sh server/local_server.py \
+		"$pkgdir/usr/lib/alpine-desktop-center/"
+	install -m 0644 alpine-desktop-center.svg \
+		"$pkgdir/usr/lib/alpine-desktop-center/"
+
+	# The package launcher is stable while the versioned application is upgraded.
+	install -d "$pkgdir/usr/bin"
+	cat > "$pkgdir/usr/bin/alpine-desktop-center" <<'EOF'
+#!/bin/sh
+exec /usr/lib/alpine-desktop-center/Alpine\ Desktop\ Center "$@"
+EOF
+	chmod 0755 "$pkgdir/usr/bin/alpine-desktop-center"
+
+	install -d "$pkgdir/usr/share/applications"
+	cat > "$pkgdir/usr/share/applications/alpine-desktop-center.desktop" <<'EOF'
+[Desktop Entry]
+Name=Alpine Desktop Center
+Comment=Configure an Alpine Linux desktop
+Exec=/usr/bin/alpine-desktop-center
+Terminal=false
+Type=Application
+Categories=Settings;System;
+Icon=alpine-desktop-center
+StartupNotify=true
+StartupWMClass=AlpineDesktopCenter
+X-GNOME-SingleWindow=true
+X-KDE-SubstituteUID=false
+EOF
+	chmod 0644 "$pkgdir/usr/share/applications/alpine-desktop-center.desktop"
+
+	install -Dm0644 alpine-desktop-center.svg \
+		"$pkgdir/usr/share/icons/hicolor/scalable/apps/alpine-desktop-center.svg"
+}
+
+sha256sums="
+REPLACE_AFTER_ALPHA58_PACKAGE  Alpine-Desktop-Center-Web-v0.1.0-alpha.58-web.tar.gz
+"

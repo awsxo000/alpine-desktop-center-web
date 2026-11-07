@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.58-web — preparação para pacote Alpine APK
+- Adiciona recipe `packaging/alpine/APKBUILD` para instalar frontend, bridge, backend embarcado e desktop entry como um único pacote `.apk`.
+- Adiciona `scripts/build-alpine-apk.sh` para construir com `abuild` em um ambiente Alpine.
+- Move o estado do usuário para `${XDG_STATE_HOME:-~/.local/state}/alpine-desktop-center` quando a aplicação estiver instalada em `/usr/lib`, mantendo logs e perfil fora dos arquivos gerenciados pelo APK.
+- O backend continua obrigatório e é validado pelo `BACKEND-MANIFEST.sha256`.
+
 ## 0.1.0-alpha.57-web — correção do launcher Python
 - Corrige a indentação do bloco Python de health check introduzida na Alpha 56.
 - O launcher volta a iniciar corretamente depois de validar o backend e registra falhas reais no `server.log`.

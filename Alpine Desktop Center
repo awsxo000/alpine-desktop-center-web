@@ -3,7 +3,12 @@ set -eu
 umask 077
 APP_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 PYTHON=${ALPINE_DESKTOP_CENTER_PYTHON:-python3}
-STATE_DIR="$APP_DIR/.alpine-state/web"
+if [ -w "$APP_DIR" ]; then
+  STATE_ROOT="$APP_DIR/.alpine-state"
+else
+  STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/alpine-desktop-center"
+fi
+STATE_DIR="$STATE_ROOT/web"
 LOG_FILE="$STATE_DIR/server.log"
 PID_FILE="$STATE_DIR/server.pid"
 
