@@ -59,6 +59,13 @@ export type NixApp = {
   storePaths: string[]
 }
 
+export type NixPackage = {
+  attribute: string
+  name: string
+  version: string | null
+  description: string
+}
+
 export type NamedOperation =
   | 'validate-backend'
   | 'system-check'
@@ -70,6 +77,8 @@ export type NamedOperation =
   | 'refresh-nix-apps'
   | 'update-nix-apps'
   | 'list-nix-apps'
+  | 'search-nix-packages'
+  | 'install-nix-package'
   | 'uninstall-nix-app'
   | 'collect-nix-garbage'
   | 'refresh-kde-apps'

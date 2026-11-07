@@ -161,6 +161,11 @@ type UiCopy = {
     appsTitle: string
     appsLoading: string
     noApps: string
+    packageSearch: string
+    packageSearchPlaceholder: string
+    searchPackages: string
+    noSearchResults: string
+    installPackage: string
     uninstallApp: string
     collectGarbage: string
     garbageDetail: string
@@ -213,6 +218,7 @@ type UiCopy = {
     applyAllTitle: string
     migrateTitle: string
     updateAppsTitle: string
+    installPackageTitle: (name: string) => string
     refreshKdeAppsTitle: string
     uninstallAppTitle: (name: string) => string
     collectGarbageTitle: string
@@ -225,6 +231,7 @@ type UiCopy = {
     applyAllDescription: string
     migrateDescription: string
     updateAppsDescription: string
+    installPackageDescription: string
     refreshKdeAppsDescription: string
     applyModuleDescription: string
     previewChange: string
@@ -234,6 +241,7 @@ type UiCopy = {
     previewAction: string
     migrateAction: string
     updateAppsAction: string
+    installPackageAction: string
     refreshKdeAppsAction: string
     confirmAction: string
     confirmPreview: string
@@ -480,12 +488,17 @@ const en: UiCopy = {
     appsTitle: 'Nix apps in the user profile',
     appsLoading: 'Loading the Nix profile…',
     noApps: 'No profile entries were returned.',
+    packageSearch: 'Search Stable packages',
+    packageSearchPlaceholder: 'Search by package name, for example firefox',
+    searchPackages: 'Search packages',
+    noSearchResults: 'Search results will appear here.',
+    installPackage: 'Install',
     uninstallApp: 'Uninstall',
     collectGarbage: 'Collect garbage',
     garbageDetail: 'Removes unreachable store paths only; profile generations are not deleted.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'list-nix-apps': 'List Nix applications', 'uninstall-nix-app': 'Uninstall Nix application', 'collect-nix-garbage': 'Collect Nix garbage', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
+    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'list-nix-apps': 'List Nix applications', 'search-nix-packages': 'Search Nix packages', 'install-nix-package': 'Install Nix package', 'uninstall-nix-app': 'Uninstall Nix application', 'collect-nix-garbage': 'Collect Nix garbage', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
     eyebrow: 'SESSION AND PERSISTENT LOGS',
     title: 'Operation history',
     latestComplete: 'Latest operation completed.',
@@ -532,6 +545,7 @@ const en: UiCopy = {
     applyAllTitle: 'Apply all modules?',
     migrateTitle: 'Migrate to the latest official Stable Nix channel?',
     updateAppsTitle: 'Update Nix applications in the user profile?',
+    installPackageTitle: (name) => `Install ${name}?`,
     refreshKdeAppsTitle: 'Refresh Nix apps in KDE?',
     uninstallAppTitle: (name) => `Uninstall ${name}?`,
     collectGarbageTitle: 'Collect unreachable Nix store paths?',
@@ -544,6 +558,7 @@ const en: UiCopy = {
     applyAllDescription: 'The current backend defaults can install packages, enable or reconfigure services, create a 12 GiB swapfile and update boot parameters for hibernation when supported.',
     migrateDescription: 'The operation updates the configured Nix channel and runs nix-channel --update. It is enabled only after the official Stable check reports a newer release.',
     updateAppsDescription: 'The operation updates applications in the current user Nix profile. Review the terminal output and verify the profile afterwards.',
+    installPackageDescription: 'The selected package will be installed in the current user profile with nix-env --install --attr. Review the system terminal output before using it.',
     refreshKdeAppsDescription: 'This rebuilds the KDE app menu cache and restarts Plasma after a short delay. It does not upgrade packages, change the Nix profile, or reboot the system.',
     applyModuleDescription: 'This role can install or update packages and change system services or configuration files.',
     previewChange: 'Preview check mode; still best-effort.',
@@ -553,6 +568,7 @@ const en: UiCopy = {
     previewAction: 'Run preview',
     migrateAction: 'Migrate Stable',
     updateAppsAction: 'Update Nix apps',
+    installPackageAction: 'Install package',
     refreshKdeAppsAction: 'Refresh KDE menu',
     confirmAction: 'Confirm and run',
     confirmPreview: 'CONFIRM BEST-EFFORT PREVIEW',
@@ -801,12 +817,17 @@ const pt: UiCopy = {
     appsTitle: 'Apps Nix no perfil do usuário',
     appsLoading: 'Carregando o perfil Nix…',
     noApps: 'Nenhuma entrada foi retornada pelo perfil.',
+    packageSearch: 'Buscar pacotes Stable',
+    packageSearchPlaceholder: 'Busque por nome, por exemplo firefox',
+    searchPackages: 'Buscar pacotes',
+    noSearchResults: 'Os resultados da busca aparecerão aqui.',
+    installPackage: 'Instalar',
     uninstallApp: 'Desinstalar',
     collectGarbage: 'Coletar lixo',
     garbageDetail: 'Remove apenas caminhos não alcançáveis do armazenamento; as gerações do perfil não são apagadas.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'list-nix-apps': 'Listar aplicativos Nix', 'uninstall-nix-app': 'Desinstalar aplicativo Nix', 'collect-nix-garbage': 'Coletar lixo do Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
+    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'list-nix-apps': 'Listar aplicativos Nix', 'search-nix-packages': 'Buscar pacotes Nix', 'install-nix-package': 'Instalar pacote Nix', 'uninstall-nix-app': 'Desinstalar aplicativo Nix', 'collect-nix-garbage': 'Coletar lixo do Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
     eyebrow: 'SESSÃO E REGISTROS PERSISTENTES',
     title: 'Histórico de operações',
     latestComplete: 'Última operação concluída.',
@@ -853,6 +874,7 @@ const pt: UiCopy = {
     applyAllTitle: 'Aplicar todos os módulos?',
     migrateTitle: 'Migrar para o canal Nix Stable oficial mais recente?',
     updateAppsTitle: 'Atualizar aplicativos Nix do perfil do usuário?',
+    installPackageTitle: (name) => `Instalar ${name}?`,
     refreshKdeAppsTitle: 'Recarregar apps Nix no KDE?',
     uninstallAppTitle: (name) => `Desinstalar ${name}?`,
     collectGarbageTitle: 'Coletar caminhos Nix não alcançáveis?',
@@ -865,6 +887,7 @@ const pt: UiCopy = {
     applyAllDescription: 'As configurações atuais do backend podem instalar pacotes, ativar ou reconfigurar serviços, criar um arquivo swap de 12 GiB e atualizar parâmetros de inicialização para hibernação quando houver suporte.',
     migrateDescription: 'A operação atualiza o canal Nix configurado e executa nix-channel --update. Só é liberada se a verificação Stable oficial indicar uma versão mais nova.',
     updateAppsDescription: 'A operação atualiza aplicativos no perfil Nix do usuário atual. Revise a saída do terminal e confira o perfil depois.',
+    installPackageDescription: 'O pacote selecionado será instalado no perfil do usuário com nix-env --install --attr. Revise a saída no terminal do sistema antes de usá-lo.',
     refreshKdeAppsDescription: 'Reconstrói o cache do menu de aplicativos KDE e reinicia o Plasma após um breve intervalo. Não atualiza pacotes, não altera o perfil Nix e não reinicia o sistema.',
     applyModuleDescription: 'Esta função pode instalar ou atualizar pacotes e alterar serviços do sistema ou arquivos de configuração.',
     previewChange: 'Prévia em modo de verificação; ainda assim, best-effort.',
@@ -874,6 +897,7 @@ const pt: UiCopy = {
     previewAction: 'Executar prévia',
     migrateAction: 'Migrar Stable',
     updateAppsAction: 'Atualizar aplicativos Nix',
+    installPackageAction: 'Instalar pacote',
     refreshKdeAppsAction: 'Recarregar menu do KDE',
     confirmAction: 'Confirmar e executar',
     confirmPreview: 'CONFIRMAR PRÉVIA BEST-EFFORT',

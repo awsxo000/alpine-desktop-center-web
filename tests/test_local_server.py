@@ -269,6 +269,19 @@ class BridgeTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             local_server.resolve_command("uninstall-nix-app", {"name": "firefox; rm -rf /"})
 
+    def test_nix_package_search_parses_catalog_and_escapes_query(self) -> None:
+        output = json.dumps({"nixpkgs.firefox": {"name": "firefox-130.0", "version": "130.0", "description": "Web browser"}})
+        self.assertEqual(local_server.parse_nix_search_results(output), [{"attribute": "nixpkgs.firefox", "name": "firefox-130.0", "version": "130.0", "description": "Web browser"}])
+        command = local_server.resolve_command("search-nix-packages", {"query": "firefox.*"})[0][0]
+        self.assertEqual(command[:6], ["nix-env", "--query", "--available", "--json", "--attr-path", "--description"])
+        self.assertEqual(command[6], ".*firefox\\.\\*.*")
+
+    def test_nix_package_install_requires_safe_attribute_and_uses_system_terminal(self) -> None:
+        self.assertEqual(local_server.resolve_command("install-nix-package", {"attribute": "nixpkgs.firefox"})[0], [["nix-env", "--install", "--attr", "nixpkgs.firefox"]])
+        self.assertIn("install-nix-package", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        with self.assertRaises(ValueError):
+            local_server.resolve_command("install-nix-package", {"attribute": "nixpkgs.firefox; touch /tmp/unsafe"})
+
     def test_desktop_environment_detection_uses_session_variables(self) -> None:
         with patch.dict(os.environ, {"XDG_CURRENT_DESKTOP": "KDE", "XDG_SESSION_TYPE": "wayland"}, clear=True):
             detected = local_server.detect_desktop_environment()

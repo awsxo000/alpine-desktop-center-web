@@ -48,7 +48,7 @@ DIAGNOSTIC_MAX_AGE_SECONDS = 600
 OPERATIONS = {
     "validate-backend", "system-check", "check-all-modules", "diagnose-module",
     "simulate-full", "apply-full", "apply-diagnostics", "refresh-nix-apps",
-    "update-nix-apps", "list-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "refresh-kde-apps", "check-stable-channel",
+    "update-nix-apps", "list-nix-apps", "search-nix-packages", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "refresh-kde-apps", "check-stable-channel",
     "migrate-stable-channel", "apply-module",
 }
 DIAGNOSTIC_MODULES = ("base", "audio", "energia", "fontes", "kde", "bluetooth", "rede", "nix", "nix_opengl", "steam", "swap")
@@ -72,7 +72,7 @@ DEPENDENCY_STATUSES = {"not_checked", *DIAGNOSTIC_STATUSES}
 PRIVILEGED_OPERATIONS = {
     "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
 }
-SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}
+SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
 DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
@@ -194,6 +194,7 @@ class OperationSession:
     results: list[dict[str, object]] = dataclasses.field(default_factory=list)
     log_path: str | None = None
     nix_apps: list[dict[str, object]] = dataclasses.field(default_factory=list)
+    nix_packages: list[dict[str, object]] = dataclasses.field(default_factory=list)
     thread: threading.Thread | None = None
     lock: threading.Lock = dataclasses.field(default_factory=threading.Lock)
 
@@ -224,6 +225,7 @@ class OperationSession:
                 "next_cursor": len(self.output),
                 "results": self.results.copy(),
                 "nix_apps": self.nix_apps.copy(),
+                "nix_packages": self.nix_packages.copy(),
                 "log_path": self.log_path,
             }
 
@@ -715,7 +717,9 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
             ("read-only system checks", "system-check"),
             ("preview full configuration", "simulate-full"),
             ("uninstall nix package ", "uninstall-nix-app"),
+            ("install nix package ", "install-nix-package"),
             ("collect unreachable nix store paths", "collect-nix-garbage"),
+            ("search nix packages for ", "search-nix-packages"),
             ("list nix applications", "list-nix-apps"),
             ("update nix applications", "update-nix-apps"),
             ("refresh nix applications in kde", "refresh-kde-apps"),
@@ -1023,6 +1027,26 @@ def parse_nix_profile_apps(output: str) -> list[dict[str, object]]:
     return apps
 
 
+def parse_nix_search_results(output: str) -> list[dict[str, object]]:
+    """Parse the JSON catalog emitted by classic `nix-env --query --available`."""
+    start = output.find("{")
+    end = output.rfind("}")
+    if start < 0 or end < start:
+        raise ValueError("Nix package search did not return JSON.")
+    value = json.loads(output[start:end + 1])
+    if not isinstance(value, dict):
+        raise ValueError("Nix package search returned an unsupported JSON shape.")
+    packages: list[dict[str, object]] = []
+    for attribute, item in value.items():
+        if not isinstance(attribute, str) or not re.fullmatch(r"[A-Za-z0-9_+.-]+(?:\.[A-Za-z0-9_+.-]+)*", attribute) or not isinstance(item, dict):
+            continue
+        name = item.get("name") or item.get("pname") or attribute.rsplit(".", 1)[-1]
+        version = item.get("version")
+        description = item.get("description") or item.get("meta", {}).get("description") if isinstance(item.get("meta"), dict) else item.get("description")
+        packages.append({"attribute": attribute, "name": name if isinstance(name, str) else attribute, "version": version if isinstance(version, str) else None, "description": description if isinstance(description, str) else ""})
+    return packages[:100]
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         return ([diagnostic_command(module) for module in ("base", "audio", "rede", "energia")], "read-only system checks")
@@ -1039,6 +1063,17 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
             raise ValueError("A valid Nix package name is required for uninstall-nix-app.")
         selector = f"^{re.escape(package_name)}$"
         return ([["nix-env", "--uninstall", selector]], f"uninstall Nix package {package_name}")
+    if operation == "search-nix-packages":
+        query = payload.get("query")
+        if not isinstance(query, str) or not 1 <= len(query.strip()) <= 64:
+            raise ValueError("A search query between 1 and 64 characters is required.")
+        expression = f".*{re.escape(query.strip())}.*"
+        return ([["nix-env", "--query", "--available", "--json", "--attr-path", "--description", expression]], f"search Nix packages for {query.strip()}")
+    if operation == "install-nix-package":
+        attribute = payload.get("attribute")
+        if not isinstance(attribute, str) or not re.fullmatch(r"[A-Za-z0-9_+.-]+(?:\.[A-Za-z0-9_+.-]+)*", attribute):
+            raise ValueError("A valid Nix attribute path is required for install-nix-package.")
+        return ([["nix-env", "--install", "--attr", attribute]], f"install Nix package {attribute}")
     simple = {
         "check-stable-channel": (["python3", "scripts/canal-stable-nix.py", "verificar"], "check official Stable Nix channel"),
         "migrate-stable-channel": (["python3", "scripts/canal-stable-nix.py", "migrar"], "migrate official Stable Nix channel"),
@@ -1268,6 +1303,13 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                     except (json.JSONDecodeError, ValueError) as exc:
                         return_code = 1
                         session.append(f"\nNix profile output was invalid: {exc}\n")
+                if session.operation == "search-nix-packages" and return_code == 0:
+                    try:
+                        with session.lock:
+                            session.nix_packages = parse_nix_search_results(command_output)
+                    except (json.JSONDecodeError, ValueError) as exc:
+                        return_code = 1
+                        session.append(f"\nNix package search output was invalid: {exc}\n")
                 if session.operation in {"system-check", "check-all-modules", "diagnose-module"} and return_code == 0:
                     try:
                         diagnostic = validate_diagnostic_payload(json.loads(command_output))
@@ -1339,10 +1381,10 @@ def start_operation(root: Path, operation: str, payload: dict[str, object], oper
         if blocker:
             operation_lock.release()
             return {"status": "blocked", "operation": operation, "message": blocker}
-    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}:
+    if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}:
         with DIAGNOSTIC_LOCK:
             DIAGNOSTIC_CACHE.clear()
-    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"} or operation.startswith("apply-"):
+    if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"} or operation.startswith("apply-"):
         with STABLE_CHANNEL_LOCK:
             STABLE_CHANNEL_CACHE = None
     session_id = f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"

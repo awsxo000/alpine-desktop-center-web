@@ -75,6 +75,8 @@ const endpointFor: Record<NamedOperation, string> = {
   'refresh-nix-apps': '/api/operations/refresh-nix-apps',
   'update-nix-apps': '/api/operations/update-nix-apps',
   'list-nix-apps': '/api/operations/list-nix-apps',
+  'search-nix-packages': '/api/operations/search-nix-packages',
+  'install-nix-package': '/api/operations/install-nix-package',
   'uninstall-nix-app': '/api/operations/uninstall-nix-app',
   'collect-nix-garbage': '/api/operations/collect-nix-garbage',
   'refresh-kde-apps': '/api/operations/refresh-kde-apps',
@@ -100,13 +102,14 @@ export type OperationUpdate = {
   next_cursor: number
   results?: ModuleDiagnostic[]
   nix_apps?: import('./types').NixApp[]
+  nix_packages?: import('./types').NixPackage[]
   log_path?: string | null
 }
 
 export async function getOperationUpdate(sessionId: string, cursor = 0): Promise<OperationUpdate> {
   const response = await localApi(`/api/operations/${encodeURIComponent(sessionId)}?cursor=${cursor}`)
   const value = await response.json().catch(() => null) as unknown
-  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.log_path !== undefined && value.log_path !== null && typeof value.log_path !== 'string') || (value.results !== undefined && !Array.isArray(value.results)) || (value.nix_apps !== undefined && !Array.isArray(value.nix_apps))) {
+  if (!response.ok || !isRecord(value) || typeof value.session_id !== 'string' || typeof value.status !== 'string' || !operationStatuses.has(value.status) || typeof value.message !== 'string' || (value.return_code !== null && !Number.isInteger(value.return_code)) || typeof value.output !== 'string' || !Number.isInteger(value.next_cursor) || Number(value.next_cursor) < 0 || (value.log_path !== undefined && value.log_path !== null && typeof value.log_path !== 'string') || (value.results !== undefined && !Array.isArray(value.results)) || (value.nix_apps !== undefined && !Array.isArray(value.nix_apps)) || (value.nix_packages !== undefined && !Array.isArray(value.nix_packages))) {
     throw new Error(isRecord(value) && typeof value.message === 'string' ? value.message : 'Could not read the operation session.')
   }
   const results = value.results === undefined ? undefined : value.results.map(parseDiagnostic)
@@ -116,7 +119,13 @@ export async function getOperationUpdate(sessionId: string, cursor = 0): Promise
     }
     return app as import('./types').NixApp
   })
-  return { ...value, results, nix_apps } as OperationUpdate
+  const nix_packages = value.nix_packages === undefined ? undefined : value.nix_packages.map((pkg) => {
+    if (!isRecord(pkg) || typeof pkg.attribute !== 'string' || !/^[A-Za-z0-9_+.-]+(?:\.[A-Za-z0-9_+.-]+)*$/.test(pkg.attribute) || typeof pkg.name !== 'string' || (pkg.version !== null && typeof pkg.version !== 'string') || typeof pkg.description !== 'string') {
+      throw new Error('The backend returned an invalid Nix package search result.')
+    }
+    return pkg as import('./types').NixPackage
+  })
+  return { ...value, results, nix_apps, nix_packages } as OperationUpdate
 }
 
 

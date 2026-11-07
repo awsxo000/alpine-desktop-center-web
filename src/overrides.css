@@ -18,6 +18,13 @@
 .light .connection-pill { background: rgba(255,255,255,.7); }
 
 .nix-apps-section { margin-top: 1.25rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.nix-search-section { margin-top: 1.25rem; border-top: 1px solid var(--line); padding-top: 1rem; }
+.nix-search-form { display: flex; gap: .6rem; margin-top: .75rem; }
+.nix-search-form input { min-width: 0; flex: 1; border: 1px solid var(--line); border-radius: .55rem; background: var(--surface-2); color: var(--text); padding: .65rem .75rem; font: inherit; }
+.nix-package-list { display: grid; gap: .5rem; margin-top: .75rem; }
+.nix-package-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem; border: 1px solid var(--line); border-radius: .65rem; background: var(--surface-2); }
+.nix-package-row strong, .nix-package-row small { display: block; }
+.nix-package-row small { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
 .nix-apps-heading { align-items: center; margin-bottom: .75rem; }
 .nix-apps-heading h4 { margin: .2rem 0 0; }
 .nix-app-list { display: grid; gap: .5rem; }
@@ -26,4 +33,4 @@
 .nix-app-row small { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
 .nix-garbage-row { margin-top: .75rem; align-items: flex-end; }
 .nix-garbage-row .muted-note { margin: 0; max-width: 32rem; }
-@media (max-width: 700px) { .nix-app-row, .nix-garbage-row { align-items: stretch; flex-direction: column; } }
+@media (max-width: 700px) { .nix-app-row, .nix-package-row, .nix-garbage-row { align-items: stretch; flex-direction: column; }.nix-search-form { align-items: stretch; flex-direction: column; } }
