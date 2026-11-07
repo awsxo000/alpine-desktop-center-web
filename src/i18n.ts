@@ -15,8 +15,6 @@ type UiCopy = {
   chrome: {
     workspaceSections: string
     alpineWorkspace: string
-    frontend: string
-    backend: string
     toggleTheme: string
     unknown: string
     localBridgeValidated: string
@@ -90,12 +88,9 @@ type UiCopy = {
     checkAll: string
     checkOne: string
     notChecked: string
-    lastApply: string
-    noSavedApply: string
     componentChecks: string
     errors: string
     warnings: string
-    openHistory: string
     catalogLoading: string
     catalogUnavailable: string
     noModules: string
@@ -118,8 +113,6 @@ type UiCopy = {
     applyModule: string
     applyAll: string
     previewConfiguration: string
-    helpTitle: string
-    helpDescription: string
     checkingModule: string
     applyingModule: string
     applyingAll: string
@@ -147,19 +140,14 @@ type UiCopy = {
     notChecked: string
     reportUnavailable: string
     runCheck: string
-    stableOnly: string
-    stablePolicy: string
     checkChannel: string
     refreshApps: string
     updateApps: string
     appActionsDetail: string
     migrateStable: string
     migrationRequirement: string
-    noSwitch: string
-    openLog: string
     listApps: string
     appsTitle: string
-    appsLoading: string
     noApps: string
     packageSearch: string
     packageSearchPlaceholder: string
@@ -173,7 +161,6 @@ type UiCopy = {
   history: {
     operationLabels: Record<NamedOperation, string>
     eyebrow: string
-    title: string
     latestComplete: string
     latestFailed: string
     latestBlocked: string
@@ -191,7 +178,6 @@ type UiCopy = {
     logsCreatedBy: string
     openLog: string
     currentSession: string
-    overview: string
     applyModules: string
     verifySystem: string
   }
@@ -271,7 +257,6 @@ type UiCopy = {
     terminalTitle: string
     waitingOutput: string
     refresh: string
-    show: string
     noOutput: string
   }
   savedLog: {
@@ -302,7 +287,6 @@ type UiCopy = {
     bridgeUnavailable: string
     catalogUnavailable: string
     historyRefreshFailed: (detail: string) => string
-    savedLogReadFailed: (detail: string) => string
     blockedBackend: string
     blockedLabel: (label: string) => string
     startingOperation: (label: string) => string
@@ -330,20 +314,18 @@ const en: UiCopy = {
     welcome: { label: 'Home', note: 'Overview' },
     verify: { label: 'Verify', note: 'Backend and diagnostics' },
     apply: { label: 'Apply', note: 'Desktop modules' },
-    nix: { label: 'Nix', note: 'Stable channel and apps' },
+    nix: { label: 'Nix', note: 'Stable channel and applications' },
     history: { label: 'History', note: 'Operations and logs' },
   },
   pages: {
     verify: { heading: 'Verify before changing.', lede: 'Check backend integrity and run read-only diagnostics here. Verification does not apply configuration.' },
     apply: { heading: 'Choose what to configure.', lede: 'Select a desktop module. Apply is enabled only after a fresh diagnostic and complete dependencies.' },
-    nix: { heading: 'Nix channel and applications.', lede: 'Check the official channel, update user-profile apps, or migrate only after an official update is confirmed.' },
+    nix: { heading: 'Nix channel and applications.', lede: 'Check the official channel, update applications in the user profile, or migrate only after an official update is confirmed.' },
     history: { heading: 'Review what happened.', lede: 'Session totals and persistent local operation logs are collected in one place.' },
   },
   chrome: {
     workspaceSections: 'MAIN SECTIONS',
     alpineWorkspace: 'ALPINE WORKSPACE',
-    frontend: 'FRONTEND',
-    backend: 'BACKEND',
     toggleTheme: 'Toggle theme',
     unknown: 'Unknown',
     localBridgeValidated: 'Local bridge validated',
@@ -417,12 +399,9 @@ const en: UiCopy = {
     checkAll: 'Check all modules',
     checkOne: 'Check',
     notChecked: 'Not checked in this session.',
-    lastApply: 'Last apply',
-    noSavedApply: 'No saved apply for this module in this release history.',
     componentChecks: 'component checks',
     errors: 'errors',
     warnings: 'warnings',
-    openHistory: 'Open history',
     catalogLoading: 'Loading the live module catalog…',
     catalogUnavailable: 'The live module catalog is unavailable. Verify the backend before continuing.',
     noModules: 'No modules are available.',
@@ -445,12 +424,10 @@ const en: UiCopy = {
     applyModule: 'Apply module',
     applyAll: 'Apply all modules',
     previewConfiguration: 'Preview configuration',
-    helpTitle: 'Before you apply',
-    helpDescription: 'Run a fresh check first. Changes open in the system terminal; this alpha does not provide automatic undo.',
     checkingModule: 'Checking {module}',
     applyingModule: 'Applying {module}',
     applyingAll: 'Applying all modules',
-    inProgress: 'Output appears in View logs while the system terminal runs. Check whether the terminal is behind this window; do not retry the operation.',
+    inProgress: 'Output appears in View logs while the system terminal runs. Check whether the terminal window is behind this one; do not retry the operation.',
     showLogs: 'View logs',
     terminalAttention: 'Authentication happens outside the browser. If doas asks for a password, enter it only in the separate system terminal.',
     blockBackend: 'Backend integrity or diagnostic schema is not validated.',
@@ -464,7 +441,7 @@ const en: UiCopy = {
   nix: {
     eyebrow: 'NIX CHANNEL AND APPS',
     title: 'Official Stable only.',
-    detail: 'Alpine Desktop Center does not offer a rolling or Unstable channel. Channel updates and Nix apps stay on the official Stable path.',
+    detail: 'Alpine Desktop Center does not offer a rolling or Unstable channel. Channel updates and Nix applications stay on the official Stable path.',
     currentChannel: 'CURRENT CHANNEL',
     checkBlocked: 'Check blocked',
     checkFailed: 'Check failed',
@@ -474,19 +451,14 @@ const en: UiCopy = {
     notChecked: 'Not checked',
     reportUnavailable: 'The official Stable status endpoint did not return a recognized response.',
     runCheck: 'Check the installed official Stable channel.',
-    stableOnly: 'Official Stable only',
-    stablePolicy: 'This app does not offer or apply a switch to rolling or Unstable packages.',
     checkChannel: 'Check Stable channel',
-    refreshApps: 'Refresh Nix apps',
-    updateApps: 'Update Nix apps',
-    appActionsDetail: 'Update changes packages in the user Nix profile; refresh rebuilds the KDE app menu and restarts Plasma without upgrading packages.',
+    refreshApps: 'Refresh Nix applications',
+    updateApps: 'Update Nix applications',
+    appActionsDetail: 'Updating changes packages in the user Nix profile; refreshing rebuilds the KDE app menu and restarts Plasma without upgrading packages.',
     migrateStable: 'Migrate to latest Stable',
     migrationRequirement: 'Migration requires a successful official check from the last 10 minutes that reports an update.',
-    noSwitch: 'No switch to rolling or Unstable packages is offered or performed by this application.',
-    openLog: 'Open log',
-    listApps: 'List installed apps',
-    appsTitle: 'Nix apps in the user profile',
-    appsLoading: 'Loading the Nix profile…',
+    listApps: 'List installed applications',
+    appsTitle: 'Nix applications in the user profile',
     noApps: 'No profile entries were returned.',
     packageSearch: 'Search Stable packages',
     packageSearchPlaceholder: 'Search by package name, for example firefox',
@@ -498,9 +470,8 @@ const en: UiCopy = {
     garbageDetail: 'Removes unreachable store paths only; profile generations are not deleted.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'list-nix-apps': 'List Nix applications', 'search-nix-packages': 'Search Nix packages', 'install-nix-package': 'Install Nix package', 'uninstall-nix-app': 'Uninstall Nix application', 'collect-nix-garbage': 'Collect Nix garbage', 'refresh-kde-apps': 'Refresh Nix apps in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
+    operationLabels: { 'validate-backend': 'Validate backend', 'check-all-modules': 'Check all modules', 'system-check': 'System check', 'diagnose-module': 'Check module', 'apply-module': 'Apply module', 'apply-full': 'Apply all modules', 'apply-diagnostics': 'Apply diagnostics', 'simulate-full': 'Preview configuration', 'check-stable-channel': 'Check Stable channel', 'refresh-nix-apps': 'Update Nix applications', 'update-nix-apps': 'Update Nix applications', 'list-nix-apps': 'List Nix applications', 'search-nix-packages': 'Search Nix packages', 'install-nix-package': 'Install Nix package', 'uninstall-nix-app': 'Uninstall Nix application', 'collect-nix-garbage': 'Collect Nix garbage', 'refresh-kde-apps': 'Refresh Nix applications in KDE', 'migrate-stable-channel': 'Migrate Stable channel' },
     eyebrow: 'SESSION AND PERSISTENT LOGS',
-    title: 'Operation history',
     latestComplete: 'Latest operation completed.',
     latestFailed: 'Latest operation failed.',
     latestBlocked: 'Latest operation was blocked.',
@@ -518,7 +489,6 @@ const en: UiCopy = {
     logsCreatedBy: 'A verification or apply will create its own saved log.',
     openLog: 'Open log',
     currentSession: 'Current browser session',
-    overview: 'Overview',
     applyModules: 'Apply modules',
     verifySystem: 'Verify system',
   },
@@ -546,7 +516,7 @@ const en: UiCopy = {
     migrateTitle: 'Migrate to the latest official Stable Nix channel?',
     updateAppsTitle: 'Update Nix applications in the user profile?',
     installPackageTitle: (name) => `Install ${name}?`,
-    refreshKdeAppsTitle: 'Refresh Nix apps in KDE?',
+    refreshKdeAppsTitle: 'Refresh Nix applications in KDE?',
     uninstallAppTitle: (name) => `Uninstall ${name}?`,
     collectGarbageTitle: 'Collect unreachable Nix store paths?',
     uninstallAppDescription: 'This removes the selected entry from the current user Nix profile. It does not accept arbitrary shell input.',
@@ -554,24 +524,24 @@ const en: UiCopy = {
     uninstallAppAction: 'Uninstall app',
     collectGarbageAction: 'Collect garbage',
     applyModuleTitle: (name) => `Apply ${name}?`,
-    previewDescription: 'This runs Ansible in check mode with diff only when make, Ansible and prepared release-local state already exist; it does not install prerequisites. Check mode is best-effort: command and shell tasks without check-mode support may be skipped.',
+    previewDescription: 'This runs Ansible in check mode with diff only when make, Ansible and prepared release-local state already exist; it does not install prerequisites. This is a limited preview: command and shell tasks without check-mode support may be skipped.',
     applyAllDescription: 'The current backend defaults can install packages, enable or reconfigure services, create a 12 GiB swapfile and update boot parameters for hibernation when supported.',
     migrateDescription: 'The operation updates the configured Nix channel and runs nix-channel --update. It is enabled only after the official Stable check reports a newer release.',
     updateAppsDescription: 'The operation updates applications in the current user Nix profile. Review the terminal output and verify the profile afterwards.',
     installPackageDescription: 'The selected package will be installed in the current user profile with nix-env --install --attr. Review the system terminal output before using it.',
     refreshKdeAppsDescription: 'This rebuilds the KDE app menu cache and restarts Plasma after a short delay. It does not upgrade packages, change the Nix profile, or reboot the system.',
     applyModuleDescription: 'This role can install or update packages and change system services or configuration files.',
-    previewChange: 'Preview check mode; still best-effort.',
+    previewChange: 'Preview in check mode; some tasks may not be represented.',
     profileChange: 'This action changes the user Nix profile or channel.',
     desktopRefreshChange: 'The Plasma shell restarts in your current desktop session; its panel may briefly disappear.',
     systemChange: 'This action changes the installed system.',
     previewAction: 'Run preview',
     migrateAction: 'Migrate Stable',
-    updateAppsAction: 'Update Nix apps',
+    updateAppsAction: 'Update Nix applications',
     installPackageAction: 'Install package',
     refreshKdeAppsAction: 'Refresh KDE menu',
     confirmAction: 'Confirm and run',
-    confirmPreview: 'CONFIRM BEST-EFFORT PREVIEW',
+    confirmPreview: 'CONFIRM LIMITED PREVIEW',
     confirmChange: 'CONFIRM SYSTEM CHANGE',
     confirmProfileChange: 'CONFIRM NIX PROFILE CHANGE',
     confirmRefreshKde: 'CONFIRM DESKTOP REFRESH',
@@ -598,7 +568,6 @@ const en: UiCopy = {
     terminalTitle: 'activity.log · current session',
     waitingOutput: 'Waiting for local operation output…',
     refresh: 'Refresh current operation',
-    show: 'Show logs',
     noOutput: 'No output has been recorded yet.',
   },
   savedLog: {
@@ -631,7 +600,6 @@ const en: UiCopy = {
     bridgeUnavailable: 'The local backend bridge is not connected.',
     catalogUnavailable: 'Could not load the module catalog.',
     historyRefreshFailed: (detail) => `Could not refresh saved operation history: ${detail}`,
-    savedLogReadFailed: (detail) => `Could not read the saved operation log: ${detail}`,
     blockedBackend: 'Operations are blocked until the local bridge reports a validated backend.',
     blockedLabel: (label) => `${label} was blocked because backend integrity is not validated.`,
     startingOperation: (label) => `Starting named operation: ${label}`,
@@ -658,21 +626,19 @@ const pt: UiCopy = {
   nav: {
     welcome: { label: 'Início', note: 'Visão geral' },
     verify: { label: 'Verificar', note: 'Integridade e diagnósticos' },
-    apply: { label: 'Aplicar', note: 'Módulos do desktop' },
+    apply: { label: 'Aplicar', note: 'Módulos do ambiente gráfico' },
     nix: { label: 'Nix', note: 'Canal Stable e aplicativos' },
     history: { label: 'Histórico', note: 'Operações e registros' },
   },
   pages: {
     verify: { heading: 'Verifique antes de alterar.', lede: 'Confira a integridade do backend e execute diagnósticos somente para leitura. Verificar não aplica configurações.' },
-    apply: { heading: 'Escolha o que configurar.', lede: 'Selecione um módulo de desktop. Aplicar só é liberado após um diagnóstico recente e dependências completas.' },
+    apply: { heading: 'Escolha o que configurar.', lede: 'Selecione um módulo do ambiente gráfico. Aplicar só é liberado após um diagnóstico recente e dependências completas.' },
     nix: { heading: 'Canal Nix e aplicativos.', lede: 'Verifique o canal oficial, atualize aplicativos do perfil do usuário ou migre após confirmar uma atualização.' },
     history: { heading: 'Revise o que aconteceu.', lede: 'Contagens da sessão e registros locais persistentes ficam reunidos em um só lugar.' },
   },
   chrome: {
     workspaceSections: 'SEÇÕES PRINCIPAIS',
     alpineWorkspace: 'AMBIENTE ALPINE',
-    frontend: 'INTERFACE',
-    backend: 'BACKEND',
     toggleTheme: 'Alternar tema',
     unknown: 'Desconhecido',
     localBridgeValidated: 'Ponte local validada',
@@ -683,7 +649,7 @@ const pt: UiCopy = {
     systemWorkspace: 'AMBIENTE DO SISTEMA',
     heroTitle: 'Um desktop Alpine.',
     heroTitleAccent: 'Configurado com cuidado.',
-    heroDescription: 'O Alpine Desktop Center configura um desktop Alpine Linux já instalado, reunindo aplicativos Nix e módulos de desktop com verificações visíveis antes das alterações.',
+    heroDescription: 'O Alpine Desktop Center configura um ambiente Alpine Linux já instalado, reunindo aplicativos Nix e módulos do ambiente gráfico com verificações visíveis antes das alterações.',
     purposeLabel: 'DOIS PASSOS CLAROS',
     purposeBaseTitle: 'Verificar',
     purposeBaseDescription: 'Confirme a integridade do backend e inspecione o estado atual do sistema.',
@@ -715,12 +681,12 @@ const pt: UiCopy = {
     diagnosticsSession: 'Diagnósticos da sessão',
     savedOperations: 'Operações salvas',
     overviewEmpty: 'Ainda não há atividade registrada.',
-    startupTitle: 'Preparando seu workspace Alpine.',
+    startupTitle: 'Preparando seu ambiente Alpine.',
     startupDescription: 'Detectando a sessão gráfica atual e carregando as capacidades disponíveis para este ambiente.',
     startupDetecting: 'Detectando ambiente gráfico',
     startupBridge: 'Validando ponte local',
     startupCatalog: 'Carregando catálogo de módulos',
-    startupReady: 'Workspace pronto',
+    startupReady: 'Ambiente pronto',
     startupUnknown: 'Desktop Linux genérico',
   },
   verify: {
@@ -746,12 +712,9 @@ const pt: UiCopy = {
     checkAll: 'Verificar todos os módulos',
     checkOne: 'Verificar',
     notChecked: 'Ainda não verificado nesta sessão.',
-    lastApply: 'Última aplicação',
-    noSavedApply: 'Não há aplicação salva deste módulo no histórico desta versão.',
     componentChecks: 'verificações de componentes',
     errors: 'erros',
     warnings: 'avisos',
-    openHistory: 'Abrir histórico',
     catalogLoading: 'Carregando catálogo de módulos…',
     catalogUnavailable: 'O catálogo ao vivo de módulos está indisponível. Valide o backend antes de continuar.',
     noModules: 'Nenhum módulo está disponível.',
@@ -774,8 +737,6 @@ const pt: UiCopy = {
     applyModule: 'Aplicar módulo',
     applyAll: 'Aplicar todos os módulos',
     previewConfiguration: 'Pré-visualizar configuração',
-    helpTitle: 'Antes de aplicar',
-    helpDescription: 'Execute uma verificação recente primeiro. As alterações abrem no terminal do sistema; esta versão alfa não oferece desfazer automático.',
     checkingModule: 'Verificando {module}',
     applyingModule: 'Aplicando {module}',
     applyingAll: 'Aplicando todos os módulos',
@@ -803,19 +764,14 @@ const pt: UiCopy = {
     notChecked: 'Não verificado',
     reportUnavailable: 'O endpoint oficial de status Stable não retornou uma resposta reconhecida.',
     runCheck: 'Verifique o canal Stable oficial instalado.',
-    stableOnly: 'Somente Stable oficial',
-    stablePolicy: 'Este app não oferece nem executa a troca para pacotes rolling ou Unstable.',
     checkChannel: 'Verificar canal Stable',
-    refreshApps: 'Recarregar apps Nix no KDE',
+    refreshApps: 'Recarregar aplicativos Nix no KDE',
     updateApps: 'Atualizar aplicativos Nix',
-    appActionsDetail: 'Atualizar aplicativos altera o perfil Nix do usuário; recarregar apps no KDE reconstrói o menu e reinicia o Plasma, sem atualizar pacotes.',
+    appActionsDetail: 'Atualizar aplicativos altera o perfil Nix do usuário; recarregar os aplicativos no KDE reconstrói o menu e reinicia o Plasma, sem atualizar pacotes.',
     migrateStable: 'Migrar para o Stable mais recente',
     migrationRequirement: 'A migração exige uma verificação oficial bem-sucedida, feita nos últimos 10 minutos, que indique uma atualização.',
-    noSwitch: 'Este aplicativo não oferece nem executa a troca para pacotes rolling ou Unstable.',
-    openLog: 'Abrir registro',
-    listApps: 'Listar apps instalados',
-    appsTitle: 'Apps Nix no perfil do usuário',
-    appsLoading: 'Carregando o perfil Nix…',
+    listApps: 'Listar aplicativos instalados',
+    appsTitle: 'Aplicativos Nix no perfil do usuário',
     noApps: 'Nenhuma entrada foi retornada pelo perfil.',
     packageSearch: 'Buscar pacotes Stable',
     packageSearchPlaceholder: 'Busque por nome, por exemplo firefox',
@@ -827,9 +783,8 @@ const pt: UiCopy = {
     garbageDetail: 'Remove apenas caminhos não alcançáveis do armazenamento; as gerações do perfil não são apagadas.',
   },
   history: {
-    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'list-nix-apps': 'Listar aplicativos Nix', 'search-nix-packages': 'Buscar pacotes Nix', 'install-nix-package': 'Instalar pacote Nix', 'uninstall-nix-app': 'Desinstalar aplicativo Nix', 'collect-nix-garbage': 'Coletar lixo do Nix', 'refresh-kde-apps': 'Recarregar apps Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
+    operationLabels: { 'validate-backend': 'Validar backend', 'check-all-modules': 'Verificar todos os módulos', 'system-check': 'Verificação do sistema', 'diagnose-module': 'Verificar módulo', 'apply-module': 'Aplicar módulo', 'apply-full': 'Aplicar todos os módulos', 'apply-diagnostics': 'Aplicar diagnósticos', 'simulate-full': 'Pré-visualizar configuração', 'check-stable-channel': 'Verificar canal Stable', 'refresh-nix-apps': 'Atualizar aplicativos Nix', 'update-nix-apps': 'Atualizar aplicativos Nix', 'list-nix-apps': 'Listar aplicativos Nix', 'search-nix-packages': 'Buscar pacotes Nix', 'install-nix-package': 'Instalar pacote Nix', 'uninstall-nix-app': 'Desinstalar aplicativo Nix', 'collect-nix-garbage': 'Coletar lixo do Nix', 'refresh-kde-apps': 'Recarregar aplicativos Nix no KDE', 'migrate-stable-channel': 'Migrar para Stable' },
     eyebrow: 'SESSÃO E REGISTROS PERSISTENTES',
-    title: 'Histórico de operações',
     latestComplete: 'Última operação concluída.',
     latestFailed: 'A última operação falhou.',
     latestBlocked: 'A última operação foi bloqueada.',
@@ -847,7 +802,6 @@ const pt: UiCopy = {
     logsCreatedBy: 'Uma verificação ou aplicação criará seu próprio registro salvo.',
     openLog: 'Abrir registro',
     currentSession: 'Sessão atual do navegador',
-    overview: 'Visão geral',
     applyModules: 'Aplicar módulos',
     verifySystem: 'Verificar sistema',
   },
@@ -875,7 +829,7 @@ const pt: UiCopy = {
     migrateTitle: 'Migrar para o canal Nix Stable oficial mais recente?',
     updateAppsTitle: 'Atualizar aplicativos Nix do perfil do usuário?',
     installPackageTitle: (name) => `Instalar ${name}?`,
-    refreshKdeAppsTitle: 'Recarregar apps Nix no KDE?',
+    refreshKdeAppsTitle: 'Recarregar aplicativos Nix no KDE?',
     uninstallAppTitle: (name) => `Desinstalar ${name}?`,
     collectGarbageTitle: 'Coletar caminhos Nix não alcançáveis?',
     uninstallAppDescription: 'Isso remove a entrada selecionada do perfil Nix do usuário atual. Nenhum comando de shell arbitrário é aceito.',
@@ -883,16 +837,16 @@ const pt: UiCopy = {
     uninstallAppAction: 'Desinstalar app',
     collectGarbageAction: 'Coletar lixo',
     applyModuleTitle: (name) => `Aplicar ${name}?`,
-    previewDescription: 'O Ansible será executado em modo de verificação com diff somente se make, Ansible e o estado preparado local à versão já existirem; a ação não instala pré-requisitos. Esse modo é best-effort: tarefas de comando e shell sem suporte a check mode podem ser ignoradas.',
+    previewDescription: 'O Ansible será executado em modo de verificação com diff somente se make, Ansible e o estado preparado local à versão já existirem; a ação não instala pré-requisitos. Esse modo é parcial: tarefas de comando e shell sem suporte ao modo de verificação podem ser ignoradas.',
     applyAllDescription: 'As configurações atuais do backend podem instalar pacotes, ativar ou reconfigurar serviços, criar um arquivo swap de 12 GiB e atualizar parâmetros de inicialização para hibernação quando houver suporte.',
     migrateDescription: 'A operação atualiza o canal Nix configurado e executa nix-channel --update. Só é liberada se a verificação Stable oficial indicar uma versão mais nova.',
     updateAppsDescription: 'A operação atualiza aplicativos no perfil Nix do usuário atual. Revise a saída do terminal e confira o perfil depois.',
     installPackageDescription: 'O pacote selecionado será instalado no perfil do usuário com nix-env --install --attr. Revise a saída no terminal do sistema antes de usá-lo.',
     refreshKdeAppsDescription: 'Reconstrói o cache do menu de aplicativos KDE e reinicia o Plasma após um breve intervalo. Não atualiza pacotes, não altera o perfil Nix e não reinicia o sistema.',
     applyModuleDescription: 'Esta função pode instalar ou atualizar pacotes e alterar serviços do sistema ou arquivos de configuração.',
-    previewChange: 'Prévia em modo de verificação; ainda assim, best-effort.',
+    previewChange: 'Prévia em modo de verificação; algumas tarefas podem não ser representadas.',
     profileChange: 'Esta ação altera o perfil Nix do usuário ou o canal.',
-    desktopRefreshChange: 'O shell do Plasma será reiniciado na sessão atual; o painel pode desaparecer brevemente.',
+    desktopRefreshChange: 'O ambiente do Plasma será reiniciado na sessão atual; o painel pode desaparecer brevemente.',
     systemChange: 'Esta ação altera o sistema instalado.',
     previewAction: 'Executar prévia',
     migrateAction: 'Migrar Stable',
@@ -900,7 +854,7 @@ const pt: UiCopy = {
     installPackageAction: 'Instalar pacote',
     refreshKdeAppsAction: 'Recarregar menu do KDE',
     confirmAction: 'Confirmar e executar',
-    confirmPreview: 'CONFIRMAR PRÉVIA BEST-EFFORT',
+    confirmPreview: 'CONFIRMAR PRÉVIA LIMITADA',
     confirmChange: 'CONFIRMAR ALTERAÇÃO NO SISTEMA',
     confirmProfileChange: 'CONFIRMAR ALTERAÇÃO DO PERFIL NIX',
     confirmRefreshKde: 'CONFIRMAR ATUALIZAÇÃO DO DESKTOP',
@@ -927,7 +881,6 @@ const pt: UiCopy = {
     terminalTitle: 'activity.log · sessão atual',
     waitingOutput: 'Aguardando a saída local da operação…',
     refresh: 'Atualizar operação atual',
-    show: 'Ver registros',
     noOutput: 'Nenhuma saída foi registrada ainda.',
   },
   savedLog: {
@@ -960,7 +913,6 @@ const pt: UiCopy = {
     bridgeUnavailable: 'A ponte com o backend local não está conectada.',
     catalogUnavailable: 'Não foi possível carregar o catálogo de módulos.',
     historyRefreshFailed: (detail) => `Não foi possível atualizar o histórico salvo: ${detail}`,
-    savedLogReadFailed: (detail) => `Não foi possível ler o registro salvo: ${detail}`,
     blockedBackend: 'As operações estão bloqueadas até que a ponte local valide o backend.',
     blockedLabel: (label) => `${label} foi bloqueada porque a integridade do backend não foi validada.`,
     startingOperation: (label) => `Iniciando operação nomeada: ${label}`,
