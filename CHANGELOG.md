@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.57-web — correção do launcher Python
+- Corrige a indentação do bloco Python de health check introduzida na Alpha 56.
+- O launcher volta a iniciar corretamente depois de validar o backend e registra falhas reais no `server.log`.
+- Adiciona teste que compila o Python embutido no script de lançamento.
+- Validação: sintaxe shell, health-check Python, `pnpm check`, `pnpm build` e 59 testes.
+
 ## 0.1.0-alpha.56-web — bridge pronto sem falso timeout
 - O health check usa a validação do backend já concluída no startup, evitando reprocessar o manifesto inteiro em cada tentativa.
 - Aumenta o timeout de inicialização para máquinas mais lentas e registra a exceção real no `server.log`.

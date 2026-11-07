@@ -149,16 +149,16 @@ request = Request(
     headers={"Host": f"127.0.0.1:{port}", "X-ADC-Token": token},
 )
 try:
-        with urlopen(request, timeout=5) as response:
+    with urlopen(request, timeout=5) as response:
         payload = json.loads(response.read().decode("utf-8"))
         raise SystemExit(0 if response.status < 400 and payload.get("backend") == "validated" else 1)
-    except Exception as exc:
-        try:
-            with open(log_file, "a", encoding="utf-8") as log:
-                log.write(f"Launcher health check failed: {type(exc).__name__}: {exc}\n")
-        except OSError:
-            pass
-        raise SystemExit(1)
+except Exception as exc:
+    try:
+        with open(log_file, "a", encoding="utf-8") as log:
+            log.write(f"Launcher health check failed: {type(exc).__name__}: {exc}\n")
+    except OSError:
+        pass
+    raise SystemExit(1)
 PY
 }
 READY=0

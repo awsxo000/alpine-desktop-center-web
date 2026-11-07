@@ -1,4 +1,4 @@
-# Alpine Desktop Center Web — alpha.56
+# Alpine Desktop Center Web — alpha.57
 
 A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
 

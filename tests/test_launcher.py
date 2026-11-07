@@ -1,5 +1,6 @@
 import re
 import unittest
+from textwrap import dedent
 from pathlib import Path
 
 
@@ -25,6 +26,10 @@ class FullscreenLauncherTests(unittest.TestCase):
     def test_portable_desktop_entry_has_a_parseable_exec_with_double_click_path(self):
         self.assertIn('Exec=/bin/sh -c "exec \\\\"$(dirname \\\\"$1\\\\")/launch-from-desktop.sh\\\\" \\\\"$1\\\\"" dummy %k', DESKTOP_ENTRY)
         self.assertIn('Terminal=false', DESKTOP_ENTRY)
+
+    def test_launcher_health_check_embedded_python_compiles(self):
+        block = LAUNCHER.split("<<'PY'\n", 1)[1].split("\nPY\n", 1)[0]
+        compile(dedent(block), 'launcher-health-check.py', 'exec')
 
 
 if __name__ == '__main__':
