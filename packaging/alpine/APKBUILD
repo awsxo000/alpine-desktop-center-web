@@ -1,6 +1,6 @@
 # Maintainer: Alpine Desktop Center maintainers <maintainers@example.invalid>
 pkgname=alpine-desktop-center
-pkgver=0.1.0_alpha59
+pkgver=0.1.0_alpha60
 pkgrel=0
 pkgdesc="Browser-first Alpine Linux desktop configuration center"
 url="https://github.com/awsxo000/alpine-desktop-center-web"
@@ -9,9 +9,9 @@ license="MIT"
 # Chromium and Firefox are alternatives; the launcher checks for either at runtime.
 depends="python3 make ansible"
 options="!check"
-source="https://github.com/awsxo000/alpine-desktop-center-web/releases/download/v0.1.0-alpha.59-web/Alpine-Desktop-Center-Web-v0.1.0-alpha.59-web.tar.gz"
+source="https://github.com/awsxo000/alpine-desktop-center-web/releases/download/v0.1.0-alpha.60-web/Alpine-Desktop-Center-Web-v0.1.0-alpha.60-web.tar.gz"
 
-_builddir="Alpine-Desktop-Center-Web-v0.1.0-alpha.59-web"
+_builddir="Alpine-Desktop-Center-Web-v0.1.0-alpha.60-web"
 
 build() {
 	:
@@ -63,5 +63,5 @@ EOF
 }
 
 sha256sums="
-9e6f78660f50f7cbb0463add6a69ebd06effa21e7fc9118f29db301f93ec72e6  Alpine-Desktop-Center-Web-v0.1.0-alpha.59-web.tar.gz
+REPLACE_AFTER_ALPHA60_PACKAGE  Alpine-Desktop-Center-Web-v0.1.0-alpha.60-web.tar.gz
 "

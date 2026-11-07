@@ -437,7 +437,7 @@ class BridgeTestCase(unittest.TestCase):
         local_server.run_session(session, lock)
         log_path = local_server.operation_log_path(self.root, "validate-backend", {}, "test-validate")
         self.assertEqual(session.status, "success")
-        self.assertEqual(session.snapshot()["log_path"], log_path.relative_to(self.root).as_posix())
+        self.assertEqual(session.snapshot()["log_path"], log_path.relative_to(local_server.release_state_dir(self.root)).as_posix())
         self.assertIn("matches the release manifest", log_path.read_text(encoding="utf-8"))
         self.assertEqual(log_path.stat().st_mode & 0o777, 0o600)
 
@@ -455,7 +455,7 @@ class BridgeTestCase(unittest.TestCase):
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
         local_server.run_session(session, lock)
-        log_path = self.root / str(session.snapshot()["log_path"])
+        log_path = local_server.release_state_dir(self.root) / str(session.snapshot()["log_path"])
         self.assertEqual(session.status, "error")
         self.assertIn("Unsupported operation", log_path.read_text(encoding="utf-8"))
 
@@ -535,8 +535,8 @@ class BridgeTestCase(unittest.TestCase):
         with urlopen(request, timeout=3) as response:
             payload = json.loads(response.read().decode("utf-8"))
         paths = {item["path"] for item in payload["logs"]}
-        self.assertIn(".alpine-state/web/unknown/logs/apply/modules/audio/api-audio.log", paths)
-        self.assertNotIn(".alpine-state/web/unknown/logs/apply/modules/audio/linked.log", paths)
+        self.assertIn("logs/apply/modules/audio/api-audio.log", paths)
+        self.assertNotIn("logs/apply/modules/audio/linked.log", paths)
         with self.assertRaises(HTTPError) as caught:
             urlopen(Request(f"{base_url}/api/logs/linked", headers={"Host": host, "Origin": base_url, "X-ADC-Token": "test-session-token"}), timeout=3)
         self.assertEqual(caught.exception.code, 404)
@@ -600,8 +600,8 @@ class BridgeTestCase(unittest.TestCase):
 
         history = local_server.list_operation_logs(self.root)
         paths = {entry["path"] for entry in history}
-        self.assertIn(".alpine-state/web/unknown/operations/general/legacy-stable.log", paths)
-        self.assertIn(".alpine-state/web/unknown/logs/nix/kde-refresh/new-kde-refresh.log", paths)
+        self.assertIn("operations/general/legacy-stable.log", paths)
+        self.assertIn("logs/nix/kde-refresh/new-kde-refresh.log", paths)
         self.assertIn("Legacy output.", local_server.read_operation_log(self.root, "legacy-stable")["content"])
 
     def test_stable_channel_status_starts_not_checked_without_saved_logs(self) -> None:
@@ -629,7 +629,7 @@ class BridgeTestCase(unittest.TestCase):
         self.assertEqual(payload["status"], "success")
         self.assertEqual(payload["report"]["status"], "current")
         self.assertEqual(payload["log_id"], "stable-check-1")
-        self.assertTrue(payload["log_path"].endswith("/logs/nix/stable-check/stable-check-1.log"))
+        self.assertEqual(payload["log_path"], "logs/nix/stable-check/stable-check-1.log")
 
     def test_browser_session_cookie_is_httponly_and_authenticates_without_header(self) -> None:
         _, base_url, host = self.start_http_server()

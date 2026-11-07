@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.60-web — diagnósticos no APK
+- Corrige os caminhos dos logs de operação quando o aplicativo está instalado em `/usr/lib` e o estado está em `~/.local/state`.
+- Restaura a validação e o catálogo de módulos na tela Verificar.
+- Mantém os caminhos de log relativos ao estado do usuário, sem expor caminhos absolutos do sistema.
+
 ## 0.1.0-alpha.59-web — estado externo do bridge
 - Corrige o bridge instalado pelo APK para usar o mesmo estado gravável do launcher em `~/.local/state/alpine-desktop-center`.
 - Remove a tentativa de criar `.alpine-state` dentro de `/usr/lib`, que causava `Permission denied` e impedia o startup.

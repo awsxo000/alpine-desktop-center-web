@@ -757,7 +757,7 @@ def operation_log_summary(root: Path, base: Path, path: Path) -> dict[str, objec
             status = "error"
     return {
         "id": path.stem,
-        "path": (root / path.relative_to(root)).relative_to(root).as_posix(),
+        "path": path.relative_to(base).as_posix(),
         "modified": info.st_mtime,
         "operation": named_operation or "unknown",
         "module": module,
@@ -1270,7 +1270,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
         operation_path = operation_dir(session.root)
         prune_operation_logs(release_state_dir(session.root))
         log_path = operation_log_path(session.root, session.operation, session.payload, session.session_id)
-        session.log_path = log_path.relative_to(session.root).as_posix()
+        session.log_path = log_path.relative_to(release_state_dir(session.root)).as_posix()
         valid, message = validate_backend(session.root)
         if not valid:
             log_path.write_text(f"Named operation: {session.operation}\nOperation: {session.operation}\nStarted: {datetime.now().astimezone().isoformat(timespec='seconds')}\nPersistent log: {session.log_path}\nBackend validation failed: {message}\nOperation status: blocked\n", encoding="utf-8")
@@ -1409,8 +1409,8 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
         session.append(f"\n{exc}\nOperation status: error\n")
         if session.log_path:
             try:
-                failed_log = session.root / session.log_path
-                failed_log.resolve().relative_to(session.root.resolve())
+                failed_log = release_state_dir(session.root) / session.log_path
+                failed_log.resolve().relative_to(release_state_dir(session.root).resolve())
                 if not failed_log.is_symlink():
                     with failed_log.open("a", encoding="utf-8") as log:
                         failed_log.chmod(0o600)
