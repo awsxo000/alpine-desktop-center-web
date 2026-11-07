@@ -1044,7 +1044,7 @@ def parse_nix_profile_apps(output: str) -> list[dict[str, object]]:
 
 
 def parse_nix_search_results(output: str) -> list[dict[str, object]]:
-    """Parse the JSON catalog emitted by classic `nix-env --query --available`."""
+    """Parse JSON from `nix search` or the classic `nix-env` catalog query."""
     start = output.find("{")
     end = output.rfind("}")
     if start < 0 or end < start:
@@ -1127,8 +1127,14 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
         query = payload.get("query")
         if not isinstance(query, str) or not 1 <= len(query.strip()) <= 64:
             raise ValueError("A search query between 1 and 64 characters is required.")
-        expression = f".*{re.escape(query.strip())}.*"
-        return ([["nix-env", "--query", "--available", "--json", "--attr-path", "--description", expression]], f"search Nix packages for {query.strip()}")
+        clean_query = query.strip()
+        if shutil.which("nix"):
+            # `nix search` uses the Nix index and avoids rebuilding the full
+            # nix-env catalog for every query. The query is passed as one
+            # argument; it is never interpreted by a shell.
+            return ([["nix", "search", "nixpkgs", clean_query, "--json"]], f"search Nix packages for {clean_query}")
+        expression = f".*{re.escape(clean_query)}.*"
+        return ([["nix-env", "--query", "--available", "--json", "--attr-path", "--description", expression]], f"search Nix packages for {clean_query}")
     if operation == "install-nix-package":
         attribute = payload.get("attribute")
         if not isinstance(attribute, str) or not re.fullmatch(r"[A-Za-z0-9_+.-]+(?:\.[A-Za-z0-9_+.-]+)*", attribute):

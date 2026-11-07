@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.0-alpha.62-web — busca Nix acelerada
+- Usa `nix search --json` quando o CLI moderno está disponível, evitando reconstruir o catálogo completo via `nix-env` em cada consulta.
+- Mantém fallback automático para `nix-env` em instalações Nix antigas.
+
 ## 0.1.0-alpha.61-web — autorização Polkit
 - Adiciona helper root-owned e policy Polkit para operações privilegiadas do Desktop Center.
 - Remove o terminal externo do fluxo de aplicação: o bridge continua como usuário normal e o Polkit solicita autenticação graficamente.

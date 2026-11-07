@@ -76,6 +76,10 @@ authentication, create a broad `nopass` rule, or run the browser as root. The br
 only an allowlisted operation to the fixed helper; Polkit handles the graphical
 authentication and the helper validates the caller, state ownership and module name again.
 
+Package search uses `nix search --json` when available, which queries Nix's indexed search
+interface instead of rebuilding the complete `nix-env --available` catalog for every query.
+Older Nix installations continue to use the legacy command automatically.
+
 The **Apply** destination offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a
 best-effort preview, not a guarantee: Ansible tasks without check-mode support

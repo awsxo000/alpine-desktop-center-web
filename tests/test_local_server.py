@@ -286,9 +286,12 @@ class BridgeTestCase(unittest.TestCase):
     def test_nix_package_search_parses_catalog_and_escapes_query(self) -> None:
         output = json.dumps({"nixpkgs.firefox": {"name": "firefox-130.0", "version": "130.0", "description": "Web browser"}})
         self.assertEqual(local_server.parse_nix_search_results(output), [{"attribute": "nixpkgs.firefox", "name": "firefox-130.0", "version": "130.0", "description": "Web browser"}])
-        command = local_server.resolve_command("search-nix-packages", {"query": "firefox.*"})[0][0]
+        with patch.object(local_server.shutil, "which", return_value=None):
+            command = local_server.resolve_command("search-nix-packages", {"query": "firefox.*"})[0][0]
         self.assertEqual(command[:6], ["nix-env", "--query", "--available", "--json", "--attr-path", "--description"])
         self.assertEqual(command[6], ".*firefox\\.\\*.*")
+        with patch.object(local_server.shutil, "which", return_value="/usr/bin/nix"):
+            self.assertEqual(local_server.resolve_command("search-nix-packages", {"query": "firefox"})[0][0], ["nix", "search", "nixpkgs", "firefox", "--json"])
         self.assertTrue(local_server.nix_search_has_no_results("error: selector '.*obsdian.*' matches no derivations"))
 
     def test_nix_search_no_results_are_reported_as_an_empty_success(self) -> None:
