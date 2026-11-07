@@ -2,7 +2,7 @@
 
 **Data do resumo:** 2026-11-07  
 **Branch:** `main`  
-**Commit atual:** `to-be-published` — Alpha 63 release preparation
+**Commit atual:** `6197def` — `release: prepare Alpha 63`
 **Versão do frontend:** `0.1.0-alpha.63-web`
 **Backend embarcado:** `v1.44-dev`  
 **Status:** pré-release funcional para validação em VM Alpine; não é uma versão estável para produção.
@@ -181,7 +181,7 @@ Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz.sha256
 Checksum SHA-256 do tarball Alpha 63:
 
 ```text
-1711de115ffe969280a22bc4c74e6cc8e6abba7830de28c38dbe395db7337b09
+9fed3c85f05871c5fa622de68288c0d6afd577a3a7981782b79443600a993b5a
 ```
 
 ## Validação atual
