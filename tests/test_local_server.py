@@ -673,6 +673,16 @@ class BridgeTestCase(unittest.TestCase):
             urlopen(request, timeout=3)
         self.assertEqual(caught.exception.code, 404)
 
+    def test_polkit_command_is_allowlisted_and_carries_only_state_context(self) -> None:
+        helper = self.root / "alpine-desktop-center-helper"
+        helper.write_text("#!/bin/sh\n", encoding="utf-8")
+        helper.chmod(0o755)
+        session = local_server.OperationSession("polkit-test", self.root, "apply-module", {"module": "audio"})
+        with patch.object(local_server, "POLKIT_HELPER_PATH", helper):
+            command = local_server.polkit_command(session, ["make", "aplicar-modulo", "MODULO=audio"], self.root / "state")
+        self.assertEqual(command, ["pkexec", str(helper), "apply-module", "audio", str(self.root / "state")])
+        self.assertNotIn("make", command)
+
 
 if __name__ == "__main__":
     unittest.main()

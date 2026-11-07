@@ -86,13 +86,14 @@ if [ -e "$STAGE" ] || [ -L "$STAGE" ]; then
   find "$STAGE" -type f -exec chmod u+w {} +
   rm -rf "$STAGE"
 fi
-mkdir -p "$STAGE/frontend/dist" "$STAGE/server" "$STAGE/backend" "$STAGE/.alpine-state"
+mkdir -p "$STAGE/frontend/dist" "$STAGE/server" "$STAGE/backend" "$STAGE/.alpine-state" "$STAGE/polkit"
 cp -R "$REPO_ROOT/dist/." "$STAGE/frontend/dist/"
 cp "$REPO_ROOT/server/local_server.py" "$STAGE/server/"
 cp -R "$BACKEND_TMP/backend/." "$STAGE/backend/"
 find "$STAGE/backend" -type f -exec chmod a-w {} +
 find "$STAGE/backend" -type d -exec chmod a-w {} +
 cp "$REPO_ROOT/Alpine Desktop Center" "$REPO_ROOT/Alpine Desktop Center.desktop" "$REPO_ROOT/launch-from-desktop.sh" "$REPO_ROOT/install-desktop.sh" "$REPO_ROOT/bootstrap-runtime.sh" "$REPO_ROOT/alpine-desktop-center.svg" "$STAGE/"
+cp -R "$REPO_ROOT/polkit/." "$STAGE/polkit/"
 chmod 0755 "$STAGE/Alpine Desktop Center" "$STAGE/Alpine Desktop Center.desktop" "$STAGE/launch-from-desktop.sh" "$STAGE/install-desktop.sh" "$STAGE/bootstrap-runtime.sh" "$STAGE/server/local_server.py"
 cp "$REPO_ROOT/README.md" "$REPO_ROOT/CHANGELOG.md" "$REPO_ROOT/TODO.md" "$REPO_ROOT/LICENSE" "$STAGE/"
 mkdir -p "$STAGE/docs"

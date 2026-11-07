@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+
+# This helper is installed root:root, mode 0755, by the Alpine package.
+# It intentionally accepts operation identifiers, never arbitrary shell commands.
+BACKEND=/usr/lib/alpine-desktop-center/backend
+STATE_ROOT=${4:-}
+OPERATION=${1:-}
+MODULE=${2:-}
+
+fail() {
+  printf '%s\n' "Alpine Desktop Center Polkit helper: $1" >&2
+  exit 2
+}
+
+[ "$(id -u)" -eq 0 ] || fail "must be executed through Polkit as root"
+[ -d "$BACKEND" ] || fail "embedded backend is not installed"
+[ -n "${PKEXEC_UID:-}" ] || fail "Polkit did not provide the calling user"
+case "$STATE_ROOT" in
+  /home/*|/root/*|/run/user/*) ;;
+  *) fail "unsafe state directory" ;;
+esac
+[ -d "$STATE_ROOT" ] || fail "state directory does not exist"
+OWNER_UID=$(stat -c '%u' "$STATE_ROOT" 2>/dev/null || printf '%s' -1)
+[ "$OWNER_UID" = "$PKEXEC_UID" ] || fail "state directory is not owned by the calling user"
+
+case "$OPERATION" in
+  prepare)
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" sh "$BACKEND/scripts/preparar-ansible.sh"
+    ;;
+  simulate-full)
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" make -C "$BACKEND" simular
+    ;;
+  apply-full)
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" make -C "$BACKEND" aplicar
+    ;;
+  apply-diagnostics)
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" make -C "$BACKEND" diagnostico
+    ;;
+  apply-module)
+    case "$MODULE" in
+      base|audio|energia|fontes|kde|bluetooth|rede|nix|nix_opengl|steam|swap) ;;
+      *) fail "invalid module" ;;
+    esac
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" make -C "$BACKEND" aplicar-modulo "MODULO=$MODULE"
+    ;;
+  migrate-stable-channel)
+    exec env ALPINE_DESKTOP_CENTER_STATE_ROOT="$STATE_ROOT" python3 "$BACKEND/scripts/canal-stable-nix.py" migrar
+    ;;
+  *)
+    fail "operation is not allowlisted"
+    ;;
+esac

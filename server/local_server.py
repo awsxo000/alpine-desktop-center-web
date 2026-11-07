@@ -73,6 +73,7 @@ PRIVILEGED_OPERATIONS = {
     "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
 }
 SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"migrate-stable-channel"}
+POLKIT_HELPER_PATH = Path("/usr/libexec/alpine-desktop-center-helper")
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
 DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
@@ -1262,6 +1263,23 @@ def run_pty_command(session: OperationSession, command: list[str], log: object, 
     return (124 if timed_out else os.waitstatus_to_exitcode(child_status or 0)), output
 
 
+def polkit_command(session: OperationSession, command: list[str], state_dir: Path) -> list[str] | None:
+    """Build the only privileged command the bridge is allowed to request."""
+    if not POLKIT_HELPER_PATH.is_file() or not os.access(POLKIT_HELPER_PATH, os.X_OK):
+        return None
+    helper_operation = session.operation
+    if command[:2] == ["sh", "scripts/preparar-ansible.sh"]:
+        helper_operation = "prepare"
+    module = str(session.payload.get("module", "")) if helper_operation == "apply-module" else "-"
+    return [
+        "pkexec",
+        str(POLKIT_HELPER_PATH),
+        helper_operation,
+        module,
+        str(state_dir),
+    ]
+
+
 def run_session(session: OperationSession, operation_lock: threading.Lock) -> None:
     global STABLE_CHANNEL_CACHE
     backend = session.root / "backend"
@@ -1348,13 +1366,23 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                 log.write(f"\n$ {command_line}\n")
                 log.flush()
                 if session.operation in SYSTEM_TERMINAL_OPERATIONS:
-                    command_output, return_code = execute_in_system_terminal(
-                        session.root, backend, command, operation_path, session.session_id, env, session, log
-                    )
-                    command_output = english_output(command_output)
-                    session.append(command_output)
-                    log.write(command_output)
-                    log.flush()
+                    privileged_command = polkit_command(session, command, state_dir)
+                    if privileged_command is None:
+                        return_code = 127
+                        command_output = (
+                            "\nThis operation requires the Alpine Desktop Center Polkit helper, "
+                            "which is not installed. Install the APK package version that includes "
+                            "/usr/libexec/alpine-desktop-center-helper and its Polkit policy.\n"
+                        )
+                        session.append(command_output)
+                        log.write(command_output)
+                        log.flush()
+                    else:
+                        polkit_line = " ".join(shlex.quote(part) for part in privileged_command)
+                        session.append(f"\n$ {polkit_line}\n")
+                        log.write(f"\n$ {polkit_line}\n")
+                        log.flush()
+                        return_code, command_output = run_pty_command(session, privileged_command, log, env, backend)
                 else:
                     return_code, command_output = run_pty_command(session, command, log, env, backend)
                 if session.operation == "check-stable-channel":

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.61-web — autorização Polkit
+- Adiciona helper root-owned e policy Polkit para operações privilegiadas do Desktop Center.
+- Remove o terminal externo do fluxo de aplicação: o bridge continua como usuário normal e o Polkit solicita autenticação graficamente.
+- O helper aceita somente operações allowlistadas e valida módulo, usuário chamador e diretório de estado.
+- Pacotes Alpine passam a depender de `polkit` e instalam o helper em `/usr/libexec`.
+
 ## 0.1.0-alpha.60-web — diagnósticos no APK
 - Corrige os caminhos dos logs de operação quando o aplicativo está instalado em `/usr/lib` e o estado está em `~/.local/state`.
 - Restaura a validação e o catálogo de módulos na tela Verificar.

@@ -27,19 +27,21 @@ Alpine Desktop Center configures an Alpine Linux desktop that is already install
 
 ## Portable browser mode
 
-The release is designed to run without external hosting. The `Alpine Desktop Center` launcher and the executable desktop entry are shipped with launch permissions, so the extracted alpha can be started by double-clicking either the launcher or `Alpine Desktop Center.desktop` in a desktop file manager. Running `install-desktop.sh` once additionally registers it in the user application menu. On the first launch, the launcher checks Python 3, `make`, Ansible and an app-window browser. If something is missing, it opens the system terminal and runs the bundled `bootstrap-runtime.sh`, which offers one explicit `apk add` command and asks for confirmation before changing the system. Nix is optional and is not installed by this bootstrap. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens Chromium/Chrome in a full-screen app window (Firefox uses kiosk mode). If the bridge or a supported browser still cannot start, the launcher writes `.alpine-state/web/server.log` and shows a desktop error notification/dialog when possible instead of failing silently. Press **F11** to leave Chromium/Chrome fullscreen; **Alt+F4** closes the application window. The browser talks only to the local process; logs and state remain inside the release directory. Privileged operations open a separate system terminal; enter any doas password or confirmation only there. The browser does not receive terminal input.
+The release is designed to run without external hosting. The `Alpine Desktop Center` launcher and the executable desktop entry are shipped with launch permissions, so the extracted alpha can be started by double-clicking either the launcher or `Alpine Desktop Center.desktop` in a desktop file manager. Running `install-desktop.sh` once additionally registers it in the user application menu. On the first launch, the launcher checks Python 3, `make`, Ansible and an app-window browser. If something is missing, it opens the system terminal and runs the bundled `bootstrap-runtime.sh`, which offers one explicit `apk add` command and asks for confirmation before changing the system. Nix is optional and is not installed by this bootstrap. The launcher starts a Python HTTP server bound only to `127.0.0.1`, validates the embedded backend, and opens Chromium/Chrome in a full-screen app window (Firefox uses kiosk mode). If the bridge or a supported browser still cannot start, the launcher writes `.alpine-state/web/server.log` and shows a desktop error notification/dialog when possible instead of failing silently. Press **F11** to leave Chromium/Chrome fullscreen; **Alt+F4** closes the application window. The browser talks only to the local process; logs and state remain inside the release directory. On the APK installation, privileged operations use the graphical Polkit authentication dialog; the bridge itself never runs as root.
 
 The first workspace also checks the real `base` module status. If `doas`, `bash`, `curl`, `git`, `shadow`, the `community` repository or `ansible-playbook` is missing, the application opens **Verify** first and leaves the base module available for an explicit, terminal-visible Apply. `doas` belongs to the Ansible `base` role; it is intentionally not installed by the runtime bootstrap.
 
-While a terminal operation is active, its command output is streamed into **Show logs** and the private operation log. Authentication prompts still appear only in the system terminal. **Verify** owns read-only module checks: installed packages, services and configuration describe the current Alpine system. **Apply** separately reports readiness based on a recent module diagnostic, complete checks for declared dependencies, and SHA-256 integrity of embedded backend files. Thus a missing component in the selected module can mean it needs installation; it does not by itself make the module unready. **Apply** is dedicated to applying one module or the full configuration, with a preview and explicit confirmation. **Nix** groups Stable-channel checks with Nix application refresh/migration, while **History** combines session totals and persistent local operation logs. Hover/focus colors are tuned independently for light and dark themes.
+While an operation is active, its command output is streamed into **Show logs** and the private operation log. Read-only diagnostics never request authentication. **Verify** owns read-only module checks: installed packages, services and configuration describe the current Alpine system. **Apply** separately reports readiness based on a recent module diagnostic, complete checks for declared dependencies, and SHA-256 integrity of embedded backend files. Thus a missing component in the selected module can mean it needs installation; it does not by itself make the module unready. **Apply** is dedicated to applying one module or the full configuration, with a preview and explicit confirmation. **Nix** groups Stable-channel checks with Nix application refresh/migration, while **History** combines session totals and persistent local operation logs. Hover/focus colors are tuned independently for light and dark themes.
 
 The app shows each operation's saved log path. Examples: Stable checks go to `logs/nix/stable-check/<session>.log`, Nix profile updates to `logs/nix/profile-apps/<session>.log`, KDE refreshes to `logs/nix/kde-refresh/<session>.log`, and module checks/applications to `logs/verify/modules/<module>/` or `logs/apply/modules/<module>/`. **Verify** and **History** can read the last 50 saved operation summaries and open an individual log by generated operation ID; the bridge never accepts an arbitrary file path from the browser. A fresh release starts with no operation logs, so the Stable status is initially **Not checked**. After a check, **Home** restores the last Stable result from `logs/nix/stable-check/`. The `.log` files are private to the local user and kept under the release-version state directory. See the Portuguese [system verification and log guide](docs/verificacao-e-logs.md) for the full tree and legacy-log behavior.
 
 The top-bar language selector displays **BR** for Portuguese brasileiro and **US** for English (United States). The selection remains accessible and is saved locally in the browser for the next launch. The localized interface uses five destinations — **Home** (Início), **Verify** (Verificar), **Apply** (Aplicar), **Nix**, and **History** (Histórico). Home explains the tool's scope and presents the date/time of the last Stable-channel verification, the latest Stable version reported by the official source, the current status, and an **Open log** action when a saved check log exists.
 
-The current system-terminal integration supports Konsole, xterm and XFCE Terminal. On a
-desktop without one of these, operations requiring that terminal are blocked with an error;
-read-only diagnostics can still use the browser window.
+The APK installs a root-owned `/usr/libexec/alpine-desktop-center-helper` and the
+`org.alpine.desktop-center.apply` Polkit action. The helper accepts only named operations
+and known module identifiers; it never executes a command supplied by the browser. On a
+desktop without an active Polkit authentication agent, privileged operations fail with a
+clear error while read-only diagnostics continue to work.
 
 ## Alpine APK packaging
 
@@ -51,7 +53,7 @@ Build the package inside an Alpine environment with `abuild` configured:
 ./scripts/build-alpine-apk.sh
 ```
 
-The current development sandbox is Ubuntu and does not contain `abuild`; it can validate the frontend and portable archive but cannot produce a native signed Alpine `.apk` locally. The package recipe is pinned to the complete Alpha 57 archive and must be updated with a new release URL and checksum for each published version.
+The current development sandbox is Ubuntu and does not contain `abuild`; it can validate the frontend and portable archive but cannot produce a native signed Alpine `.apk` locally. The package recipe is pinned to the complete Alpha 61 archive and must be updated with a new release URL and checksum for each published version.
 
 **Undo/rollback is not yet implemented.** The current backend roles do not save a complete pre-Apply snapshot, so this release cannot safely promise to return an already-modified system to its exact prior state. Do not infer package removals or alter swap/hibernation/GRUB state automatically. Use a VM/hypervisor snapshot to return to a known baseline; a future per-module undo must be snapshot-based, drift-checked and previewed before confirmation.
 
@@ -59,9 +61,9 @@ The session token is stored in a user-private file and is not passed in the
 browser URL, browser process arguments or frontend JavaScript. The local page
 receives it as an `HttpOnly; SameSite=Strict` cookie.
 
-If backend prerequisites such as `make` or Ansible are missing, the application
-prepares them in that system terminal before running a privileged operation.
-Read-only diagnostics stay in the app window and never request a password.
+If backend prerequisites such as `make` or Ansible are missing, the application asks
+Polkit to authorize the dedicated preparation step. Read-only diagnostics stay in the
+app window and never request a password.
 
 Before installing Nix packages, the backend checks that the configured channel
 was actually downloaded to the user's profile. If a previous channel update
@@ -69,7 +71,10 @@ failed after its URL was saved (for example, because the VM clock caused a TLS
 certificate error), the next Apply retries the download instead of proceeding
 to a later `nixpkgs.<package> not found` failure.
 
-The current `doas` flow intentionally keeps administrator authentication in the system terminal for the remaining system-wide operations; it does not bypass the password or create a broad `nopass` rule. Alpha 54 begins the terminal-free migration by removing the terminal from user-profile Nix operations. A complete terminal-free authorization flow requires a fixed, root-owned helper and narrowly scoped Polkit actions; that helper remains the next implementation step.
+The Alpha 61 APK uses Polkit for the remaining system-wide operations. It does not bypass
+authentication, create a broad `nopass` rule, or run the browser as root. The bridge sends
+only an allowlisted operation to the fixed helper; Polkit handles the graphical
+authentication and the helper validates the caller, state ownership and module name again.
 
 The **Apply** destination offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a
