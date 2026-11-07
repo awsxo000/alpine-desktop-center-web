@@ -1,9 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
   <title id="title">Alpine Desktop Center</title>
-  <desc id="desc">Alpine mountain peaks converge on a green center point over an institutional blue field.</desc>
-  <rect x="8" y="8" width="112" height="112" rx="28" fill="#123c9c"/>
-  <path d="M27 86 50 53l14 19 15-27 23 41" fill="none" stroke="#f4f6fa" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M29 96h70" fill="none" stroke="#9bbaff" stroke-width="7" stroke-linecap="round"/>
-  <path d="M64 72v13" fill="none" stroke="#1d9b62" stroke-width="6" stroke-linecap="round"/>
-  <circle cx="64" cy="88" r="8" fill="#1d9b62" stroke="#f4f6fa" stroke-width="3"/>
+  <desc id="desc">Geometric alpine ridge forming an upward arrow with a green center spark.</desc>
+  <defs>
+    <linearGradient id="bg" x1="18" y1="12" x2="112" y2="118" gradientUnits="userSpaceOnUse"><stop stop-color="#173f9e"/><stop offset="1" stop-color="#071225"/></linearGradient>
+    <linearGradient id="ridge" x1="30" y1="88" x2="96" y2="42" gradientUnits="userSpaceOnUse"><stop stop-color="#f4f6fa"/><stop offset="1" stop-color="#a9c2ff"/></linearGradient>
+  </defs>
+  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#bg)"/>
+  <path d="M24 91 47 57l13 17 18-29 26 46" fill="none" stroke="url(#ridge)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M29 98h70" fill="none" stroke="#1d9b62" stroke-width="7" stroke-linecap="round"/>
+  <path d="M78 68V88" fill="none" stroke="#1d9b62" stroke-width="6" stroke-linecap="round"/>
+  <circle cx="78" cy="91" r="8" fill="#1d9b62" stroke="#f4f6fa" stroke-width="3"/>
 </svg>

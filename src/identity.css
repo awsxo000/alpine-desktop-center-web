@@ -10,10 +10,7 @@
 
 .sidebar { width: 222px; flex-basis: 222px; padding: 24px 13px 18px; background: #eef2f8; border-right: 1px solid #d9e2f6; }
 .light .sidebar { background: #eef2f8; border-color: #d9e2f6; }
-.brand-mark { width: 29px; height: 29px; padding: 5px; border-radius: 6px; background: var(--rokko-ink); clip-path: none; transform: none; }
-.brand-mark span { background: #ffffff; clip-path: none; transform: none; }
-.brand-mark span:nth-child(2) { background: var(--rokko-blue); }
-.brand-mark span:nth-child(3) { background: var(--rokko-green); }
+.brand-mark { width: 34px; height: 34px; padding: 0; border-radius: 9px; background: transparent; object-fit: contain; clip-path: none; transform: none; filter: drop-shadow(0 4px 8px rgba(7, 18, 37, .12)); }
 .brand-lockup .eyebrow { color: var(--rokko-blue); }
 .brand-lockup h1 { color: var(--text); }
 .release-chip { margin: 22px 5px 27px; padding: 8px 9px; border-radius: 5px; background: #f8f9fb; border-color: #d9e2f6; color: #52617b; }
@@ -78,6 +75,11 @@
 .module-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .channel-card { border-color: #9bbaff; background: #edf3ff; }
 .channel-mark { background: var(--rokko-blue); }
+.panel-icon, .card-icon, .operation-icon, .big-state-icon, .help-icon { box-shadow: inset 0 0 0 1px rgba(18, 60, 156, .08); }
+.nix-search-section, .nix-apps-section { border-color: #d9e2f6; }
+.nix-search-form input:focus { outline: 3px solid rgba(18, 60, 156, .14); outline-offset: 1px; border-color: var(--rokko-blue); }
+.nix-package-row, .nix-app-row { transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease; }
+.nix-package-row:hover, .nix-app-row:hover { border-color: #9bbaff; transform: translateY(-1px); box-shadow: 0 7px 18px rgba(18, 60, 156, .08); }
 .validation-banner { border-color: #9ac9b1; background: #e3f4eb; }
 .check-status.pass { color: #146b45; background: #e3f4eb; }
 .flow-footer { background: linear-gradient(180deg, transparent, var(--bg) 22%); }

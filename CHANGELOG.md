@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0-alpha.50-web — identidade visual e busca Nix mais rápida
+- Renova o símbolo da marca, o ícone do aplicativo, o favicon e o SVG usado pelo launcher, mantendo a identidade Alpine em azul, verde e navy.
+- Melhora a hierarquia visual dos ícones, cards, estados vazios e controles do painel Nix.
+- Impede que busca e listagem de aplicativos Nix abram o modal de terminal; essas consultas permanecem na interface do navegador.
+- Adiciona estado de carregamento e cache de cinco minutos para consultas repetidas do catálogo Nix, invalidado após alterações no perfil ou canal.
+- Mantém instalação e desinstalação com confirmação explícita e terminal externo, sem aceitar shell arbitrário.
+- Validação: `pnpm check`, `pnpm build` e 55 testes (`pnpm test`).
+
 ## 0.1.0-alpha.40-web — paridade real entre temas
 - Remove as regras exclusivas de tamanho do modo claro que aumentavam fontes, line-heights, paddings, gaps e dimensões de componentes.
 - Mantém no tema claro somente ajustes de contraste, cores de estado e legibilidade; a geometria passa a vir das mesmas regras compartilhadas pelo modo escuro.

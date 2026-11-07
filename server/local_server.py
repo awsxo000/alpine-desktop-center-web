@@ -79,6 +79,9 @@ DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
 DIAGNOSTIC_LOCK = threading.Lock()
 STABLE_CHANNEL_CACHE: tuple[dict[str, object], float] | None = None
 STABLE_CHANNEL_LOCK = threading.Lock()
+NIX_SEARCH_CACHE: dict[str, tuple[list[dict[str, object]], float]] = {}
+NIX_SEARCH_CACHE_LOCK = threading.Lock()
+NIX_SEARCH_CACHE_TTL_SECONDS = 300
 LINGERING_PROCESS_PIDS: set[int] = set()
 LINGERING_PROCESS_LOCK = threading.Lock()
 
@@ -1047,6 +1050,39 @@ def parse_nix_search_results(output: str) -> list[dict[str, object]]:
     return packages[:100]
 
 
+def nix_search_cache_key(payload: dict[str, object]) -> str:
+    query = payload.get("query")
+    return query.strip().casefold() if isinstance(query, str) else ""
+
+
+def get_cached_nix_search(payload: dict[str, object]) -> list[dict[str, object]] | None:
+    key = nix_search_cache_key(payload)
+    if not key:
+        return None
+    with NIX_SEARCH_CACHE_LOCK:
+        cached = NIX_SEARCH_CACHE.get(key)
+        if cached is None:
+            return None
+        results, cached_at = cached
+        if time.monotonic() - cached_at > NIX_SEARCH_CACHE_TTL_SECONDS:
+            NIX_SEARCH_CACHE.pop(key, None)
+            return None
+        return [item.copy() for item in results]
+
+
+def remember_nix_search(payload: dict[str, object], results: list[dict[str, object]]) -> None:
+    key = nix_search_cache_key(payload)
+    if not key:
+        return
+    with NIX_SEARCH_CACHE_LOCK:
+        NIX_SEARCH_CACHE[key] = ([item.copy() for item in results], time.monotonic())
+
+
+def clear_nix_search_cache() -> None:
+    with NIX_SEARCH_CACHE_LOCK:
+        NIX_SEARCH_CACHE.clear()
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         return ([diagnostic_command(module) for module in ("base", "audio", "rede", "energia")], "read-only system checks")
@@ -1246,6 +1282,13 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             log.flush()
             return_code = 0
             pending_commands = list(commands)
+            if session.operation == "search-nix-packages":
+                cached_packages = get_cached_nix_search(session.payload)
+                if cached_packages is not None:
+                    with session.lock:
+                        session.nix_packages = cached_packages
+                    session.append("\nSearch results restored from the recent Nix catalog cache.\n")
+                    pending_commands = []
             state_dir = session.root / ".alpine-state"
             ansible_collection = state_dir / "collections" / "ansible_collections" / "community" / "general"
             prerequisites_missing = (
@@ -1307,6 +1350,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                     try:
                         with session.lock:
                             session.nix_packages = parse_nix_search_results(command_output)
+                            remember_nix_search(session.payload, session.nix_packages)
                     except (json.JSONDecodeError, ValueError) as exc:
                         return_code = 1
                         session.append(f"\nNix package search output was invalid: {exc}\n")
@@ -1384,6 +1428,8 @@ def start_operation(root: Path, operation: str, payload: dict[str, object], oper
     if operation.startswith("apply-") or operation in {"refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}:
         with DIAGNOSTIC_LOCK:
             DIAGNOSTIC_CACHE.clear()
+    if operation in {"refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "migrate-stable-channel"}:
+        clear_nix_search_cache()
     if operation in {"check-stable-channel", "simulate-full", "refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"} or operation.startswith("apply-"):
         with STABLE_CHANNEL_LOCK:
             STABLE_CHANNEL_CACHE = None

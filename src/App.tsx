@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import logoMark from '../alpine-desktop-center.svg'
 import {
   Activity,
   ArrowRight,
@@ -38,6 +37,8 @@ import {
 import { getBaseStatus, getBridgeHealth, getDesktopEnvironment, getModuleCatalog, getNixSupport, getOperationHistory, getOperationUpdate, getPersistedStableChannelStatus, getSavedOperationLog, startNamedOperation } from './api'
 import { copy, formatDate, initialLocale, type Locale } from './i18n'
 import type { BaseStatus, BridgeHealth, DesktopEnvironment, LogEntry, Module, NixApp, NixPackage, ModuleDiagnostic, ModuleState, NamedOperation, NixSupport, OperationLogSummary, OperationState, SavedOperationLog, StableChannelReport, StepId } from './types'
+
+const logoMark = '/alpine-center-mark.png'
 
 const steps: Array<{ id: StepId }> = [
   { id: 'welcome' }, { id: 'verify' }, { id: 'apply' }, { id: 'nix' }, { id: 'history' },
@@ -306,10 +307,12 @@ function App() {
       return
     }
     setOperation('running')
-    setLogsOpen(true)
+    const opensActivityPanel = namedOperation !== 'search-nix-packages' && namedOperation !== 'list-nix-apps'
+    setLogsOpen(opensActivityPanel)
     setActiveOperation(namedOperation)
     setOperationId(null)
     setActiveLogPath(null)
+    if (namedOperation === 'search-nix-packages') setNixPackages([])
     if (targetStep) setActiveStep(targetStep)
     addLog('info', ui.messages.startingOperation(label))
     setBridgeMessage(ui.messages.openingChannel)
@@ -708,11 +711,12 @@ function StartupScreen({ environment, bridgeChecked, catalogReady, baseStatus }:
     { label: ui.welcome.startupCatalog, ready: catalogReady, pending: !catalogReady, detail: catalogReady ? ui.welcome.startupReady : ui.states.operation.running },
     { label: `${ui.modules.names.base} module`, ready: baseStatus?.ready === true, pending: baseStatus === null, detail: baseStatus === null ? ui.states.operation.running : baseStatus.ready ? ui.welcome.startupReady : ui.apply.checkFirst },
   ]
-  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 49</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : check.pending ? 'pending' : 'attention'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : check.pending ? <LoaderCircle className="spin" size={17} /> : <CircleAlert size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
+  return <div className="startup-screen"><div className="startup-card"><div className="startup-mark"><img src={logoMark} alt="" aria-hidden="true" /></div><p className="eyebrow accent-text">ALPINE DESKTOP CENTER · ALPHA 50</p><h1>{ui.welcome.startupTitle}</h1><p className="startup-description">{ui.welcome.startupDescription}</p><div className="startup-checks">{checks.map((check) => <div className={`startup-check ${check.ready ? 'ready' : check.pending ? 'pending' : 'attention'}`} key={check.label}><span className="startup-check-dot" /><div><strong>{check.label}</strong><small>{check.detail}</small></div>{check.ready ? <CheckCircle2 size={17} /> : check.pending ? <LoaderCircle className="spin" size={17} /> : <CircleAlert size={17} />}</div>)}</div>{environment && <div className="startup-capabilities"><span className="section-kicker">{environment.name}</span><div>{environment.capabilities.map((capability) => <span key={capability}>{capability}</span>)}</div></div>}</div></div>
 }
 function ConfigPanel({ apps, packages, onSearch, onInstallPackage, onRun, onListApps, onUninstallApp, onCollectGarbage, onUpdateNixApps, onRefreshKdeApps, onMigrateStable, operation, canExecute, stableChannelCheck, canMigrateStable }: { apps: NixApp[]; packages: NixPackage[]; onSearch: (query: string) => void; onInstallPackage: (pkg: NixPackage) => void; onRun: () => void; onListApps: () => void; onUninstallApp: (app: NixApp) => void; onCollectGarbage: () => void; onUpdateNixApps: () => void; onRefreshKdeApps: () => void; onMigrateStable: () => void; operation: OperationState; canExecute: boolean; stableChannelCheck: StableChannelCheck | null; canMigrateStable: boolean }) {
   const { ui } = useCopy()
   const [query, setQuery] = useState('')
+  const [hasSearched, setHasSearched] = useState(false)
   const reportStatus = stableChannelCheck?.report?.status
   const channelLabel = stableChannelCheck?.status === 'blocked' ? ui.nix.checkBlocked
     : stableChannelCheck?.status === 'error' ? ui.nix.checkFailed
@@ -732,12 +736,14 @@ function ConfigPanel({ apps, packages, onSearch, onInstallPackage, onRun, onList
     <p className="muted-note">{ui.nix.appActionsDetail}</p>
     <section className="nix-search-section">
       <div className="section-row nix-apps-heading"><div><p className="section-kicker">{ui.nix.packageSearch}</p><h4>{ui.nix.packageSearch}</h4></div></div>
-      <form className="nix-search-form" onSubmit={(event) => { event.preventDefault(); if (query.trim()) onSearch(query.trim()) }}>
+      <form className="nix-search-form" onSubmit={(event) => { event.preventDefault(); if (query.trim()) { setHasSearched(true); onSearch(query.trim()) } }}>
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={ui.nix.packageSearchPlaceholder} maxLength={64} aria-label={ui.nix.packageSearch} />
         <OperationButton type="submit" onClick={() => undefined} operation={operation} icon={<Package size={15} />} disabled={!canExecute || operation === 'running' || !query.trim()}>{ui.nix.searchPackages}</OperationButton>
       </form>
-      {packages.length > 0 && <div className="nix-package-list">{packages.map((pkg) => <div className="nix-package-row" key={pkg.attribute}><div><strong>{pkg.name}{pkg.version ? ` · ${pkg.version}` : ''}</strong><small>{pkg.attribute}</small>{pkg.description && <small>{pkg.description}</small>}</div><button className="secondary-button" onClick={() => onInstallPackage(pkg)} disabled={!canExecute || operation === 'running'}>{ui.nix.installPackage}</button></div>)}</div>}
-      {packages.length === 0 && <p className="muted-note">{ui.nix.noSearchResults}</p>}
+      {hasSearched && packages.length > 0 && <div className="nix-package-list">{packages.map((pkg) => <div className="nix-package-row" key={pkg.attribute}><div><strong>{pkg.name}{pkg.version ? ` · ${pkg.version}` : ''}</strong><small>{pkg.attribute}</small>{pkg.description && <small>{pkg.description}</small>}</div><button className="secondary-button" onClick={() => onInstallPackage(pkg)} disabled={!canExecute || operation === 'running'}>{ui.nix.installPackage}</button></div>)}</div>}
+      {hasSearched && operation === 'running' && <p className="muted-note nix-search-hint">{ui.states.operation.running}</p>}
+      {hasSearched && packages.length === 0 && operation !== 'running' && <p className="muted-note nix-empty-state">{ui.nix.noSearchResults}</p>}
+      {!hasSearched && <p className="muted-note nix-search-hint">{ui.nix.packageSearchPlaceholder}</p>}
     </section>
     <section className="nix-apps-section">
       <div className="section-row nix-apps-heading"><div><p className="section-kicker">{ui.nix.appsTitle}</p><h4>{apps.length ? `${apps.length} ${ui.nix.appsTitle.toLowerCase()}` : ui.nix.appsTitle}</h4></div><OperationButton onClick={onListApps} operation={operation} icon={<RefreshCw size={15} />} disabled={!canExecute}>{ui.nix.listApps}</OperationButton></div>
