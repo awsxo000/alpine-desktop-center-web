@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.52-web — pré-voo do pacote completo
+- O launcher verifica `backend/` e `BACKEND-MANIFEST.sha256` antes de iniciar o bridge.
+- Checkouts-fonte e pastas extraídas de forma incompleta agora exibem uma mensagem direta em vez de iniciar um servidor que responde `503` repetidamente.
+- Adiciona teste de regressão para impedir que a ausência do backend embarcado passe despercebida.
+- Validação: sintaxe shell, `pnpm check`, `pnpm build`, 56 testes (`pnpm test`) e `git diff --check`.
+
 ## 0.1.0-alpha.51-web — logo facetado e launcher de duplo clique
 - Redesenha `alpine-desktop-center.svg` no mesmo estilo do novo ícone: fundo navy arredondado, montanhas facetadas, estrela luminosa e folhagens verdes.
 - Corrige o desktop entry para usar o nome padrão do ícone e reforça permissões dos launchers ao instalar pelo menu.

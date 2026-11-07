@@ -60,6 +60,10 @@ if ! command -v "$PYTHON" >/dev/null 2>&1; then
   exit 0
 fi
 
+if [ ! -d "$APP_DIR/backend" ] || [ ! -f "$APP_DIR/BACKEND-MANIFEST.sha256" ]; then
+  fail_launch 'This folder is not a complete Alpine Desktop Center release. Download the portable .tar.gz package from the GitHub release; do not launch the source-code checkout or an incomplete extracted folder.'
+fi
+
 if [ "${ALPINE_DESKTOP_CENTER_LOCKED:-0}" != 1 ]; then
   if [ -L "$APP_DIR/.alpine-state" ] || [ -L "$STATE_DIR" ]; then
     printf '%s\n' 'Refusing to use a symlinked Alpine Desktop Center state directory.' >&2

@@ -17,6 +17,10 @@ class FullscreenLauncherTests(unittest.TestCase):
     def test_firefox_remains_in_kiosk_mode(self):
         self.assertRegex(LAUNCHER, r'(?s)firefox .*?--kiosk')
 
+    def test_launcher_rejects_source_checkout_without_embedded_backend(self):
+        self.assertIn('not a complete Alpine Desktop Center release', LAUNCHER)
+        self.assertIn('BACKEND-MANIFEST.sha256', LAUNCHER)
+
 
 if __name__ == '__main__':
     unittest.main()
