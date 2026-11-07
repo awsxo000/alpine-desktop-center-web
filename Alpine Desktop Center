@@ -27,6 +27,26 @@ fail_launch() {
   exit 1
 }
 
+has_browser() {
+  command -v chromium >/dev/null 2>&1 || command -v chromium-browser >/dev/null 2>&1 || \
+    command -v google-chrome >/dev/null 2>&1 || command -v brave-browser >/dev/null 2>&1 || \
+    command -v firefox >/dev/null 2>&1
+}
+
+runtime_ready() {
+  command -v python3 >/dev/null 2>&1 && command -v make >/dev/null 2>&1 && \
+    command -v ansible-playbook >/dev/null 2>&1 && has_browser && \
+    { [ "$(id -u)" -eq 0 ] || command -v doas >/dev/null 2>&1 || command -v sudo >/dev/null 2>&1; }
+}
+
+if ! runtime_ready; then
+  TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
+  if [ -z "$TERMINAL" ]; then
+    fail_launch 'The first-run runtime is incomplete and no system terminal was found. Install Python 3, make, Ansible and Chromium or Firefox, then try again.'
+  fi
+  exec "$TERMINAL" -e sh -c '"$1/bootstrap-runtime.sh"; status=$?; if [ "$status" -eq 0 ]; then exec "$1/Alpine Desktop Center"; fi; printf "\nSetup failed or was cancelled. Press Enter to close..."; read -r _; exit "$status"' sh "$APP_DIR"
+fi
+
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
   TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
   if [ -z "$TERMINAL" ]; then
