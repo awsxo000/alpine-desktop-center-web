@@ -6,6 +6,7 @@ ICON_DIR="$DATA_HOME/icons/hicolor/scalable/apps"
 APP_DIR_DESKTOP="$DATA_HOME/applications"
 APP_EXEC=$(printf '%s' "$APP_DIR/launch-from-desktop.sh" | sed 's/\\/\\\\/g; s/"/\\"/g; s/%/%%/g')
 mkdir -p "$ICON_DIR" "$APP_DIR_DESKTOP"
+chmod 0755 "$APP_DIR/Alpine Desktop Center" "$APP_DIR/launch-from-desktop.sh"
 cp "$APP_DIR/alpine-desktop-center.svg" "$ICON_DIR/alpine-desktop-center.svg"
 cat > "$APP_DIR_DESKTOP/alpine-desktop-center.desktop" <<EOF
 [Desktop Entry]

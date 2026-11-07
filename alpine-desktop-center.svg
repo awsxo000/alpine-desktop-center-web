@@ -1,17 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
   <title id="title">Alpine Desktop Center</title>
-  <desc id="desc">Geometric alpine ridge forming an upward arrow with a green center spark.</desc>
+  <desc id="desc">Faceted Alpine mountains with a luminous star and green foothills on a navy rounded square.</desc>
   <defs>
-    <linearGradient id="bg" x1="18" y1="12" x2="112" y2="118" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#173f9e"/><stop offset="1" stop-color="#071225"/>
-    </linearGradient>
-    <linearGradient id="ridge" x1="30" y1="88" x2="96" y2="42" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#f4f6fa"/><stop offset="1" stop-color="#a9c2ff"/>
-    </linearGradient>
+    <linearGradient id="sky" x1="44" y1="28" x2="468" y2="484" gradientUnits="userSpaceOnUse"><stop stop-color="#164db7"/><stop offset=".55" stop-color="#092d80"/><stop offset="1" stop-color="#06143b"/></linearGradient>
+    <linearGradient id="snow" x1="150" y1="130" x2="354" y2="336" gradientUnits="userSpaceOnUse"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#b8ddff"/></linearGradient>
+    <linearGradient id="leaf" x1="90" y1="368" x2="252" y2="484" gradientUnits="userSpaceOnUse"><stop stop-color="#61f58e"/><stop offset="1" stop-color="#13a96a"/></linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="9" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#bg)"/>
-  <path d="M24 91 47 57l13 17 18-29 26 46" fill="none" stroke="url(#ridge)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M29 98h70" fill="none" stroke="#1d9b62" stroke-width="7" stroke-linecap="round"/>
-  <path d="M78 68V88" fill="none" stroke="#1d9b62" stroke-width="6" stroke-linecap="round"/>
-  <circle cx="78" cy="91" r="8" fill="#1d9b62" stroke="#f4f6fa" stroke-width="3"/>
+  <rect x="16" y="16" width="480" height="480" rx="118" fill="url(#sky)"/>
+  <g filter="url(#glow)"><path d="M256 70c8 37 25 54 62 62-37 8-54 25-62 62-8-37-25-54-62-62 37-8 54-25 62-62Z" fill="#72ff91"/></g>
+  <path d="M56 346 154 230l34 35 68-91 68 91 34-35 98 116-99-43-101 73-101-73-99 43Z" fill="#0a235c" opacity=".96"/>
+  <path d="m72 336 82-93 34 35 68-92 68 92 34-35 82 93-116-45-68 52-68-52-116 45Z" fill="#0b4ac5"/>
+  <path d="m154 243 34 35 68-92 68 92-41-20-27 25-27-25-41 20Z" fill="url(#snow)"/>
+  <path d="m256 186 68 92-68-31Z" fill="#d7efff" opacity=".85"/>
+  <path d="M58 367c72-18 136-1 198 62-64 6-124-8-198-62Z" fill="url(#leaf)"/>
+  <path d="M454 367c-72-18-136-1-198 62 64 6 124-8 198-62Z" fill="url(#leaf)"/>
+  <path d="M256 318v112" stroke="#0c9d66" stroke-width="8" stroke-linecap="round" opacity=".8"/>
+  <path d="M64 367c66-13 130 7 192 62M448 367c-66-13-130 7-192 62" fill="none" stroke="#9dffb3" stroke-width="3" opacity=".6"/>
 </svg>

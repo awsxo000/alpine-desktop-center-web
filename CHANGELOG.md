@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.51-web — logo facetado e launcher de duplo clique
+- Redesenha `alpine-desktop-center.svg` no mesmo estilo do novo ícone: fundo navy arredondado, montanhas facetadas, estrela luminosa e folhagens verdes.
+- Corrige o desktop entry para usar o nome padrão do ícone e reforça permissões dos launchers ao instalar pelo menu.
+- Reordena terminais de primeiro uso, deixa `xterm` como fallback final e exibe erro visível quando o terminal não consegue iniciar.
+- Validação: sintaxe dos scripts, `pnpm check`, `pnpm build`, 55 testes (`pnpm test`) e `git diff --check`.
+
 ## 0.1.0-alpha.50-web — identidade visual e busca Nix mais rápida
 - Renova o símbolo da marca, o ícone do aplicativo, o favicon e o SVG usado pelo launcher, mantendo a identidade Alpine em azul, verde e navy.
 - Melhora a hierarquia visual dos ícones, cards, estados vazios e controles do painel Nix.

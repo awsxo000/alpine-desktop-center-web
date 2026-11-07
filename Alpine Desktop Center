@@ -39,19 +39,25 @@ runtime_ready() {
 }
 
 if ! runtime_ready; then
-  TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
+  TERMINAL=$(command -v konsole || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || command -v xterm || true)
   if [ -z "$TERMINAL" ]; then
     fail_launch 'The first-run runtime is incomplete and no system terminal was found. Install Python 3, make, Ansible and Chromium or Firefox, then try again.'
   fi
-  exec "$TERMINAL" -e sh -c '"$1/bootstrap-runtime.sh"; status=$?; if [ "$status" -eq 0 ]; then exec "$1/Alpine Desktop Center"; fi; printf "\nSetup failed or was cancelled. Press Enter to close..."; read -r _; exit "$status"' sh "$APP_DIR"
+  if ! "$TERMINAL" -e sh -c '"$1/bootstrap-runtime.sh"; status=$?; if [ "$status" -eq 0 ]; then exec "$1/Alpine Desktop Center"; fi; printf "\nSetup failed or was cancelled. Press Enter to close..."; read -r _; exit "$status"' sh "$APP_DIR"; then
+    fail_launch "Could not open the system terminal ($TERMINAL) for first-run setup."
+  fi
+  exit 0
 fi
 
 if ! command -v "$PYTHON" >/dev/null 2>&1; then
-  TERMINAL=$(command -v konsole || command -v xterm || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || true)
+  TERMINAL=$(command -v konsole || command -v alacritty || command -v kitty || command -v foot || command -v xfce4-terminal || command -v xterm || true)
   if [ -z "$TERMINAL" ]; then
     fail_launch 'Python 3 is required. Install it, then run Alpine Desktop Center again.'
   fi
-  exec "$TERMINAL" -e sh -c 'cd "$1/backend" && printf "%s\\n" "Alpine Desktop Center needs Python 3 before it can start." "The backend installer will prepare Python, Ansible, make and doas." "Enter any doas password only in this system terminal."; sh instalar.sh; status=$?; if [ "$status" -ne 0 ]; then printf "\\nSetup failed with exit code %s. Press Enter to close..." "$status"; read -r _; fi; exit "$status"' sh "$APP_DIR"
+  if ! "$TERMINAL" -e sh -c 'cd "$1/backend" && printf "%s\\n" "Alpine Desktop Center needs Python 3 before it can start." "The backend installer will prepare Python, Ansible, make and doas." "Enter any doas password only in this system terminal."; sh instalar.sh; status=$?; if [ "$status" -ne 0 ]; then printf "\\nSetup failed with exit code %s. Press Enter to close..." "$status"; read -r _; fi; exit "$status"' sh "$APP_DIR"; then
+    fail_launch "Could not open the system terminal ($TERMINAL) to prepare Python 3."
+  fi
+  exit 0
 fi
 
 if [ "${ALPINE_DESKTOP_CENTER_LOCKED:-0}" != 1 ]; then
