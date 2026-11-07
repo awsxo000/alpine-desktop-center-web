@@ -1,4 +1,4 @@
-# Alpine Desktop Center Web — alpha.37
+# Alpine Desktop Center Web — alpha.54
 
 A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
 
@@ -20,7 +20,7 @@ A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KD
 - **Layout responsivo:** a área principal aproveita a viewport larga; em telas com pouca altura ou zoom elevado, os painéis internos podem rolar sem cortar conteúdo nem rolar a página inteira. O destaque inicial distribui a explicação em duas colunas no desktop.
 - **Ações:** hover de Apply module, Apply all e migração Stable mantém o azul de assinatura e usa elevação/sombra discretas; foco por teclado permanece claramente visível.
 - **Integridade e auditoria da alpha.33:** refresh de integridade real, check do canal Stable persistente, operações nomeadas, logs locais por versão e módulos/diagnósticos em painéis confinados permanecem inalterados.
-- Mantém `doas` autenticado no terminal do sistema; não cria regra `nopass`. Undo automático não está implementado por falta de snapshot/baseline verificável.
+- Alpha 54 inicia a migração para Polkit: operações do perfil Nix não abrem mais terminal externo e continuam limitadas a comandos allowlisted executados pelo usuário normal. Apply de sistema e migração Stable ainda usam `doas` no terminal até a entrega do helper root-owned com ações Polkit restritas. Undo automático não está implementado por falta de snapshot/baseline verificável.
 
 ## Incidente anterior na VM
 

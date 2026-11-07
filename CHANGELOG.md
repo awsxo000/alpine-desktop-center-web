@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.54-web — perfil Nix sem terminal externo
+- Instalação, desinstalação, atualização e coleta de lixo do perfil Nix agora executam no bridge como usuário normal.
+- O terminal externo fica reservado para aplicação de configuração de sistema e migração do canal Stable, enquanto a integração Polkit é preparada.
+- Mantém os comandos allowlisted, validação do backend e logs privados dentro da aplicação.
+- Validação: `pnpm check`, `pnpm build`, 57 testes (`pnpm test`) e `git diff --check`.
+
 ## 0.1.0-alpha.53-web — operações Nix confiáveis
 - Busca Nix sem correspondências agora conclui com sucesso e mostra estado vazio, em vez de erro operacional.
 - Desinstalação usa expressão POSIX compatível para nomes como `timeshift-25.12.4`; não gera mais escapes inválidos para `nix-env`.

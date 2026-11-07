@@ -158,9 +158,9 @@ class BridgeTestCase(unittest.TestCase):
         self.assertIn("simulate-full", local_server.OPERATIONS)
         self.assertIn("simulate-full", local_server.PRIVILEGED_OPERATIONS)
         self.assertIn("simulate-full", local_server.SYSTEM_TERMINAL_OPERATIONS)
-        self.assertIn("refresh-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        self.assertNotIn("refresh-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
         self.assertIn("update-nix-apps", local_server.OPERATIONS)
-        self.assertIn("update-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        self.assertNotIn("update-nix-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
         self.assertIn("refresh-kde-apps", local_server.OPERATIONS)
         self.assertNotIn("refresh-kde-apps", local_server.PRIVILEGED_OPERATIONS)
         self.assertNotIn("refresh-kde-apps", local_server.SYSTEM_TERMINAL_OPERATIONS)
@@ -243,14 +243,14 @@ class BridgeTestCase(unittest.TestCase):
         self.assertIn("prerequisites", session.message)
         self.assertFalse((self.root / ".alpine-state" / "vars.yml").exists())
 
-    def test_nix_profile_update_uses_terminal_without_preparing_ansible(self) -> None:
+    def test_nix_profile_update_runs_in_bridge_without_preparing_ansible(self) -> None:
         session = local_server.OperationSession("test-nix-update", self.root, "update-nix-apps", {})
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
-        with patch.object(local_server, "execute_in_system_terminal", return_value=("updated", 0)) as terminal:
+        with patch.object(local_server, "run_pty_command", return_value=(0, "updated")) as command:
             local_server.run_session(session, lock)
         self.assertEqual(session.status, "success")
-        self.assertEqual(terminal.call_args.args[2], ["sh", "scripts/atualizar-nix.sh", "aplicativos"])
+        self.assertEqual(command.call_args.args[1], ["sh", "scripts/atualizar-nix.sh", "aplicativos"])
         self.assertEqual(local_server.resolve_command("refresh-nix-apps", {})[0], [["sh", "scripts/atualizar-nix.sh", "aplicativos"]])
 
     def test_nix_profile_list_parser_returns_safe_app_entries(self) -> None:
@@ -293,7 +293,7 @@ class BridgeTestCase(unittest.TestCase):
 
     def test_nix_package_install_requires_safe_attribute_and_uses_system_terminal(self) -> None:
         self.assertEqual(local_server.resolve_command("install-nix-package", {"attribute": "nixpkgs.firefox"})[0], [["nix-env", "--install", "--attr", "nixpkgs.firefox"]])
-        self.assertIn("install-nix-package", local_server.SYSTEM_TERMINAL_OPERATIONS)
+        self.assertNotIn("install-nix-package", local_server.SYSTEM_TERMINAL_OPERATIONS)
         with self.assertRaises(ValueError):
             local_server.resolve_command("install-nix-package", {"attribute": "nixpkgs.firefox; touch /tmp/unsafe"})
 

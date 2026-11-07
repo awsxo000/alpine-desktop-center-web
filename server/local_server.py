@@ -72,7 +72,7 @@ DEPENDENCY_STATUSES = {"not_checked", *DIAGNOSTIC_STATUSES}
 PRIVILEGED_OPERATIONS = {
     "simulate-full", "apply-full", "apply-diagnostics", "apply-module",
 }
-SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"refresh-nix-apps", "update-nix-apps", "install-nix-package", "uninstall-nix-app", "collect-nix-garbage", "migrate-stable-channel"}
+SYSTEM_TERMINAL_OPERATIONS = PRIVILEGED_OPERATIONS | {"migrate-stable-channel"}
 SESSIONS: dict[str, "OperationSession"] = {}
 SESSIONS_LOCK = threading.Lock()
 DIAGNOSTIC_CACHE: dict[str, dict[str, object]] = {}
