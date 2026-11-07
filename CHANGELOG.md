@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.0-alpha.63-web — atualização a partir da Alpha 61
+- Consolida a versão de pré-release seguinte à Alpha 61, incorporando a busca Nix moderna, o fluxo Polkit e as correções de estado/logs da linha Alpha 62.
+- Mantém o backend `v1.44-dev` fixado no commit `52712cb7872792c04495d8b63d1a917a35861e31`.
+- Esta versão deve ser validada em VM Alpine descartável antes de qualquer uso fora de testes.
+
 ## 0.1.0-alpha.62-web — busca Nix acelerada
 - Usa `nix search --json` quando o CLI moderno está disponível, evitando reconstruir o catálogo completo via `nix-env` em cada consulta.
 - Mantém fallback automático para `nix-env` em instalações Nix antigas.

@@ -1,6 +1,6 @@
-# Alpine Desktop Center Web — alpha.62
+# Alpine Desktop Center Web — alpha.63
 
-A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
+A alpha.63 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
 
 ## Mudanças desta candidata
 
@@ -28,7 +28,7 @@ A alpha.28 falhou na role Steam porque `nixpkgs.steam` não estava disponível d
 
 ## Próximas validações na VM
 
-- [ ] Baixar e extrair a alpha.37 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
+- [ ] Baixar e extrair a alpha.63 em VM descartável com snapshot; confirmar versão e `RELEASE-VERSIONS` antes de executar.
 - [ ] Confirmar no ambiente desktop real que Chromium/Chrome abre em tela cheia, que Firefox permanece em kiosk, que o launcher mostra a nova logo e que a janela pode ser encerrada sem matar o bridge inesperadamente.
 - [ ] Conferir **BR** seleciona Português brasileiro e **US** seleciona English (United States), incluindo rótulos acessíveis, teclado, preferência salva e restauração após fechar/reabrir.
 - [ ] Conferir em tema claro/escuro e em 1366×768/resolução menor que a página Início explica o escopo correto, que a marca permanece nítida, que a largura é aproveitada e que scroll interno não corta cards em 100%/150% de zoom.

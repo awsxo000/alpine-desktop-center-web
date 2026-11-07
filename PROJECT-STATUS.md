@@ -2,8 +2,8 @@
 
 **Data do resumo:** 2026-11-07  
 **Branch:** `main`  
-**Commit atual:** `f50b44d` — `fix: pin Alpha 62 package checksum`  
-**Versão do frontend:** `0.1.0-alpha.62-web`  
+**Commit atual:** `to-be-published` — Alpha 63 release preparation
+**Versão do frontend:** `0.1.0-alpha.63-web`
 **Backend embarcado:** `v1.44-dev`  
 **Status:** pré-release funcional para validação em VM Alpine; não é uma versão estável para produção.
 
@@ -141,7 +141,7 @@ O projeto possui dois fluxos:
 Artefato local atual:
 
 ```text
-dist-portable/Alpine-Desktop-Center-Web-v0.1.0-alpha.62-web.tar.gz
+dist-portable/Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz
 ```
 
 ### Pacote Alpine APK
@@ -163,22 +163,22 @@ git pull --ff-only origin main
 cd packaging/alpine
 abuild checksum
 abuild -r
-APK=$(find "$HOME/packages" -type f -name 'alpine-desktop-center-0.1.0_alpha62-*.apk' | head -n 1)
+APK=$(find "$HOME/packages" -type f -name 'alpine-desktop-center-0.1.0_alpha63-*.apk' | head -n 1)
 doas apk add --upgrade --allow-untrusted "$APK"
 ```
 
 A release publicada é:
 
-[Alpha 62](https://github.com/awsxo000/alpine-desktop-center-web/releases/tag/v0.1.0-alpha.62-web)
+[Alpha 63](https://github.com/awsxo000/alpine-desktop-center-web/releases/tag/v0.1.0-alpha.63-web)
 
 Assets publicados:
 
 ```text
-Alpine-Desktop-Center-Web-v0.1.0-alpha.62-web.tar.gz
-Alpine-Desktop-Center-Web-v0.1.0-alpha.62-web.tar.gz.sha256
+Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz
+Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz.sha256
 ```
 
-Checksum SHA-256 do tarball Alpha 62:
+Checksum SHA-256 do tarball Alpha 63:
 
 ```text
 1711de115ffe969280a22bc4c74e6cc8e6abba7830de28c38dbe395db7337b09
@@ -211,7 +211,7 @@ O checkout está limpo e sincronizado:
 - Alpha 58/59: preparação do APK e estado externo gravável.
 - Alpha 60: correção dos caminhos de log fora de `/usr/lib`.
 - Alpha 61: integração do Polkit e remoção do terminal externo para operações privilegiadas.
-- Alpha 62: busca Nix moderna com `nix search --json` e fallback legado.
+- Alpha 63: busca Nix moderna com `nix search --json` e fallback legado.
 
 ## Pendências e riscos conhecidos
 
@@ -220,13 +220,13 @@ O checkout está limpo e sincronizado:
 3. **Rollback:** não existe undo automático. Antes de Apply, deve ser usada uma snapshot da VM.
 4. **Backend:** o alvo atual é Alpine Linux 3.24.3 Stable com backend `v1.44-dev`; combinações de hardware e desktop precisam de validação real.
 5. **Bootstrap inicial:** se Python, Ansible, `make` ou navegador estiverem ausentes, o primeiro uso ainda pode abrir um terminal para o bootstrap do ambiente. Isso é separado do fluxo Polkit de operações privilegiadas.
-6. **Documentação histórica:** alguns trechos antigos do README/TODO ainda mencionam Alpha 56/57 e o terminal externo. O código e o changelog já refletem Alpha 62; esses trechos devem ser consolidados em uma próxima limpeza documental.
+6. **Documentação histórica:** alguns trechos antigos do README/TODO ainda mencionam Alpha 56/57 e o terminal externo. O código e o changelog já refletem Alpha 63; esses trechos devem ser consolidados em uma próxima limpeza documental.
 7. **Compatibilidade Nix:** o caminho moderno depende do CLI `nix`; instalações antigas usam o fallback `nix-env`, que pode continuar mais lento.
 8. **Assinatura do APK:** a instalação com `--allow-untrusted` é adequada apenas para a validação da VM. Para distribuição pública, o APK deve ser assinado e entregue por um repositório Alpine confiável.
 
 ## Próximo teste recomendado na VM
 
-Depois de instalar a Alpha 62:
+Depois de instalar a Alpha 63:
 
 1. Abrir a aplicação pelo menu do desktop.
 2. Executar **Validate again**.
