@@ -1,4 +1,4 @@
-# Alpine Desktop Center Web — alpha.55
+# Alpine Desktop Center Web — alpha.56
 
 A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KDE, não stable. Backend embutido: `v1.44-dev`, commit `52712cb7872792c04495d8b63d1a917a35861e31`. A alpha.24 segue retirada. Testes automatizados e prévia sandbox não substituem aplicação real em VM.
 
@@ -20,7 +20,7 @@ A alpha.37 é uma pré-release comunitária para validação em Alpine 3.24.3/KD
 - **Layout responsivo:** a área principal aproveita a viewport larga; em telas com pouca altura ou zoom elevado, os painéis internos podem rolar sem cortar conteúdo nem rolar a página inteira. O destaque inicial distribui a explicação em duas colunas no desktop.
 - **Ações:** hover de Apply module, Apply all e migração Stable mantém o azul de assinatura e usa elevação/sombra discretas; foco por teclado permanece claramente visível.
 - **Integridade e auditoria da alpha.33:** refresh de integridade real, check do canal Stable persistente, operações nomeadas, logs locais por versão e módulos/diagnósticos em painéis confinados permanecem inalterados.
-- Alpha 55 inicia a migração para Polkit e corrige o duplo clique: operações do perfil Nix não abrem mais terminal externo e o desktop entry portátil usa um `Exec` aceito pelo parser KDE/GLib. Apply de sistema e migração Stable ainda usam `doas` no terminal até a entrega do helper root-owned com ações Polkit restritas. Undo automático não está implementado por falta de snapshot/baseline verificável.
+- Alpha 56 inicia a migração para Polkit, corrige o duplo clique e elimina o falso timeout do bridge: operações do perfil Nix não abrem mais terminal externo, o desktop entry portátil usa um `Exec` aceito pelo parser KDE/GLib e o health check reutiliza a validação de manifesto já concluída no startup. Apply de sistema e migração Stable ainda usam `doas` no terminal até a entrega do helper root-owned com ações Polkit restritas. Undo automático não está implementado por falta de snapshot/baseline verificável.
 
 ## Incidente anterior na VM
 

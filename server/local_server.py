@@ -1583,7 +1583,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(detect_base_status())
             return
         if path == "/api/health":
-            valid, message = validate_backend(self.root)
+            valid = getattr(self.app_server, "startup_backend_valid", None)
+            message = getattr(self.app_server, "startup_backend_message", "")
+            if valid is None:
+                valid, message = validate_backend(self.root)
             metadata = release_metadata(self.root)
             self.send_json({"bridge": "local", "backend": "validated" if valid else "failed", "message": message, "release_root": str(self.root), "frontend_version": metadata.get("frontend", "unknown"), "backend_version": metadata.get("backend", "unknown"), "backend_commit": metadata.get("backend_commit", "unknown"), "diagnostic_schema": metadata.get("diagnostic_schema", "unknown")}, HTTPStatus.OK if valid else HTTPStatus.SERVICE_UNAVAILABLE)
             return
@@ -1712,6 +1715,8 @@ def main() -> int:
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.root = root  # type: ignore[attr-defined]
     server.session_token = token  # type: ignore[attr-defined]
+    server.startup_backend_valid = valid  # type: ignore[attr-defined]
+    server.startup_backend_message = message  # type: ignore[attr-defined]
     server.operation_lock = threading.Lock()  # type: ignore[attr-defined]
     print(f"Alpine Desktop Center listening on http://{args.host}:{args.port}", flush=True)
     try:

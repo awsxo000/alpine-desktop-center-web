@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.56-web — bridge pronto sem falso timeout
+- O health check usa a validação do backend já concluída no startup, evitando reprocessar o manifesto inteiro em cada tentativa.
+- Aumenta o timeout de inicialização para máquinas mais lentas e registra a exceção real no `server.log`.
+- Mantém a revalidação completa disponível no endpoint de status do backend.
+- Validação: `pnpm check`, `pnpm build`, 58 testes, sintaxe shell e teste de lançamento do desktop entry.
+
 ## 0.1.0-alpha.55-web — duplo clique corrigido
 - Corrige o campo `Exec` do desktop entry portátil: o parser do KDE/GLib agora reconhece corretamente o comando de lançamento.
 - O arquivo `Alpine Desktop Center.desktop` deixa de ser silenciosamente ignorado pelo duplo clique.
