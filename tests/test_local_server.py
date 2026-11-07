@@ -265,6 +265,10 @@ class BridgeTestCase(unittest.TestCase):
 
     def test_nix_profile_mutations_are_allowlisted_and_index_is_numeric(self) -> None:
         self.assertEqual(local_server.resolve_command("uninstall-nix-app", {"name": "firefox"})[0], [["nix-env", "--uninstall", "^firefox$"]])
+        self.assertEqual(
+            local_server.resolve_command("uninstall-nix-app", {"name": "timeshift-25.12.4"})[0],
+            [["nix-env", "--uninstall", "^timeshift-25[.]12[.]4$"]],
+        )
         self.assertEqual(local_server.resolve_command("collect-nix-garbage", {})[0], [["nix-collect-garbage"]])
         with self.assertRaises(ValueError):
             local_server.resolve_command("uninstall-nix-app", {"name": "firefox; rm -rf /"})
@@ -275,6 +279,17 @@ class BridgeTestCase(unittest.TestCase):
         command = local_server.resolve_command("search-nix-packages", {"query": "firefox.*"})[0][0]
         self.assertEqual(command[:6], ["nix-env", "--query", "--available", "--json", "--attr-path", "--description"])
         self.assertEqual(command[6], ".*firefox\\.\\*.*")
+        self.assertTrue(local_server.nix_search_has_no_results("error: selector '.*obsdian.*' matches no derivations"))
+
+    def test_nix_search_no_results_are_reported_as_an_empty_success(self) -> None:
+        session = local_server.OperationSession("test-nix-empty-search", self.root, "search-nix-packages", {"query": "obsdian"})
+        lock = threading.Lock()
+        self.assertTrue(lock.acquire(blocking=False))
+        with patch.object(local_server, "run_pty_command", return_value=(1, "error: selector '.*obsdian.*' matches no derivations\n")):
+            local_server.run_session(session, lock)
+        self.assertEqual(session.status, "success")
+        self.assertEqual(session.nix_packages, [])
+        self.assertIn("No Nix packages matched", session.output)
 
     def test_nix_package_install_requires_safe_attribute_and_uses_system_terminal(self) -> None:
         self.assertEqual(local_server.resolve_command("install-nix-package", {"attribute": "nixpkgs.firefox"})[0], [["nix-env", "--install", "--attr", "nixpkgs.firefox"]])

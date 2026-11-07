@@ -1083,6 +1083,17 @@ def clear_nix_search_cache() -> None:
         NIX_SEARCH_CACHE.clear()
 
 
+def nix_exact_profile_selector(package_name: str) -> str:
+    """Build a POSIX ERE accepted by nix-env for one exact profile name."""
+    escaped = re.escape(package_name)
+    return escaped.replace(r"\-", "-").replace(r"\.", "[.]").replace(r"\+", "[+]")
+
+
+def nix_search_has_no_results(output: str) -> bool:
+    """nix-env exits non-zero when a valid catalog query matches nothing."""
+    return re.search(r"selector .* matches no derivations", output, re.IGNORECASE) is not None
+
+
 def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[list[str]], str]:
     if operation == "system-check":
         return ([diagnostic_command(module) for module in ("base", "audio", "rede", "energia")], "read-only system checks")
@@ -1097,7 +1108,7 @@ def resolve_command(operation: str, payload: dict[str, object]) -> tuple[list[li
         package_name = payload.get("name")
         if not isinstance(package_name, str) or not re.fullmatch(r"[A-Za-z0-9+._-]+", package_name):
             raise ValueError("A valid Nix package name is required for uninstall-nix-app.")
-        selector = f"^{re.escape(package_name)}$"
+        selector = f"^{nix_exact_profile_selector(package_name)}$"
         return ([["nix-env", "--uninstall", selector]], f"uninstall Nix package {package_name}")
     if operation == "search-nix-packages":
         query = payload.get("query")
@@ -1354,6 +1365,12 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                     except (json.JSONDecodeError, ValueError) as exc:
                         return_code = 1
                         session.append(f"\nNix package search output was invalid: {exc}\n")
+                elif session.operation == "search-nix-packages" and return_code != 0 and nix_search_has_no_results(command_output):
+                    with session.lock:
+                        session.nix_packages = []
+                    remember_nix_search(session.payload, [])
+                    return_code = 0
+                    session.append("\nNo Nix packages matched this search.\n")
                 if session.operation in {"system-check", "check-all-modules", "diagnose-module"} and return_code == 0:
                     try:
                         diagnostic = validate_diagnostic_payload(json.loads(command_output))

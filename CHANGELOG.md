@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.53-web — operações Nix confiáveis
+- Busca Nix sem correspondências agora conclui com sucesso e mostra estado vazio, em vez de erro operacional.
+- Desinstalação usa expressão POSIX compatível para nomes como `timeshift-25.12.4`; não gera mais escapes inválidos para `nix-env`.
+- Adiciona testes de regressão para os dois casos.
+- Validação: `pnpm check`, `pnpm build`, 57 testes (`pnpm test`) e `git diff --check`.
+
 ## 0.1.0-alpha.52-web — pré-voo do pacote completo
 - O launcher verifica `backend/` e `BACKEND-MANIFEST.sha256` antes de iniciar o bridge.
 - Checkouts-fonte e pastas extraídas de forma incompleta agora exibem uma mensagem direta em vez de iniciar um servidor que responde `503` repetidamente.
