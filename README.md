@@ -1,6 +1,6 @@
 # Alpine Desktop Center Web
 
-> **Alpha 46 — environment-aware workspace.**
+> **Alpha 47 — environment-aware workspace.**
 >
 > **Web era begins here.** This repository is the browser-first continuation of Alpine Desktop Center. The original desktop direction remains part of the project's history; this line makes the local browser experience the primary interface.
 
@@ -14,12 +14,12 @@ The local bridge executes named operations against the pinned backend candidate 
 
 The visual direction uses the user's [Rokko institutional site](https://rokko-institucional.pages.dev/) as its color reference: `#f4f6fa` surfaces, `#123c9c` blue actions, `#071225` ink and `#1d9b62` success states. Agama/openSUSE is used only as a structural reference for clarity and clean information density, not as the visual identity.
 
-Alpha 46 filters the module catalog by the detected desktop session. Modules are shared by default; a backend catalog entry can restrict one with `desktop_targets`, for example `["kde"]` for a KDE-only module or `["shared", "gnome"]` for a shared/GNOME module. The bridge filters these entries before returning `/api/modules` and validates the same target again before an apply operation, so hiding a module in the UI is not the security boundary. The current KDE module remains restricted to KDE; future GNOME, XFCE and other desktop roles should declare their targets in the backend catalog. No placeholder desktop modules are advertised.
+Alpha 47 filters the module catalog by the detected desktop session. Modules are shared by default; a backend catalog entry can restrict one with `desktop_targets`, for example `["kde"]` for a KDE-only module or `["shared", "gnome"]` for a shared/GNOME module. The bridge filters these entries before returning `/api/modules` and validates the same target again before an apply operation, so hiding a module in the UI is not the security boundary. The current KDE module remains restricted to KDE; future GNOME, XFCE and other desktop roles should declare their targets in the backend catalog. No placeholder desktop modules are advertised.
 
 The Nix integration intentionally uses the classic channel-based CLI only: `nix-channel`, `nix-env` and `nix-collect-garbage`. It does not use flakes, `nix search`, `nix profile` or other experimental new-CLI flows. The Apps destination and Nix-specific modules are exposed only after the bridge confirms `nix-env` and a configured non-unstable channel for the user. Package search and installation must use validated channel attribute paths rather than arbitrary shell input.
-Alpha 46 adds the Nix package search panel: it queries the configured channel with `nix-env --query --available --json`, shows the attribute, version and description, and installs only a validated attribute through `nix-env --install --attr` after explicit confirmation in the UI. Installation output and authentication remain in the system terminal.
+Alpha 47 adds the Nix package search panel: it queries the configured channel with `nix-env --query --available --json`, shows the attribute, version and description, and installs only a validated attribute through `nix-env --install --attr` after explicit confirmation in the UI. Installation output and authentication remain in the system terminal.
 
-The target release keeps the embedded backend, the SHA-256 integrity lock, version-namespaced logs, structured diagnostics, Stable-only Nix controls and independent terminal execution. The browser is the primary user experience; the backend remains the source of truth. Alpha 46 adds a startup workspace that detects KDE, GNOME and other desktop sessions before opening the main interface, then exposes desktop capabilities as a foundation for environment-specific modules.
+The target release keeps the embedded backend, the SHA-256 integrity lock, version-namespaced logs, structured diagnostics, Stable-only Nix controls and independent terminal execution. The browser is the primary user experience; the backend remains the source of truth. Alpha 47 adds a startup workspace that detects KDE, GNOME and other desktop sessions before opening the main interface, then exposes desktop capabilities as a foundation for environment-specific modules.
 
 ## Purpose
 

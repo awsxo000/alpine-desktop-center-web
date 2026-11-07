@@ -7,6 +7,7 @@ import './modules-layout.css'
 import './workspace-enhancements.css'
 import './density.css'
 import './theme-balance.css'
+import './ui-polish.css'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
