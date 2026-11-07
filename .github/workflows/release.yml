@@ -1,0 +1,92 @@
+name: Portable Alpha Release
+
+on:
+  push:
+    tags:
+      - "v*alpha*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing alpha tag to package and publish"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  BACKEND_VERSION: v1.44-dev
+  BACKEND_COMMIT: 52712cb7872792c04495d8b63d1a917a35861e31
+  BACKEND_REF: fix/one-shot-doas-authorization
+
+jobs:
+  package-and-publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5, node24
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6, node24
+        with:
+          version: 11.25.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6, node24
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6, node24
+        with:
+          python-version: "3.12"
+
+      - name: Build the pinned portable package
+        env:
+          BACKEND_SOURCE: ${{ runner.temp }}/alpine-backend
+          BACKEND_COMMIT_EXPECTED: ${{ env.BACKEND_COMMIT }}
+          BUILD_ROOT: ${{ runner.temp }}/portable-build
+        run: |
+          set -eu
+          git clone --quiet --depth 1 --branch "$BACKEND_REF" https://github.com/awsxo000/alpine.git "$BACKEND_SOURCE"
+          test "$(git -C "$BACKEND_SOURCE" rev-parse HEAD)" = "$BACKEND_COMMIT"
+          package_version=$(node -p "require('./package.json').version")
+          expected_tag="v$package_version"
+          actual_tag="${{ github.event.inputs.tag || github.ref_name }}"
+          test "$actual_tag" = "$expected_tag"
+          ./scripts/package-portable.sh "$package_version" "$BACKEND_VERSION"
+          archive="$BUILD_ROOT/Alpine-Desktop-Center-Web-v$package_version.tar.gz"
+          test -s "$archive"
+          sha256sum "$archive" > "$archive.sha256"
+          extracted="$RUNNER_TEMP/extracted-release"
+          mkdir -p "$extracted"
+          tar -xzf "$archive" -C "$extracted"
+          release="$extracted/Alpine-Desktop-Center-Web-v$package_version"
+          test -d "$release/backend"
+          test -s "$release/BACKEND-MANIFEST.sha256"
+          (cd "$release/backend" && sha256sum -c "$release/BACKEND-MANIFEST.sha256")
+          PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$release/server" python3 -B - "$release" <<'PY'
+          import sys
+          from pathlib import Path
+          import local_server
+          valid, message = local_server.validate_backend(Path(sys.argv[1]))
+          print(message)
+          raise SystemExit(0 if valid else 1)
+          PY
+          echo "ARCHIVE=$archive" >> "$GITHUB_ENV"
+          echo "PACKAGE_VERSION=$package_version" >> "$GITHUB_ENV"
+
+      - name: Create or update GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -eu
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --prerelease --title "Alpine Desktop Center Web $RELEASE_TAG" --notes "Automated portable alpha release. The attached archive includes the frontend, pinned Alpine backend, backend manifest and launcher."
+          fi
+          gh release upload "$RELEASE_TAG" "$ARCHIVE" "$ARCHIVE.sha256" --clobber

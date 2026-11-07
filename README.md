@@ -101,7 +101,10 @@ pnpm build
 ## Portable release with the official backend
 
 The source repository keeps the web frontend and the Ansible backend in
-separate repositories, matching the original Qt project. The portable release
+separate repositories, matching the original Qt project. The source checkout
+is for development and must not be launched as a release artifact: it has no
+`backend/` directory or `BACKEND-MANIFEST.sha256`. Every published alpha is
+required to include a functional portable archive. The portable release
 builder combines this frontend with a pinned release of
 [`awsxo000/alpine`](https://github.com/awsxo000/alpine), generates
 `BACKEND-MANIFEST.sha256`, and records both the backend version and commit in
@@ -112,7 +115,7 @@ not an official backend release; the packager rejects a different SHA for this
 pin. The old v1.43 pin is retained only for historical reproducibility.
 
 ```sh
-sh scripts/package-portable.sh 0.1.0-alpha.37-web v1.44-dev
+sh scripts/package-portable.sh "$(node -p "require('./package.json').version")" v1.44-dev
 ```
 
 The resulting archive contains `frontend/`, `server/` and `backend/` in one
@@ -124,7 +127,9 @@ BACKEND_SOURCE=/path/to/alpine \
   sh scripts/package-portable.sh 0.1.0-alpha.37-web v1.44-dev
 ```
 
-The backend must remain beside the launcher in the extracted release. The
+The release workflow runs this packaging and integrity validation automatically
+for every `v*alpha*` tag, then uploads both the archive and its SHA-256 checksum
+to the GitHub pre-release. The backend must remain beside the launcher in the extracted release. The
 launcher validates it before opening the browser, and the web bridge validates
 its checksums again before every named operation.
 
