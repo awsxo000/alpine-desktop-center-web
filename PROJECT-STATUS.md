@@ -141,7 +141,7 @@ O projeto possui dois fluxos:
 Artefato local atual:
 
 ```text
-dist-portable/Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz
+dist-portable/Alpine-Desktop-Center-Web-v0.1.0-alpha.64-web.tar.gz
 ```
 
 ### Pacote Alpine APK
@@ -163,25 +163,25 @@ git pull --ff-only origin main
 cd packaging/alpine
 abuild checksum
 abuild -r
-APK=$(find "$HOME/packages" -type f -name 'alpine-desktop-center-0.1.0_alpha63-*.apk' | head -n 1)
+APK=$(find "$HOME/packages" -type f -name 'alpine-desktop-center-0.1.0_alpha64-*.apk' | head -n 1)
 doas apk add --upgrade --allow-untrusted "$APK"
 ```
 
 A release publicada é:
 
-[Alpha 63](https://github.com/awsxo000/alpine-desktop-center-web/releases/tag/v0.1.0-alpha.63-web)
+[Alpha 63](https://github.com/awsxo000/alpine-desktop-center-web/releases/tag/v0.1.0-alpha.64-web)
 
 Assets publicados:
 
 ```text
-Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz
-Alpine-Desktop-Center-Web-v0.1.0-alpha.63-web.tar.gz.sha256
+Alpine-Desktop-Center-Web-v0.1.0-alpha.64-web.tar.gz
+Alpine-Desktop-Center-Web-v0.1.0-alpha.64-web.tar.gz.sha256
 ```
 
 Checksum SHA-256 do tarball Alpha 63:
 
 ```text
-9fed3c85f05871c5fa622de68288c0d6afd577a3a7981782b79443600a993b5a
+4daec8125d89590afe1d8d323d9fb23a820ce768e9931cfaa725272a33203064
 ```
 
 ## Validação atual
