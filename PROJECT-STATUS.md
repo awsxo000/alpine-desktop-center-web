@@ -2,8 +2,8 @@
 
 **Data do resumo:** 2026-11-07  
 **Branch:** `main`  
-**Commit atual:** `6197def` — `release: prepare Alpha 63`
-**Versão do frontend:** `0.1.0-alpha.63-web`
+**Commit atual:** `03f9571` — `feat: add remote Nix package search provider`
+**Versão do frontend:** `0.1.0-alpha.64-web`
 **Backend embarcado:** `v1.44-dev`  
 **Status:** pré-release funcional para validação em VM Alpine; não é uma versão estável para produção.
 
