@@ -178,7 +178,7 @@ Alpine-Desktop-Center-Web-v0.1.0-alpha.64-web.tar.gz
 Alpine-Desktop-Center-Web-v0.1.0-alpha.64-web.tar.gz.sha256
 ```
 
-Checksum SHA-256 do tarball Alpha 63:
+Checksum SHA-256 do tarball Alpha 64:
 
 ```text
 4daec8125d89590afe1d8d323d9fb23a820ce768e9931cfaa725272a33203064
