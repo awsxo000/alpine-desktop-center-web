@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.0-alpha.64-web — busca remota rápida
+- Consulta o índice oficial do NixOS Search no bridge, por canal, sem abrir terminal nem avaliar o catálogo local a cada pesquisa.
+- Filtra resultados para `x86_64-linux`, normaliza o retorno Elasticsearch e mantém cache em memória por 15 minutos.
+- Cai automaticamente para `nix search --json` ou `nix-env` quando a busca remota estiver indisponível.
+- A instalação continua usando somente atributos validados pelo Nix local.
+
 ## 0.1.0-alpha.63-web — atualização a partir da Alpha 61
 - Consolida a versão de pré-release seguinte à Alpha 61, incorporando a busca Nix moderna, o fluxo Polkit e as correções de estado/logs da linha Alpha 62.
 - Mantém o backend `v1.44-dev` fixado no commit `52712cb7872792c04495d8b63d1a917a35861e31`.

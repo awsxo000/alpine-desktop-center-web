@@ -76,9 +76,15 @@ authentication, create a broad `nopass` rule, or run the browser as root. The br
 only an allowlisted operation to the fixed helper; Polkit handles the graphical
 authentication and the helper validates the caller, state ownership and module name again.
 
-Package search uses `nix search --json` when available, which queries Nix's indexed search
-interface instead of rebuilding the complete `nix-env --available` catalog for every query.
-Older Nix installations continue to use the legacy command automatically.
+Package search first queries the official NixOS Search index from the local bridge, using the
+configured stable channel and filtering for `x86_64-linux`. Results are cached in memory for
+15 minutes, so repeated searches are immediate and the browser never contacts the remote
+service directly. If the remote index is unavailable, the bridge falls back to `nix search
+--json` and then to the legacy `nix-env` catalog query. Remote results are only for discovery:
+the selected attribute remains validated by the local Nix channel before installation. The
+remote provider can be disabled with `ALPINE_DESKTOP_CENTER_DISABLE_REMOTE_NIX_SEARCH=1` and
+its URL, channel and schema can be overridden with the `ALPINE_DESKTOP_CENTER_NIX_SEARCH_*`
+environment variables.
 
 The **Apply** destination offers **Preview configuration**, which runs the
 backend `make simular` target (`ansible-playbook --check --diff`). This is a

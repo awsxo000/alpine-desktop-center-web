@@ -7,6 +7,7 @@ The bridge is intentionally local-only, session-bound and release-contained.
 from __future__ import annotations
 
 import argparse
+import base64
 import codecs
 import dataclasses
 import errno
@@ -35,6 +36,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path, PurePosixPath
 from typing import TextIO
 from urllib.parse import parse_qs, urlparse
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 COMMAND_TIMEOUT_SECONDS = 900
 PTY_TERMINATION_GRACE_SECONDS = 2
@@ -82,7 +85,10 @@ STABLE_CHANNEL_CACHE: tuple[dict[str, object], float] | None = None
 STABLE_CHANNEL_LOCK = threading.Lock()
 NIX_SEARCH_CACHE: dict[str, tuple[list[dict[str, object]], float]] = {}
 NIX_SEARCH_CACHE_LOCK = threading.Lock()
-NIX_SEARCH_CACHE_TTL_SECONDS = 300
+NIX_SEARCH_CACHE_TTL_SECONDS = 900
+NIX_REMOTE_SEARCH_URL = "https://search.nixos.org/backend"
+NIX_REMOTE_SEARCH_SCHEMA_VERSION = "52"
+NIX_REMOTE_SEARCH_TIMEOUT_SECONDS = 8
 LINGERING_PROCESS_PIDS: set[int] = set()
 LINGERING_PROCESS_LOCK = threading.Lock()
 
@@ -1063,6 +1069,93 @@ def parse_nix_search_results(output: str) -> list[dict[str, object]]:
     return packages[:100]
 
 
+def nix_remote_search_channel() -> str:
+    configured = os.environ.get("ALPINE_DESKTOP_CENTER_NIX_SEARCH_CHANNEL", "").strip()
+    if configured and re.fullmatch(r"(?:\d+\.\d+|unstable)", configured):
+        return configured
+    channel_list = shutil.which("nix-channel")
+    if channel_list:
+        try:
+            result = subprocess.run([channel_list, "--list"], capture_output=True, text=True, timeout=3, check=False)
+            for line in result.stdout.splitlines():
+                match = re.search(r"(?:nixos|nixpkgs)-((?:\d+\.\d+)|unstable)", line)
+                if match and match.group(1) != "unstable":
+                    return match.group(1)
+        except (OSError, subprocess.SubprocessError):
+            pass
+    return "26.05"
+
+
+def parse_remote_nix_search_results(payload: object) -> list[dict[str, object]]:
+    """Normalize the official NixOS Search Elasticsearch response."""
+    if not isinstance(payload, dict):
+        raise ValueError("Remote Nix package search returned an unsupported response.")
+    hits = payload.get("hits")
+    hits = hits.get("hits") if isinstance(hits, dict) else None
+    if not isinstance(hits, list):
+        raise ValueError("Remote Nix package search returned no hits array.")
+    packages: list[dict[str, object]] = []
+    for hit in hits:
+        if not isinstance(hit, dict) or not isinstance(hit.get("_source"), dict):
+            continue
+        item = hit["_source"]
+        attribute = item.get("package_attr_name")
+        name = item.get("package_pname")
+        version = item.get("package_pversion")
+        description = item.get("package_description")
+        system = item.get("package_system")
+        if not isinstance(attribute, str) or not re.fullmatch(r"[A-Za-z0-9_+.-]+(?:\.[A-Za-z0-9_+.-]+)*", attribute):
+            continue
+        if system not in (None, "x86_64-linux"):
+            continue
+        packages.append({
+            "attribute": attribute,
+            "name": name if isinstance(name, str) and name else attribute.rsplit(".", 1)[-1],
+            "version": version if isinstance(version, str) else None,
+            "description": description if isinstance(description, str) else "",
+        })
+    return packages[:100]
+
+
+def remote_nix_search(query: str) -> tuple[list[dict[str, object]], str] | None:
+    """Query the official index without exposing its credentials to the browser."""
+    if os.environ.get("ALPINE_DESKTOP_CENTER_DISABLE_REMOTE_NIX_SEARCH", "").lower() in {"1", "true", "yes"}:
+        return None
+    channel = nix_remote_search_channel()
+    branch = f"nixos-{channel}"
+    schema = os.environ.get("ALPINE_DESKTOP_CENTER_NIX_SEARCH_SCHEMA", NIX_REMOTE_SEARCH_SCHEMA_VERSION)
+    if not re.fullmatch(r"\d+", schema):
+        schema = NIX_REMOTE_SEARCH_SCHEMA_VERSION
+    base_url = os.environ.get("ALPINE_DESKTOP_CENTER_NIX_SEARCH_URL", NIX_REMOTE_SEARCH_URL).rstrip("/")
+    if not re.match(r"^https://[A-Za-z0-9._:/-]+$", base_url):
+        return None
+    endpoint = f"{base_url}/latest-{schema}-{branch}/_search?request_cache=true"
+    body = {
+        "from": 0,
+        "size": 50,
+        "sort": [{"_score": "desc"}],
+        "query": {"bool": {"must": [{"multi_match": {
+            "query": query,
+            "fields": ["package_attr_name", "package_pname", "package_description"],
+        }}], "filter": [{"term": {"package_system": "x86_64-linux"}}]}},
+    }
+    username = os.environ.get("ALPINE_DESKTOP_CENTER_NIX_SEARCH_USER", "aWVSALXpZv")
+    password = os.environ.get("ALPINE_DESKTOP_CENTER_NIX_SEARCH_PASSWORD", "X8gPHnzL52wFEekuxsfQ9cSh")
+    token = base64.b64encode(f"{username}:{password}".encode()).decode()
+    request = urllib_request.Request(endpoint, data=json.dumps(body).encode(), method="POST", headers={
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+        "Authorization": f"Basic {token}",
+        "User-Agent": "Alpine-Desktop-Center-Nix-Search/1",
+    })
+    try:
+        with urllib_request.urlopen(request, timeout=NIX_REMOTE_SEARCH_TIMEOUT_SECONDS) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+        return parse_remote_nix_search_results(payload), f"remote NixOS Search index ({channel})"
+    except (OSError, urllib_error.URLError, urllib_error.HTTPError, json.JSONDecodeError, ValueError):
+        return None
+
+
 def nix_search_cache_key(payload: dict[str, object]) -> str:
     query = payload.get("query")
     return query.strip().casefold() if isinstance(query, str) else ""
@@ -1329,6 +1422,7 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
             log.flush()
             return_code = 0
             pending_commands = list(commands)
+            remote_search_source: str | None = None
             if session.operation == "search-nix-packages":
                 cached_packages = get_cached_nix_search(session.payload)
                 if cached_packages is not None:
@@ -1336,6 +1430,18 @@ def run_session(session: OperationSession, operation_lock: threading.Lock) -> No
                         session.nix_packages = cached_packages
                     session.append("\nSearch results restored from the recent Nix catalog cache.\n")
                     pending_commands = []
+                else:
+                    query = str(session.payload.get("query", "")).strip()
+                    remote_result = remote_nix_search(query)
+                    if remote_result is not None:
+                        packages, remote_search_source = remote_result
+                        with session.lock:
+                            session.nix_packages = packages
+                        remember_nix_search(session.payload, packages)
+                        session.append(f"\nSearch results loaded from {remote_search_source}.\n")
+                        pending_commands = []
+                    else:
+                        session.append("\nRemote Nix Search was unavailable; falling back to the local Nix catalog.\n")
             configured_state_root = os.environ.get("ALPINE_DESKTOP_CENTER_STATE_ROOT", "").strip()
             state_dir = Path(configured_state_root).expanduser() if configured_state_root else session.root / ".alpine-state"
             ansible_collection = state_dir / "collections" / "ansible_collections" / "community" / "general"

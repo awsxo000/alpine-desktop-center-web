@@ -286,6 +286,20 @@ class BridgeTestCase(unittest.TestCase):
     def test_nix_package_search_parses_catalog_and_escapes_query(self) -> None:
         output = json.dumps({"nixpkgs.firefox": {"name": "firefox-130.0", "version": "130.0", "description": "Web browser"}})
         self.assertEqual(local_server.parse_nix_search_results(output), [{"attribute": "nixpkgs.firefox", "name": "firefox-130.0", "version": "130.0", "description": "Web browser"}])
+        remote = {"hits": {"hits": [{"_source": {
+            "package_attr_name": "firefox",
+            "package_pname": "firefox",
+            "package_pversion": "159.0.1",
+            "package_description": "Web browser",
+            "package_system": "x86_64-linux",
+        }}, {"_source": {
+            "package_attr_name": "firefox.aarch64",
+            "package_pname": "firefox",
+            "package_pversion": "159.0.1",
+            "package_description": "Other system",
+            "package_system": "aarch64-linux",
+        }}]}}
+        self.assertEqual(local_server.parse_remote_nix_search_results(remote), [{"attribute": "firefox", "name": "firefox", "version": "159.0.1", "description": "Web browser"}])
         with patch.object(local_server.shutil, "which", return_value=None):
             command = local_server.resolve_command("search-nix-packages", {"query": "firefox.*"})[0][0]
         self.assertEqual(command[:6], ["nix-env", "--query", "--available", "--json", "--attr-path", "--description"])
@@ -298,7 +312,7 @@ class BridgeTestCase(unittest.TestCase):
         session = local_server.OperationSession("test-nix-empty-search", self.root, "search-nix-packages", {"query": "obsdian"})
         lock = threading.Lock()
         self.assertTrue(lock.acquire(blocking=False))
-        with patch.object(local_server, "run_pty_command", return_value=(1, "error: selector '.*obsdian.*' matches no derivations\n")):
+        with patch.object(local_server, "remote_nix_search", return_value=None), patch.object(local_server, "run_pty_command", return_value=(1, "error: selector '.*obsdian.*' matches no derivations\n")):
             local_server.run_session(session, lock)
         self.assertEqual(session.status, "success")
         self.assertEqual(session.nix_packages, [])
